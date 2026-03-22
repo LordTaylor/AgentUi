@@ -1,9 +1,13 @@
 package com.agentcore.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 enum class MessageType {
     TEXT, ACTION, SYSTEM
 }
 
+@Serializable
 data class Message(
     val id: String,
     val sender: String,

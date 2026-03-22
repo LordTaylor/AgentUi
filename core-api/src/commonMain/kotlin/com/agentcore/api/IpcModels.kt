@@ -152,6 +152,78 @@ sealed class IpcCommand {
     @Serializable
     @SerialName("set_system_prompt")
     data class SetSystemPrompt(val payload: SetSystemPromptPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("tag_session")
+    data class TagSession(val payload: TagSessionPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("list_sessions_by_tag")
+    data class ListSessionsByTag(val payload: ListSessionsByTagPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("get_tool")
+    data class GetTool(val payload: GetToolPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("update_config")
+    data class UpdateConfig(val payload: UpdateConfigPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("summarize_context")
+    data class SummarizeContext(val payload: SummarizeContextPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("schedule_task")
+    data class ScheduleTask(val payload: ScheduleTaskPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("cancel_scheduled_task")
+    data class CancelScheduledTask(val payload: CancelScheduledTaskPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("list_scheduled_tasks")
+    class ListScheduledTasks : IpcCommand()
+
+    @Serializable
+    @SerialName("ping_backend")
+    data class PingBackend(val payload: PingBackendPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("export_session")
+    data class ExportSession(val payload: ExportSessionPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("import_session")
+    data class ImportSession(val payload: ImportSessionPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("test_tool")
+    data class TestTool(val payload: TestToolPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("spawn_subagent")
+    data class SpawnSubAgent(val payload: SpawnSubAgentPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("wait_subagent")
+    data class WaitSubAgent(val payload: WaitSubAgentPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("cancel_subagent")
+    data class CancelSubAgent(val payload: CancelSubAgentPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("list_subagents")
+    class ListSubAgents : IpcCommand()
+
+    @Serializable
+    @SerialName("list_checkpoints")
+    data class ListCheckpoints(val payload: ListCheckpointsPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("restore_checkpoint")
+    data class RestoreCheckpoint(val payload: RestoreCheckpointPayload) : IpcCommand()
 }
 
 @Serializable
@@ -195,6 +267,59 @@ data class ForkSessionPayload(val session_id: String, val from_message_idx: Int)
 
 @Serializable
 data class SetSystemPromptPayload(val session_id: String, val prompt: String)
+
+@Serializable
+data class TagSessionPayload(val session_id: String, val tags: List<String>)
+
+@Serializable
+data class ListSessionsByTagPayload(val tags: List<String>)
+
+@Serializable
+data class GetToolPayload(val tool_name: String)
+
+@Serializable
+data class UpdateConfigPayload(val key: String, val value: JsonElement)
+
+@Serializable
+data class SummarizeContextPayload(val session_id: String, val keep_recent: Int = 6)
+
+@Serializable
+data class ScheduleTaskPayload(
+    val at: String? = null,
+    val cron: String? = null,
+    val session_id: String? = null,
+    val text: String
+)
+
+@Serializable
+data class CancelScheduledTaskPayload(val task_id: String)
+
+@Serializable
+data class PingBackendPayload(val backend: String? = null, val model: String? = null)
+
+@Serializable
+data class ExportSessionPayload(val session_id: String, val format: String = "json")
+
+@Serializable
+data class ImportSessionPayload(val path: String)
+
+@Serializable
+data class TestToolPayload(val tool_name: String)
+
+@Serializable
+data class SpawnSubAgentPayload(val task: String, val role: String = "base", val backend: String? = null)
+
+@Serializable
+data class WaitSubAgentPayload(val id: String, val timeout_secs: Long = 300)
+
+@Serializable
+data class CancelSubAgentPayload(val id: String)
+
+@Serializable
+data class ListCheckpointsPayload(val session_id: String)
+
+@Serializable
+data class RestoreCheckpointPayload(val session_id: String, val checkpoint_n: Int)
 
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
@@ -335,6 +460,18 @@ sealed class IpcEvent {
     @Serializable
     @SerialName("config")
     data class Config(val payload: ConfigPayload) : IpcEvent()
+
+    @Serializable
+    @SerialName("scheduled_tasks_list")
+    data class ScheduledTasksList(val payload: ScheduledTasksListPayload) : IpcEvent()
+
+    @Serializable
+    @SerialName("session_forked")
+    data class SessionForked(val payload: SessionForkedPayload) : IpcEvent()
+
+    @Serializable
+    @SerialName("ready")
+    class Ready : IpcEvent()
 }
 
 @Serializable
@@ -409,6 +546,7 @@ data class SessionDataPayload(
     val message_count: Int,
     val role: String,
     val backend: String = "unknown",
+    val system_prompt: String? = null,
     val tags: List<String> = emptyList(),
     val created_at: String = "",
     val updated_at: String = ""
@@ -538,17 +676,25 @@ data class ToolCreatedPayload(val name: String, val path: String)
 data class HumanInputPayload(val prompt: String, val request_id: String)
 
 @Serializable
-data class PingResultPayload(val version: String, val uptime_secs: Long)
+data class PingResultPayload(
+    val backend: String,
+    val latency_ms: Long? = null,
+    val available: Boolean,
+    val version: String? = null,
+    val uptime_secs: Long? = null
+)
 
 @Serializable
 data class BackendInfo(
     val name: String,
-    val is_available: Boolean,
-    val model: String? = null
+    val is_available: Boolean = true,
+    val configured: Boolean = true,
+    val model: String? = null,
+    val description: String? = null
 )
 
 @Serializable
-data class BackendsListPayload(val backends: List<BackendInfo>)
+data class BackendsListPayload(val backends: List<BackendInfo>, val active: String? = null)
 
 @Serializable
 data class TaskScheduledPayload(
@@ -559,3 +705,18 @@ data class TaskScheduledPayload(
 
 @Serializable
 data class ConfigPayload(val config: kotlinx.serialization.json.JsonObject)
+
+@Serializable
+data class ScheduledTaskInfo(
+    val id: String,
+    val kind: String,
+    val next_fire: String,
+    val text: String,
+    val session_id: String? = null
+)
+
+@Serializable
+data class ScheduledTasksListPayload(val count: Int, val tasks: List<ScheduledTaskInfo>)
+
+@Serializable
+data class SessionForkedPayload(val original_session_id: String, val new_session_id: String)

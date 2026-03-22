@@ -29,7 +29,10 @@ object IpcHandler {
         onError: (ErrorPayload) -> Unit,
         onSessionData: (SessionDataPayload) -> Unit,
         onHumanInputRequest: (HumanInputPayload) -> Unit,
-        onAgentGroupUpdate: (AgentGroupPayload) -> Unit
+        onAgentGroupUpdate: (AgentGroupPayload) -> Unit,
+        onSessionForked: (SessionForkedPayload) -> Unit = {},
+        onTaskScheduled: (TaskScheduledPayload) -> Unit = {},
+        onScheduledTasksList: (ScheduledTasksListPayload) -> Unit = {}
     ) {
         when (event) {
             is IpcEvent.Status -> onStatusChange(event.payload.state)
@@ -115,6 +118,10 @@ object IpcHandler {
             }
             is IpcEvent.HumanInputRequest -> onHumanInputRequest(event.payload)
             is IpcEvent.AgentGroupUpdate -> onAgentGroupUpdate(event.payload)
+            is IpcEvent.SessionForked -> onSessionForked(event.payload)
+            is IpcEvent.TaskScheduled -> onTaskScheduled(event.payload)
+            is IpcEvent.ScheduledTasksList -> onScheduledTasksList(event.payload)
+            is IpcEvent.Ready -> onStatusChange("IDLE")
             else -> {}
         }
     }

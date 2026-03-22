@@ -41,7 +41,6 @@ fun ChatMainScreen(mode: ConnectionMode) {
         onStatusChange = { /* Handled via VM intents in onSendMessage etc */ },
         sessionStats = state.sessionStats,
         onStatsRefresh = { viewModel.onIntent(ChatIntent.RefreshStats, scope, mode) },
-        onReloadTools = { viewModel.onIntent(ChatIntent.ReloadTools, scope, mode) },
         logs = state.logs,
         scratchpadContent = state.scratchpadContent,
         onScratchpadUpdate = { viewModel.onIntent(ChatIntent.UpdateScratchpad(it), scope, mode) },
@@ -61,20 +60,42 @@ fun ChatMainScreen(mode: ConnectionMode) {
         showSettings = state.showSettings,
         onToggleSettings = { viewModel.onIntent(ChatIntent.ToggleSettings, scope, mode) },
         onSessionDelete = { id -> viewModel.onIntent(ChatIntent.DeleteSession(id), scope, mode) },
+        onSessionPrune = { id -> viewModel.onIntent(ChatIntent.PruneSession(id), scope, mode) },
+        onReloadTools = { viewModel.onIntent(ChatIntent.ReloadTools, scope, mode) },
         onCancel = {
             viewModel.onIntent(ChatIntent.CancelAction, scope, mode)
         },
-        onClearChat = { viewModel.onIntent(ChatIntent.ClearChat, scope, mode) }
+        onClearChat = { viewModel.onIntent(ChatIntent.ClearChat, scope, mode) },
+        activeFilters = state.activeFilters,
+        onToggleFilter = { tag -> viewModel.onIntent(ChatIntent.ToggleFilter(tag), scope, mode) },
+        onSessionTag = { id, tags -> viewModel.onIntent(ChatIntent.TagSession(id, tags), scope, mode) },
+        isSummarizing = state.isSummarizing,
+        onSummarize = { 
+            state.currentSessionId?.let { 
+                viewModel.onIntent(ChatIntent.SummarizeContext(it), scope, mode) 
+            }
+        },
+        onFork = { index ->
+            state.currentSessionId?.let { sid ->
+                viewModel.onIntent(ChatIntent.ForkSession(sid, index), scope, mode)
+            }
+        },
+        uiSettings = state.uiSettings,
+        onUpdateUiSettings = { viewModel.onIntent(ChatIntent.UpdateUiSettings(it), scope, mode) }
     )
 
     if (state.showSettings) {
         SettingsDialog(
             currentBackend = state.currentBackend,
             currentRole = state.currentRole,
+            initialSystemPrompt = state.currentSystemPrompt,
             availableBackends = state.availableBackends,
             onDismiss = { viewModel.onIntent(ChatIntent.ToggleSettings, scope, mode) },
-            onSave = { b, r ->
+            onSave = { b, r, p ->
                 viewModel.onIntent(ChatIntent.UpdateSettings(b, r), scope, mode)
+                if (p != state.currentSystemPrompt) {
+                    viewModel.onIntent(ChatIntent.SetSystemPrompt(p), scope, mode)
+                }
             }
         )
     }

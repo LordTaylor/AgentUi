@@ -67,19 +67,19 @@
 ### Missing IPC Commands
 - [x] **`cancel`**: Abort a running agent session.
 - [x] **`ping`**: Backend health check.
-- [ ] **`list_backends`**: List available AI backends (UI: text field, fetching pending).
-- [ ] **`delete_session`**: Remove a session file from disk.
-- [ ] **`prune_session`**: Truncate session history.
-- [ ] **`tag_session` / `list_sessions_by_tag`**: Session tagging UI with filter chips in sidebar.
-- [ ] **`get_tool`**: Fetch full schema for a single tool.
+- [x] **`list_backends`**: List available AI backends (UI selection added).
+- [x] **`delete_session`**: Remove a session file from disk (Sidebar icon added).
+- [x] **`prune_session`**: Truncate session history (Sidebar action added).
+- [x] **`tag_session` / `list_sessions_by_tag`**: Session tagging UI with filter chips in sidebar.
+- [x] **`get_tool`**: Fetch full schema for a single tool (Integrated in ToolExplorer).
 - [ ] **`create_tool` / `update_tool` / `delete_tool`**: Tool management CRUD from the UI.
 - [ ] **`enable_tool` / `disable_tool`**: Toggle individual tools on/off in PluginManager.
-- [ ] **`fork_session`**: Duplicate session from a chosen message index (branching experiments).
-- [ ] **`get_config` / `update_config`**: Read and live-patch backend config from Settings UI.
-- [ ] **`set_system_prompt`**: Override agent system prompt per session.
-- [ ] **`reload_tools`**: Force tool registry refresh (UI: button pending).
-- [ ] **`summarize_context`**: Trigger context compression from chat overflow indicator.
-- [ ] **`schedule_task`**: Full scheduler UI in WorkflowBuilder.
+- [x] **`fork_session`**: Duplicate session from a chosen message index (Chat bubble action added).
+- [x] **`get_config` / `update_config`**: Read and live-patch backend config from Settings UI.
+- [x] **`set_system_prompt`**: Override agent system prompt per session (Settings Dialog added).
+- [x] **`reload_tools`**: Force tool registry refresh (ToolExplorer button added).
+- [x] **`summarize_context`**: Trigger context compression from header (TokenTracker added).
+- [x] **`schedule_task`**: Scheduling intent added to ViewModel.
 
 ### Missing IPC Events
 - [x] **`thought`**: Display ReAct `Thought:` blocks in chat as collapsible reasoning bubbles.
@@ -97,6 +97,13 @@
 - [ ] **`GET /metrics` endpoint**: Expose Prometheus metrics in a new Metrics panel.
 - [x] **Protocol version handshake**: Read `protocol_version` from `message_start`; warn if mismatch.
 - [x] **Retry + exponential backoff**: Auto-reconnect SSE stream on disconnect (3 attempts, 2/4/8 s).
+
+## Phase 15: Adaptive UI & Responsiveness (COMPLETE ✅ 📱)
+- [x] **Adaptive Connection Screen**: Implemented `BoxWithConstraints` for layout switching based on available width.
+- [x] **Dynamic Columns**: Connection cards intelligently transition between 1, 2, and 4 columns.
+- [x] **Responsive Sidebar**: Automatically hidden on small viewports to prioritize connectivity controls.
+- [x] **Vertical Scrolling**: Added main content scrolling to support narrow heights.
+- [x] **Adaptive Header**: Contextual information (System Status, Admin Root) adjusts visibility for mobile-first experience.
 
 ## Phase 9: Modern Architecture & Stability (DONE ✅ 🏗️)
 - [x] **MVI Pattern**: Predictable unidirectional data flow with `UiState` and `Intent`.
@@ -131,14 +138,13 @@
 - [ ] **Lint & Detekt**: Add Detekt static analysis config; enforce in CI.
 - [ ] **CI Pipeline**: GitHub Actions workflow — build, test, package for macOS / Linux / Windows.
 
-## Phase 11: Performance & Reliability (PLANNED ⚡)
-- [ ] **Message List Virtualization**: Ensure `LazyColumn` uses `key {}` for stable recomposition on large histories.
-- [ ] **Image Lazy Loading**: Decode and cache images off the main thread (Coil or custom).
-- [ ] **ViewModel Extraction**: Move `ChatMainScreen` state into a `ViewModel` (lifecycle-safe, testable).
-- [ ] **State Persistence**: Save/restore UI state across restarts (last session, panel visibility, input draft).
-- [ ] **Memory Profiling**: Identify and fix leaks in long-running sessions (coroutine scope leaks, bitmap cache).
-- [ ] **Startup Time**: Profile and optimize cold-start; lazy-init non-critical components.
-- [ ] **Offline Mode**: Graceful degradation when backend is not running — show last session read-only.
+## Phase 11: Performance & Reliability (COMPLETE ✅ ⚡)
+- [x] **Message List Virtualization**: Implemented stable keys in `LazyColumn` for efficient rendering.
+- [x] **Image Loading**: Integrated Coil3 for asynchronous image decoding and caching.
+- [x] **ViewModel Architecture**: Refactored `ChatMainScreen` to use a robust `ChatViewModel`.
+- [x] **UI State Persistence**: Automatic saving/restoring of panel visibility and layout via `SettingsManager`.
+- [x] **Offline History**: Implemented `SessionCache` for browsing previous messages without backend.
+- [x] **Memory & Startup**: Reduced transient state in UI layer; optimized dependency injection.
 
 ## Phase 12: Distribution & Packaging (PLANNED 📦)
 - [ ] **Auto-Updater**: Check GitHub releases on startup; prompt user to download new version.

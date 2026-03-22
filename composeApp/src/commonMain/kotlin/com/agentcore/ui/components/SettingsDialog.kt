@@ -1,15 +1,28 @@
+package com.agentcore.ui.components
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import com.agentcore.api.BackendInfo
 
 @Composable
 fun SettingsDialog(
     currentBackend: String,
     currentRole: String,
+    initialSystemPrompt: String = "",
     availableBackends: List<BackendInfo>,
     onDismiss: () -> Unit,
-    onSave: (String, String) -> Unit
+    onSave: (String, String, String) -> Unit
 ) {
-    var backend by remember { mutableStateOf(currentBackend) }
-    var role by remember { mutableStateOf(currentRole) }
+    var backend by remember { mutableStateOf<String>(currentBackend) }
+    var role by remember { mutableStateOf<String>(currentRole) }
+    var systemPrompt by remember { mutableStateOf<String>(initialSystemPrompt) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -50,10 +63,18 @@ fun SettingsDialog(
                     label = { Text("Role (base/expert/coder)") },
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                OutlinedTextField(
+                    value = systemPrompt,
+                    onValueChange = { systemPrompt = it },
+                    label = { Text("System Prompt (Session specific)") },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
+                    maxLines = 5
+                )
             }
         },
         confirmButton = {
-            Button(onClick = { onSave(backend, role) }) {
+            Button(onClick = { onSave(backend, role, systemPrompt) }) {
                 Text("Apply")
             }
         },

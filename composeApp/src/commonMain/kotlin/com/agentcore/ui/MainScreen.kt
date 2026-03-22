@@ -55,24 +55,32 @@ fun MainScreen(
     showSettings: Boolean,
     onToggleSettings: () -> Unit,
     onSessionDelete: (String) -> Unit,
+    onSessionPrune: (String) -> Unit,
     onReloadTools: () -> Unit,
+    activeFilters: List<String> = emptyList(),
+    onToggleFilter: (String) -> Unit = {},
+    onSessionTag: (String, List<String>) -> Unit = { _, _ -> },
+    isSummarizing: Boolean = false,
+    onSummarize: () -> Unit = {},
+    onFork: (Int) -> Unit = {},
     onCancel: () -> Unit = {},
-    onClearChat: () -> Unit = {}
+    onClearChat: () -> Unit = {},
+    uiSettings: UiSettings = UiSettings(),
+    onUpdateUiSettings: (UiSettings) -> Unit = {}
 ) {
-    var sidebarVisible by remember { mutableStateOf(true) }
-    var sidePanelWidth by remember { mutableStateOf(400.dp) }
+    val sidebarVisible = uiSettings.sidebarVisible
+    val sidePanelWidth = uiSettings.sidePanelWidth.dp
 
-    // Panel Visibility State
-    var showStats by remember { mutableStateOf(false) }
-    var showTools by remember { mutableStateOf(false) }
-    var showLogs by remember { mutableStateOf(false) }
-    var showScratchpad by remember { mutableStateOf(false) }
-    var showTerminal by remember { mutableStateOf(false) }
-    var showPluginManager by remember { mutableStateOf(false) }
-    var showWorkflowBuilder by remember { mutableStateOf(false) }
-    var showCanvas by remember { mutableStateOf(false) }
-    var showHelp by remember { mutableStateOf(false) }
-    var showOrchestrator by remember { mutableStateOf(false) }
+    val showStats = uiSettings.showStats
+    val showTools = uiSettings.showTools
+    val showLogs = uiSettings.showLogs
+    val showScratchpad = uiSettings.showScratchpad
+    val showTerminal = uiSettings.showTerminal
+    val showPluginManager = uiSettings.showPluginManager
+    val showWorkflowBuilder = uiSettings.showWorkflowBuilder
+    val showCanvas = uiSettings.showCanvas
+    val showHelp = uiSettings.showHelp
+    val showOrchestrator = uiSettings.showOrchestrator
 
     val listState = rememberLazyListState()
     var inputText by remember { mutableStateOf("") }
@@ -83,7 +91,7 @@ fun MainScreen(
         onNewSession = { /* TODO: new session */ },
         onClearChat = onClearChat,
         onToggleSettings = onToggleSettings,
-        onToggleSidebar = { sidebarVisible = !sidebarVisible },
+        onToggleSidebar = { onUpdateUiSettings(uiSettings.copy(sidebarVisible = !uiSettings.sidebarVisible)) },
         onFocusInput = { /* TODO: focus input field */ }
     )
 
@@ -100,8 +108,12 @@ fun MainScreen(
             ) {
                 Sidebar(
                     sessions = sessions,
+                    activeFilters = activeFilters,
                     onSessionSelect = onSessionSelect,
                     onSessionDelete = onSessionDelete,
+                    onSessionPrune = onSessionPrune,
+                    onToggleFilter = onToggleFilter,
+                    onSessionTag = onSessionTag,
                     modifier = Modifier
                         .width(300.dp)
                         .background(MaterialTheme.colorScheme.surface)
@@ -118,7 +130,9 @@ fun MainScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { sidebarVisible = !sidebarVisible }) {
+                        IconButton(onClick = { 
+                            onUpdateUiSettings(uiSettings.copy(sidebarVisible = !uiSettings.sidebarVisible))
+                        }) {
                             Icon(Icons.Default.Menu, contentDescription = "Toggle Sidebar", tint = if (sidebarVisible) MaterialTheme.colorScheme.primary else Color.Gray)
                         }
                         Spacer(modifier = Modifier.width(8.dp))
@@ -131,14 +145,16 @@ fun MainScreen(
                     }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        TokenTracker(sessionStats)
+                        TokenTracker(sessionStats, isSummarizing, onSummarize)
                         Spacer(modifier = Modifier.width(16.dp))
                         IconButton(onClick = {
                             onStatsRefresh()
-                            showStats = !showStats
+                            onUpdateUiSettings(uiSettings.copy(showStats = !showStats))
                         }) { Icon(Icons.Default.Info, contentDescription = "Stats", tint = if (showStats) MaterialTheme.colorScheme.primary else Color.Gray) }
 
-                        IconButton(onClick = { showTools = !showTools }) {
+                        IconButton(onClick = { 
+                            onUpdateUiSettings(uiSettings.copy(showTools = !uiSettings.showTools))
+                        }) {
                             Icon(Icons.Default.List, contentDescription = "Tools", tint = if (showTools) MaterialTheme.colorScheme.primary else Color.Gray)
                         }
 
@@ -231,13 +247,13 @@ fun MainScreen(
                                         }
                                     }
                                 } else {
-                                    itemsIndexed(messages) { index, msg ->
+                                    itemsIndexed(messages, key = { _, msg -> msg.id }) { index, msg ->
                                         val isGrouped = index > 0 &&
                                             messages[index - 1].sender == msg.sender &&
                                             messages[index - 1].isFromUser == msg.isFromUser &&
                                             msg.type != MessageType.SYSTEM
 
-                                        ChatBubble(msg, isGrouped)
+                                        ChatBubble(msg, isGrouped, onFork = { onFork(index) })
                                     }
 
                                     if (statusState == "THINKING") {
@@ -299,25 +315,26 @@ fun MainScreen(
                         ) {
                             Row(modifier = Modifier.fillMaxHeight()) {
                                 DraggableDivider { delta ->
-                                    sidePanelWidth = (sidePanelWidth - delta.dp).coerceIn(300.dp, 800.dp)
+                                    val newWidth = (uiSettings.sidePanelWidth - delta).coerceIn(300f, 800f)
+                                    onUpdateUiSettings(uiSettings.copy(sidePanelWidth = newWidth))
                                 }
 
-                                Box(modifier = Modifier
+                               Box(modifier = Modifier
                                     .width(sidePanelWidth)
                                     .fillMaxHeight()
                                     .background(MaterialTheme.colorScheme.surfaceVariant)
                                     .padding(start = 1.dp)
                                 ) {
-                                    if (showStats) StatsPanel(sessionStats) { showStats = false }
-                                    if (showTools) ToolsPanel(availableTools = availableTools, onReloadTools = onReloadTools, onDismiss = { showTools = false })
-                                    if (showLogs) LogsPanel(logs) { showLogs = false }
-                                    if (showScratchpad) ScratchpadPanel(scratchpadContent, onScratchpadUpdate, { onScratchpadUpdate(it) }) { showScratchpad = false }
-                                    if (showTerminal) TerminalPanel(terminalTraffic) { showTerminal = false }
-                                    if (showPluginManager) PluginManagerPanel(plugins) { showPluginManager = false }
-                                    if (showWorkflowBuilder) WorkflowBuilderPanel(workflows) { showWorkflowBuilder = false }
-                                    if (showCanvas) CanvasPanel(canvasElements) { showCanvas = false }
-                                    if (showHelp) HelpPanel { showHelp = false }
-                                    if (showOrchestrator) OrchestratorPanel(agentGroup) { showOrchestrator = false }
+                                    if (showStats) StatsPanel(sessionStats) { onUpdateUiSettings(uiSettings.copy(showStats = false)) }
+                                    if (showTools) ToolsPanel(availableTools = availableTools, onReloadTools = onReloadTools, onDismiss = { onUpdateUiSettings(uiSettings.copy(showTools = false)) })
+                                    if (showLogs) LogsPanel(logs) { onUpdateUiSettings(uiSettings.copy(showLogs = false)) }
+                                    if (showScratchpad) ScratchpadPanel(scratchpadContent, onScratchpadUpdate, { onScratchpadUpdate(it) }) { onUpdateUiSettings(uiSettings.copy(showScratchpad = false)) }
+                                    if (showTerminal) TerminalPanel(terminalTraffic) { onUpdateUiSettings(uiSettings.copy(showTerminal = false)) }
+                                    if (showPluginManager) PluginManagerPanel(plugins) { onUpdateUiSettings(uiSettings.copy(showPluginManager = false)) }
+                                    if (showWorkflowBuilder) WorkflowBuilderPanel(workflows) { onUpdateUiSettings(uiSettings.copy(showWorkflowBuilder = false)) }
+                                    if (showCanvas) CanvasPanel(canvasElements) { onUpdateUiSettings(uiSettings.copy(showCanvas = false)) }
+                                    if (showHelp) HelpPanel { onUpdateUiSettings(uiSettings.copy(showHelp = false)) }
+                                    if (showOrchestrator) OrchestratorPanel(agentGroup) { onUpdateUiSettings(uiSettings.copy(showOrchestrator = false)) }
                                 }
                             }
                         }

@@ -174,6 +174,188 @@ class AgentClient(private val serverUrl: String = "http://localhost:7700") {
         }
     }
 
+    suspend fun pruneSession(sessionId: String): Boolean {
+        return sendCommand(IpcCommand.PruneSession(PruneSessionPayload(sessionId))) != null
+    }
+
+    suspend fun tagSession(sessionId: String, tags: List<String>): Boolean {
+        return sendCommand(IpcCommand.TagSession(TagSessionPayload(sessionId, tags))) != null
+    }
+
+    suspend fun listSessionsByTag(tags: List<String>): List<SessionInfo> {
+        return try {
+            val response: HttpResponse = client.post(commandUrl) {
+                contentType(ContentType.Application.Json)
+                setBody(IpcCommand.ListSessionsByTag(ListSessionsByTagPayload(tags)))
+            }
+            if (response.status == HttpStatusCode.OK) {
+                val body = response.bodyAsText()
+                val json = Json { ignoreUnknownKeys = true }
+                val event = json.decodeFromString<IpcEvent>(body)
+                if (event is IpcEvent.SessionsList) event.payload.sessions else emptyList()
+            } else emptyList()
+        } catch (e: Exception) { emptyList() }
+    }
+
+    suspend fun summarizeContext(sessionId: String, keepRecent: Int = 6): Boolean {
+        return sendCommand(IpcCommand.SummarizeContext(SummarizeContextPayload(sessionId, keepRecent))) != null
+    }
+
+    suspend fun scheduleTask(text: String, at: String? = null, cron: String? = null, sessionId: String? = null): TaskScheduledPayload? {
+        return try {
+            val response: HttpResponse = client.post(commandUrl) {
+                contentType(ContentType.Application.Json)
+                setBody(IpcCommand.ScheduleTask(ScheduleTaskPayload(at, cron, sessionId, text)))
+            }
+            if (response.status == HttpStatusCode.OK) {
+                val body = response.bodyAsText()
+                val json = Json { ignoreUnknownKeys = true }
+                val event = json.decodeFromString<IpcEvent>(body)
+                if (event is IpcEvent.TaskScheduled) event.payload else null
+            } else null
+        } catch (e: Exception) { null }
+    }
+
+    suspend fun cancelScheduledTask(taskId: String): Boolean {
+        return sendCommand(IpcCommand.CancelScheduledTask(CancelScheduledTaskPayload(taskId))) != null
+    }
+
+    suspend fun listScheduledTasks(): List<ScheduledTaskInfo> {
+        return try {
+            val response: HttpResponse = client.post(commandUrl) {
+                contentType(ContentType.Application.Json)
+                setBody(IpcCommand.ListScheduledTasks())
+            }
+            if (response.status == HttpStatusCode.OK) {
+                val body = response.bodyAsText()
+                val json = Json { ignoreUnknownKeys = true }
+                val event = json.decodeFromString<IpcEvent>(body)
+                if (event is IpcEvent.ScheduledTasksList) event.payload.tasks else emptyList()
+            } else emptyList()
+        } catch (e: Exception) { emptyList() }
+    }
+
+    suspend fun updateConfig(key: String, value: JsonElement): Boolean {
+        return sendCommand(IpcCommand.UpdateConfig(UpdateConfigPayload(key, value))) != null
+    }
+
+    suspend fun getTool(toolName: String): JsonObject? {
+        return try {
+            val response: HttpResponse = client.post(commandUrl) {
+                contentType(ContentType.Application.Json)
+                setBody(IpcCommand.GetTool(GetToolPayload(toolName)))
+            }
+            if (response.status == HttpStatusCode.OK) {
+                val body = response.bodyAsText()
+                val json = Json { ignoreUnknownKeys = true }
+                val event = json.decodeFromString<IpcEvent>(body)
+                if (event is IpcEvent.ToolList) event.payload.tools.firstOrNull() else null
+            } else null
+        } catch (e: Exception) { null }
+    }
+
+    suspend fun exportSession(sessionId: String, format: String = "json"): Boolean {
+        return sendCommand(IpcCommand.ExportSession(ExportSessionPayload(sessionId, format))) != null
+    }
+
+    suspend fun importSession(path: String): Boolean {
+        return sendCommand(IpcCommand.ImportSession(ImportSessionPayload(path))) != null
+    }
+
+    suspend fun testTool(toolName: String): Boolean {
+        return sendCommand(IpcCommand.TestTool(TestToolPayload(toolName))) != null
+    }
+
+    suspend fun spawnSubAgent(task: String, role: String = "base", backend: String? = null): String? {
+        return try {
+            val response: HttpResponse = client.post(commandUrl) {
+                contentType(ContentType.Application.Json)
+                setBody(IpcCommand.SpawnSubAgent(SpawnSubAgentPayload(task, role, backend)))
+            }
+            if (response.status == HttpStatusCode.OK) {
+                val body = response.bodyAsText()
+                val json = Json { ignoreUnknownKeys = true }
+                val element = json.parseToJsonElement(body)
+                if (element is JsonObject && element["event"]?.jsonPrimitive?.content == "status") {
+                    element["payload"]?.jsonObject?.get("subagent_id")?.jsonPrimitive?.content
+                } else null
+            } else null
+        } catch (e: Exception) { null }
+    }
+
+    suspend fun waitSubAgent(id: String, timeoutSecs: Long = 300): JsonObject? {
+        return try {
+            val response: HttpResponse = client.post(commandUrl) {
+                contentType(ContentType.Application.Json)
+                setBody(IpcCommand.WaitSubAgent(WaitSubAgentPayload(id, timeoutSecs)))
+            }
+            if (response.status == HttpStatusCode.OK) {
+                val body = response.bodyAsText()
+                val json = Json { ignoreUnknownKeys = true }
+                val element = json.parseToJsonElement(body)
+                if (element is JsonObject && element["event"]?.jsonPrimitive?.content == "status") {
+                    element["payload"]?.jsonObject
+                } else null
+            } else null
+        } catch (e: Exception) { null }
+    }
+
+    suspend fun cancelSubAgent(id: String): Boolean {
+        return sendCommand(IpcCommand.CancelSubAgent(CancelSubAgentPayload(id))) != null
+    }
+
+    suspend fun listSubAgents(): List<JsonObject> {
+        return try {
+            val response: HttpResponse = client.post(commandUrl) {
+                contentType(ContentType.Application.Json)
+                setBody(IpcCommand.ListSubAgents())
+            }
+            if (response.status == HttpStatusCode.OK) {
+                val body = response.bodyAsText()
+                val json = Json { ignoreUnknownKeys = true }
+                val element = json.parseToJsonElement(body)
+                if (element is JsonObject && element["event"]?.jsonPrimitive?.content == "status") {
+                    element["payload"]?.jsonObject?.get("subagents")?.jsonArray?.map { it.jsonObject } ?: emptyList()
+                } else emptyList()
+            } else emptyList()
+        } catch (e: Exception) { emptyList() }
+    }
+
+    suspend fun listCheckpoints(sessionId: String): List<Int> {
+        return try {
+            val response: HttpResponse = client.post(commandUrl) {
+                contentType(ContentType.Application.Json)
+                setBody(IpcCommand.ListCheckpoints(ListCheckpointsPayload(sessionId)))
+            }
+            if (response.status == HttpStatusCode.OK) {
+                val body = response.bodyAsText()
+                val json = Json { ignoreUnknownKeys = true }
+                val element = json.parseToJsonElement(body)
+                // Assuming status event with checkpoints array
+                element.jsonObject["payload"]?.jsonObject?.get("checkpoints")?.jsonArray?.map { it.jsonPrimitive.int } ?: emptyList()
+            } else emptyList()
+        } catch (e: Exception) { emptyList() }
+    }
+
+    suspend fun restoreCheckpoint(sessionId: String, checkpointN: Int): Boolean {
+        return sendCommand(IpcCommand.RestoreCheckpoint(RestoreCheckpointPayload(sessionId, checkpointN))) != null
+    }
+
+    suspend fun pingBackend(backend: String? = null, model: String? = null): PingResultPayload? {
+        return try {
+            val response: HttpResponse = client.post(commandUrl) {
+                contentType(ContentType.Application.Json)
+                setBody(IpcCommand.PingBackend(PingBackendPayload(backend, model)))
+            }
+            if (response.status == HttpStatusCode.OK) {
+                val body = response.bodyAsText()
+                val json = Json { ignoreUnknownKeys = true }
+                val event = json.decodeFromString<IpcEvent>(body)
+                if (event is IpcEvent.PingResult) event.payload else null
+            } else null
+        } catch (e: Exception) { null }
+    }
+
     fun observeEvents(): Flow<IpcEvent> = flow {
         val maxAttempts = 3
         val backoffDelays = listOf(2_000L, 4_000L, 8_000L)

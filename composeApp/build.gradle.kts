@@ -33,6 +33,8 @@ kotlin {
             implementation(libs.koin.compose)
             implementation(libs.markdown.renderer)
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.coil.compose)
+            implementation(libs.coil.network.ktor)
         }
         val commonTest by getting {
             dependencies {

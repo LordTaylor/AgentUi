@@ -18,9 +18,21 @@ import androidx.compose.ui.unit.sp
 import com.agentcore.model.Message
 import com.agentcore.model.MessageType
 import com.mikepenz.markdown.m3.Markdown
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.CircularProgressIndicator
+import coil3.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.clip
 
 @Composable
-fun ChatBubble(msg: Message, isGrouped: Boolean = false) {
+fun ChatBubble(
+    msg: Message,
+    isGrouped: Boolean = false,
+    onFork: () -> Unit = {}
+) {
     if (msg.type == MessageType.SYSTEM) {
         Box(
             modifier = Modifier
@@ -71,9 +83,18 @@ fun ChatBubble(msg: Message, isGrouped: Boolean = false) {
             tonalElevation = if (msg.isFromUser) 0.dp else 2.dp
         ) {
             Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                if (msg.extraContent?.startsWith("data:image") == true) {
-                    Text("📷 IMAGE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    Spacer(modifier = Modifier.height(4.dp))
+                val content = msg.extraContent
+                if (content != null && (content.startsWith("data:image") || content.startsWith("http") || content.startsWith("/"))) {
+                    AsyncImage(
+                        model = content,
+                        contentDescription = "Attached Image",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 300.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Fit
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
 
                 val text = msg.text
@@ -94,6 +115,21 @@ fun ChatBubble(msg: Message, isGrouped: Boolean = false) {
                         fontSize = 9.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
+                    
+                    if (!msg.isFromUser && msg.type != MessageType.ACTION) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(
+                            onClick = onFork,
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Fork From Here",
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
                 }
             }
         }

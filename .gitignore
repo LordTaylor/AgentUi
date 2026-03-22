@@ -23,3 +23,6 @@ Debug_Logs/
 build_log.txt
 build_log_fixed.txt
 build_log_scratchpad.txt
+
+# Launcher (local only)
+../launcher/

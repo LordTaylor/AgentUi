@@ -10,6 +10,7 @@ koin = "3.5.6"
 koin-compose = "1.1.5"
 markdown = "0.21.0"
 mockk = "1.13.10"
+coil = "3.0.0-alpha06"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity-compose" }
@@ -31,6 +32,8 @@ kotlin-test-annotations-common = { module = "org.jetbrains.kotlin:kotlin-test-an
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 mockk-common = { module = "io.mockk:mockk-common", version.ref = "mockk" }
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+coil-network-ktor = { module = "io.coil-kt.coil3:coil-network-ktor", version.ref = "coil" }
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }

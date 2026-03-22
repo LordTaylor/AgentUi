@@ -12,6 +12,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import kotlinx.serialization.json.*
 
 @Composable
@@ -48,8 +50,7 @@ private fun StatRow(label: String, value: String) {
     }
 }
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
+
 
 @Composable
 fun ToolExplorer(tools: List<JsonObject>, onReloadTools: () -> Unit) {
