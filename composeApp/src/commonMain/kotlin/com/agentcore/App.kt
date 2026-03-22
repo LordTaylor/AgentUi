@@ -10,28 +10,33 @@ import com.agentcore.ui.ChatMainScreen
 import com.agentcore.ui.ConnectionScreen
 import com.agentcore.ui.SetupInstructions
 
+import com.agentcore.ui.connection.ConnectionIntent
+import com.agentcore.ui.connection.ConnectionViewModel
+import org.koin.compose.koinInject
+
 @Composable
 fun App() {
-    var connectionMode by remember { mutableStateOf<ConnectionMode?>(null) }
-    var isSetupConfirmed by remember { mutableStateOf(false) }
+    val viewModel: ConnectionViewModel = koinInject()
+    val state by viewModel.uiState
 
     MaterialTheme(
         colorScheme = AgentColorScheme,
         typography = AgentTypography
     ) {
-        AnimatedContent(targetState = connectionMode, label = "ConnectionScreenTransition") { mode ->
+        AnimatedContent(targetState = state.selectedMode, label = "ConnectionScreenTransition") { mode ->
             when {
                 mode == null -> {
-                    ConnectionScreen { 
-                        connectionMode = it 
-                        isSetupConfirmed = false
-                    }
+                    ConnectionScreen(
+                        state = state,
+                        onIntent = { viewModel.onIntent(it) },
+                        onConnect = { viewModel.onIntent(ConnectionIntent.SelectMode(it)) }
+                    )
                 }
-                !isSetupConfirmed -> {
+                !state.isSetupConfirmed -> {
                     SetupInstructions(
                         mode = mode,
-                        onBack = { connectionMode = null },
-                        onReady = { isSetupConfirmed = true }
+                        onBack = { viewModel.onIntent(ConnectionIntent.GoBack) },
+                        onReady = { viewModel.onIntent(ConnectionIntent.ConfirmSetup) }
                     )
                 }
                 else -> {

@@ -28,15 +28,23 @@ Granular components for performance and maintainability.
 - **`AgentOrchestrator`**: Hierarchical visualization and task delegation for multi-agent teams.
 - **`PredictiveContext`**: Smart UI component for context-aware file and resource suggestions.
 
+### 4. Application Logic (`composeApp`)
+Follows the **MVI (Model-View-Intent)** pattern for predictable state management.
+- **`ViewModels`**: Single source of truth for UI state using `uiState` (Compose `State<T>`).
+- **`IpcHandler`**: Functional registry for mapping IPC events to state updates.
+- **`Dependency Injection`**: **Koin** is used to provide singletons for executors and factories for ViewModels.
+
 ## Core Principles
 
-- **Divide and Conquer**: Avoid large monolithic files. Always split code into smaller, focused modules and components.
+- **MVI Architecture**: Unidirectional data flow. Screens are stateless and only emit **Intents**.
+- **Divide and Conquer**: Avoid large monolithic files. Always split code into smaller, focused modules and components (max 200-300 lines per file).
 - **IPC-First**: Communication between the UI and the Backend must happen via the strictly typed IPC protocol.
+- **Functional State**: Prefer immutable state updates and callback-based event handling over direct mutable collections.
 
-### 3. Protocol (`core-api`)
+### 5. Protocol (`core-api`)
 Unified IPC models shared between client and core.
 - **Current Version**: v1.5 (target: v1.6)
-- **Features**: Approval requests, streaming events, session persistence, scheduling, multi-modal images, tool management, backend plugins, context summarisation.
+- **Features**: Approval requests, streaming events, session persistence, scheduling, multi-modal images, tool management, backend plugins, context summarisation, human-in-the-loop.
 
 ## Security & Safety
 Interactive Tool Approval ensures that critical tools (file deletion, shell execution) require explicit user consent before execution.

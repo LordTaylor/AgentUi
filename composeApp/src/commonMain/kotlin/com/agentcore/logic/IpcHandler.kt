@@ -12,7 +12,9 @@ import kotlinx.serialization.json.JsonObject
 object IpcHandler {
     fun handleIpcEvent(
         event: IpcEvent,
-        messages: SnapshotStateList<Message>,
+        currentMessages: List<Message>,
+        onMessageAdded: (Message) -> Unit,
+        onLastMessageUpdated: (Message) -> Unit,
         onStatusChange: (String) -> Unit,
         onStatsUpdate: (JsonObject) -> Unit,
         onApprovalRequest: (ApprovalRequestPayload) -> Unit,
@@ -22,7 +24,6 @@ object IpcHandler {
         onIndexingProgress: (IndexingProgressPayload) -> Unit,
         onPluginsLoaded: (List<PluginMetadataPayload>) -> Unit,
         onWorkflowsUpdate: (List<WorkflowStatusPayload>) -> Unit,
-        onInputTextChange: (String) -> Unit,
         onVoiceUpdate: (VoiceStatusPayload) -> Unit,
         onContextSuggestions: (List<ContextItem>) -> Unit,
         onError: (ErrorPayload) -> Unit,
@@ -34,11 +35,11 @@ object IpcHandler {
             is IpcEvent.Status -> onStatusChange(event.payload.state)
             is IpcEvent.MessageStart -> onStatusChange("THINKING")
             is IpcEvent.TextDelta -> {
-                val lastMsg = messages.lastOrNull()
+                val lastMsg = currentMessages.lastOrNull()
                 if (lastMsg != null && !lastMsg.isFromUser && lastMsg.type == MessageType.TEXT) {
-                    messages[messages.size - 1] = lastMsg.copy(text = lastMsg.text + event.payload.text)
+                    onLastMessageUpdated(lastMsg.copy(text = lastMsg.text + event.payload.text))
                 } else {
-                    messages.add(
+                    onMessageAdded(
                         Message(
                             id = "agent-${System.currentTimeMillis()}",
                             sender = "Agent",
@@ -52,7 +53,7 @@ object IpcHandler {
             is IpcEvent.Stats -> onStatsUpdate(event.payload)
             is IpcEvent.ApprovalRequest -> onApprovalRequest(event.payload)
             is IpcEvent.Error -> {
-                messages.add(
+                onMessageAdded(
                     Message(
                         id = "err-${System.currentTimeMillis()}",
                         sender = "System",
@@ -65,7 +66,7 @@ object IpcHandler {
                 onStatusChange("IDLE")
             }
             is IpcEvent.ToolCall -> {
-                messages.add(
+                onMessageAdded(
                     Message(
                         id = "tool-${event.payload.id}",
                         sender = "Tool",
@@ -80,7 +81,7 @@ object IpcHandler {
                     "❌ ${event.payload.error}"
                 else
                     "✅ ${event.payload.result.take(300)}${if (event.payload.result.length > 300) "…" else ""}"
-                messages.add(
+                onMessageAdded(
                     Message(
                         id = "result-${event.payload.id}",
                         sender = "Tool",
@@ -91,7 +92,7 @@ object IpcHandler {
                 )
             }
             is IpcEvent.Thought -> {
-                messages.add(
+                onMessageAdded(
                     Message(
                         id = "thought-${System.currentTimeMillis()}",
                         sender = "Thought",
@@ -101,9 +102,6 @@ object IpcHandler {
                     )
                 )
             }
-            is IpcEvent.SessionData -> onSessionData(event.payload)
-            is IpcEvent.HumanInputRequest -> onHumanInputRequest(event.payload)
-            is IpcEvent.AgentGroupUpdate -> onAgentGroupUpdate(event.payload)
             is IpcEvent.Log -> onLogReceived(event.payload)
             is IpcEvent.Scratchpad -> onScratchpadUpdate(event.payload.content)
             is IpcEvent.TerminalTraffic -> onTerminalTraffic(event.payload)
@@ -112,6 +110,11 @@ object IpcHandler {
             is IpcEvent.WorkflowStatus -> onWorkflowsUpdate(event.payload)
             is IpcEvent.VoiceStatus -> onVoiceUpdate(event.payload)
             is IpcEvent.ContextSuggestions -> onContextSuggestions(event.payload.suggestions)
+            is IpcEvent.SessionData -> {
+                onSessionData(event.payload)
+            }
+            is IpcEvent.HumanInputRequest -> onHumanInputRequest(event.payload)
+            is IpcEvent.AgentGroupUpdate -> onAgentGroupUpdate(event.payload)
             else -> {}
         }
     }

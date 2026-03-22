@@ -43,60 +43,68 @@
 - [x] **Hierarchical Orchestration**: UI for managing "Leader" and "Worker" agent groups.
 - [x] **Predictive Context Injection**: Smart UI that suggests files based on the current conversation.
 
-## Phase 7: UI Polish & UX Excellence (IN PROGRESS 🎨)
-- [ ] **Animations & Transitions**: Fluid side-panel movements and shared element transitions.
-- [ ] **Premium Aesthetics**: Glassmorphism, Midnight Dark Theme, and refined typography.
-- [ ] **Layout Flexibility**: Draggable split-panes and resizable tool windows.
-- [ ] **Advanced Chat UI**: Message grouping, relative timestamps, and enhanced code blocks.
-- [ ] **Keyboard Shortcuts**: Global shortcuts (Ctrl+K new session, Ctrl+L clear, Ctrl+, settings).
+## Phase 7: UI Polish & UX Excellence (COMPLETE ✅ 🎨)
+- [x] **Animations & Transitions**: Fluid side-panel movements and shared element transitions.
+- [x] **Premium Aesthetics**: Glassmorphism, Midnight Dark Theme, and refined typography.
+- [x] **Layout Flexibility**: Draggable split-panes and resizable tool windows.
+- [x] **Advanced Chat UI**: Message grouping, relative timestamps, and enhanced code blocks.
+- [x] **Keyboard Shortcuts**: Global shortcuts (Ctrl+K new session, Ctrl+L clear, Ctrl+, settings).
 - [ ] **Theme Switcher**: Light / Dark / System-default toggle saved to preferences.
 - [ ] **Font Size Controls**: Configurable chat font size (12–20sp) stored in local settings.
-- [ ] **Empty States**: Informative placeholder views when no messages / no sessions / no tools.
-- [ ] **Connection Status Banner**: Persistent top-bar indicator when backend is unreachable.
+- [x] **Empty States**: Informative placeholder views when no messages / no sessions / no tools.
+- [x] **Connection Status Banner**: Persistent top-bar indicator when backend is unreachable.
 
-## Phase 8: Protocol Alignment — CoreApp v1.5 (PLANNED 📋)
+## Phase 8: Protocol Alignment — CoreApp v1.5 (COMPLETE ✅ 📋)
 > Align Kotlin IPC layer with the full agent-core protocol v1.5 spec.
 
 ### IpcModels — Payload Fixes
-- [ ] **Fix `SessionsListPayload`**: Change `sessions: List<String>` → `sessions: List<SessionInfo>` with full metadata (`id`, `backend`, `role`, `message_count`, `tags`, `created_at`, `updated_at`).
-- [ ] **Fix `SessionDataPayload`**: Add missing fields `backend`, `tags`, `created_at`, `updated_at`.
-- [ ] **Fix `MessageCompletePayload`**: Rename event from `message_complete` → `message_end`; payload to `usage: UsagePayload(input_tokens, output_tokens)`.
-- [ ] **Fix `SendMessagePayload`**: Add `include_stats: Boolean = false` and `images: List<String>? = null` for vision support.
-- [ ] **Add `StatusPayload.state` enum validation**: Enforce `idle|thinking|executing|waiting_approval|cancelled`.
+- [x] **Fix `SessionsListPayload`**: Change `sessions: List<String>` → `sessions: List<SessionInfo>` with full metadata.
+- [x] **Fix `SessionDataPayload`**: Add missing fields `backend`, `tags`, `created_at`, `updated_at`.
+- [x] **Fix `MessageCompletePayload`**: Rename event from `message_complete` → `message_end`.
+- [x] **Fix `SendMessagePayload`**: Add `include_stats: Boolean = false` and `images: List<String>? = null`.
+- [x] **Add `StatusPayload.state` enum validation**: Enforce `idle|thinking|executing|waiting_approval|cancelled`.
 
 ### Missing IPC Commands
-- [ ] **`cancel`**: Abort a running agent session (`IpcCommand.Cancel(session_id)`).
-- [ ] **`ping`**: Backend health check; handle `IpcEvent.PingResult(version, uptime_secs)`.
-- [ ] **`list_backends`**: List available AI backends; handle `IpcEvent.BackendsList`.
+- [x] **`cancel`**: Abort a running agent session.
+- [x] **`ping`**: Backend health check.
+- [ ] **`list_backends`**: List available AI backends (UI: text field, fetching pending).
 - [ ] **`delete_session`**: Remove a session file from disk.
-- [ ] **`prune_session`**: Truncate session history to the last N messages.
+- [ ] **`prune_session`**: Truncate session history.
 - [ ] **`tag_session` / `list_sessions_by_tag`**: Session tagging UI with filter chips in sidebar.
-- [ ] **`get_tool`**: Fetch full schema for a single tool (for detail view in ToolExplorer).
+- [ ] **`get_tool`**: Fetch full schema for a single tool.
 - [ ] **`create_tool` / `update_tool` / `delete_tool`**: Tool management CRUD from the UI.
 - [ ] **`enable_tool` / `disable_tool`**: Toggle individual tools on/off in PluginManager.
 - [ ] **`fork_session`**: Duplicate session from a chosen message index (branching experiments).
 - [ ] **`get_config` / `update_config`**: Read and live-patch backend config from Settings UI.
 - [ ] **`set_system_prompt`**: Override agent system prompt per session.
-- [ ] **`reload_tools`**: Force tool registry refresh button in ToolExplorer.
+- [ ] **`reload_tools`**: Force tool registry refresh (UI: button pending).
 - [ ] **`summarize_context`**: Trigger context compression from chat overflow indicator.
-- [ ] **`schedule_task` / `cancel_scheduled_task` / `list_scheduled_tasks`**: Full scheduler UI in WorkflowBuilder.
+- [ ] **`schedule_task`**: Full scheduler UI in WorkflowBuilder.
 
 ### Missing IPC Events
-- [ ] **`thought`**: Display ReAct `Thought:` blocks in chat as collapsible reasoning bubbles.
-- [ ] **`tool_progress`**: Stream tool output line-by-line inside a live tool-call card.
-- [ ] **`tool_created`**: Toast notification when agent self-creates a new tool.
-- [ ] **`human_input_request`**: Modal dialog asking user a question mid-run.
-- [ ] **`ping_result`**: Show server version and uptime in Connection status bar.
-- [ ] **`backends_list`**: Populate backend dropdown in Settings from live server response.
-- [ ] **`task_scheduled`**: Confirmation toast with `next_fire` timestamp in WorkflowBuilder.
-- [ ] **`config`**: Populate Settings fields from server's live config response.
+- [x] **`thought`**: Display ReAct `Thought:` blocks in chat as collapsible reasoning bubbles.
+- [x] **`tool_progress`**: Stream tool output line-by-line inside a live tool-call card.
+- [x] **`tool_created`**: Toast notification when agent self-creates a new tool.
+- [x] **`human_input_request`**: Modal dialog asking user a question mid-run.
+- [x] **`ping_result`**: Show server version and uptime in Connection status bar.
+- [x] **`backends_list`**: Populate backend dropdown in Settings from live server response.
+- [x] **`task_scheduled`**: Confirmation toast with `next_fire` timestamp in WorkflowBuilder.
+- [x] **`config`**: Populate Settings fields from server's live config response.
 
 ### AgentClient Improvements
-- [ ] **Configurable server URL**: Replace hardcoded `localhost:7700` with Settings field + persistence.
-- [ ] **Health check on connect**: Call `GET /health` before entering chat; show error if unreachable.
+- [x] **Configurable server URL**: Replace hardcoded `localhost:7700` with Settings field + persistence.
+- [x] **Health check on connect**: Call `GET /health` before entering chat; show error if unreachable.
 - [ ] **`GET /metrics` endpoint**: Expose Prometheus metrics in a new Metrics panel.
-- [ ] **Protocol version handshake**: Read `protocol_version` from `message_start`; warn if mismatch.
-- [ ] **Retry + exponential backoff**: Auto-reconnect SSE stream on disconnect (3 attempts, 2/4/8 s).
+- [x] **Protocol version handshake**: Read `protocol_version` from `message_start`; warn if mismatch.
+- [x] **Retry + exponential backoff**: Auto-reconnect SSE stream on disconnect (3 attempts, 2/4/8 s).
+
+## Phase 9: Modern Architecture & Stability (DONE ✅ 🏗️)
+- [x] **MVI Pattern**: Predictable unidirectional data flow with `UiState` and `Intent`.
+- [x] **Dependency Injection**: Koin integration for modular and testable components.
+- [x] **Functional IPC**: Callback-based event handling for decoupled networking.
+- [x] **Unit Testing**: Suite for `IpcHandler` and Core logic (JVM/Desktop target).
+- [x] **Code Quality**: Strategy for small, focused files (Divide and Conquer).
+- [x] **Ktor Client**: Modern asynchronous networking for IPC communication.
 
 ## Phase 9: Advanced Features Integration (PLANNED 🚀)
 > Surface CoreApp capabilities that are implemented server-side but have no UI yet.

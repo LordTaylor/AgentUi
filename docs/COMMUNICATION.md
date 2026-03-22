@@ -1,7 +1,7 @@
 # AgentCore UI — Dokumentacja komunikacji
 
 > Wersja protokołu backendu: **v1.5**
-> Dokumentacja UI: **aktualna** (2026-03-22)
+> Dokumentacja UI: **zaktualizowana do MVI** (2026-03-22)
 > Backend docs: `/Users/jaroslawkrawczyk/AgentCl2.0/CoreApp/docs/communication.md`
 
 ---
@@ -162,7 +162,7 @@ obsługa w UI planowana w Phase 9 (Vision Input).
 ## 4. Eventy IPC — odbierane przez UI
 
 Eventy przychodzą przez SSE (`IpcMode.IPC`), stdout (`STDIO`), lub socket (`UNIX_SOCKET`).
-Handler: `IpcHandler.handleIpcEvent()` w `composeApp/logic/IpcHandler.kt`.
+Handler: `IpcHandler.handleIpcEvent()` (Functional Registry) wywoływany przez `ChatViewModel`.
 
 ### Eventy w pełni obsługiwane ✅
 
@@ -310,9 +310,12 @@ ChatMainScreen.onCancel()
 | `core-api/IpcModels.kt` | Wszystkie typy protokołu: IpcCommand, IpcEvent, payloady |
 | `core-api/AgentClient.kt` | HTTP/SSE klient — REST calls + SSE stream + reconnect |
 | `shared/Models.kt` | `enum class ConnectionMode` — 4 tryby |
-| `composeApp/logic/IpcHandler.kt` | Dispatcher eventów + performSendMessage |
-| `composeApp/ui/ChatMainScreen.kt` | Inicjalizacja połączenia, state management, przekazanie callbacków |
-| `composeApp/ui/MainScreen.kt` | Główny ekran, wires state do komponentów |
+| `composeApp/logic/IpcHandler.kt` | Functional Registry — mapuje eventy na callbacki stanu |
+| `composeApp/ui/chat/ChatViewModel.kt` | **MVI ViewModel** — trzyma `uiState`, obsługuje `intent`, zarządza eventami IPC |
+| `composeApp/ui/chat/ChatMvi.kt` | Definicje `ChatUiState` oraz `ChatIntent` |
+| `composeApp/ui/ChatMainScreen.kt` | Stateless UI — wstrzykuje ViewModel, obserwuje stan, emituje intenty |
+| `composeApp/di/AppModule.kt` | Konfiguracja **Koin** — wstrzykiwanie zależności |
+| `composeApp/ui/MainScreen.kt` | Główny layout, przekazuje stan do granularnych komponentów |
 | `composeApp/ui/components/Sidebar.kt` | Lista sesji z metadanymi SessionInfo |
 | `composeApp/ui/components/ApprovalDialog.kt` | Modal zatwierdzenia narzędzia |
 | `composeApp/ui/components/HumanInputDialog.kt` | Modal odpowiedzi na pytanie agenta |

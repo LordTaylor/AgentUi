@@ -20,11 +20,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agentcore.shared.ConnectionMode
+import com.agentcore.ui.connection.ConnectionIntent
+import com.agentcore.ui.connection.ConnectionUiState
 
 @Composable
-fun ConnectionScreen(onConnect: (ConnectionMode) -> Unit) {
-    var selectedMode by remember { mutableStateOf<ConnectionMode?>(null) }
-
+fun ConnectionScreen(
+    state: ConnectionUiState,
+    onIntent: (ConnectionIntent) -> Unit,
+    onConnect: (ConnectionMode) -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -63,16 +67,16 @@ fun ConnectionScreen(onConnect: (ConnectionMode) -> Unit) {
                         title = "IPC Server",
                         description = "existing background server (HTTP/SSE).",
                         icon = Icons.Default.Settings,
-                        isSelected = selectedMode == ConnectionMode.IPC,
-                        onClick = { selectedMode = ConnectionMode.IPC },
+                        isSelected = state.selectedMode == ConnectionMode.IPC,
+                        onClick = { onIntent(ConnectionIntent.SelectMode(ConnectionMode.IPC)) },
                         modifier = Modifier.weight(1f)
                     )
                     ConnectionOption(
                         title = "Unix Socket",
                         description = "Native high-speed transport (.sock).",
-                        icon = Icons.Default.Settings, // Using Settings for consistency since Icons.Default.Link might not be in basic material
-                        isSelected = selectedMode == ConnectionMode.UNIX_SOCKET,
-                        onClick = { selectedMode = ConnectionMode.UNIX_SOCKET },
+                        icon = Icons.Default.Settings,
+                        isSelected = state.selectedMode == ConnectionMode.UNIX_SOCKET,
+                        onClick = { onIntent(ConnectionIntent.SelectMode(ConnectionMode.UNIX_SOCKET)) },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -81,16 +85,16 @@ fun ConnectionScreen(onConnect: (ConnectionMode) -> Unit) {
                         title = "STDIO Mode",
                         description = "Persistent local link via process pipes.",
                         icon = Icons.Default.CheckCircle,
-                        isSelected = selectedMode == ConnectionMode.STDIO,
-                        onClick = { selectedMode = ConnectionMode.STDIO },
+                        isSelected = state.selectedMode == ConnectionMode.STDIO,
+                        onClick = { onIntent(ConnectionIntent.SelectMode(ConnectionMode.STDIO)) },
                         modifier = Modifier.weight(1f)
                     )
                     ConnectionOption(
                         title = "CLI Direct",
                         description = "One-shot execution of the agent binary.",
                         icon = Icons.Default.Home,
-                        isSelected = selectedMode == ConnectionMode.CLI,
-                        onClick = { selectedMode = ConnectionMode.CLI },
+                        isSelected = state.selectedMode == ConnectionMode.CLI,
+                        onClick = { onIntent(ConnectionIntent.SelectMode(ConnectionMode.CLI)) },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -99,8 +103,8 @@ fun ConnectionScreen(onConnect: (ConnectionMode) -> Unit) {
             Spacer(modifier = Modifier.height(48.dp))
 
             Button(
-                onClick = { selectedMode?.let { onConnect(it) } },
-                enabled = selectedMode != null,
+                onClick = { state.selectedMode?.let { onConnect(it) } },
+                enabled = state.selectedMode != null,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(

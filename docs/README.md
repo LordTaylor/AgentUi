@@ -12,10 +12,12 @@ Aplikacja Desktopowa dla `agent-core` napisana w Kotlin Multiplatform.
 - **Tool Explorer**: Przeglądanie dostępnych narzędzi agenta.
 
 ## Architektura
-Projekt jest modułowy:
-- `:core-api`: Modele IPC i klient HTTP.
+Projekt jest modułowy i wykorzystuje nowoczesne wzorce:
+- **MVI (Model-View-Intent)**: Przewidywalne zarządzanie stanem i przepływem danych.
+- **Dependency Injection**: **Koin** dla modułowości i testowalności.
+- `:core-api`: Modele IPC i klient HTTP (**Ktor**).
 - `:shared`: Logika wspólna, Executory (CLI, Stdio, Unix Socket).
-- `:composeApp`: Warstwa UI (Compose).
+- `:composeApp`: Warstwa UI (Compose multiplatform).
 
 ## Dystrybucja
 Wspierane formaty instalatorów:

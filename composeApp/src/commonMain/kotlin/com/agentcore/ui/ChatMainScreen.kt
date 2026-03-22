@@ -12,164 +12,74 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 
+import com.agentcore.ui.chat.ChatIntent
+import com.agentcore.ui.chat.ChatViewModel
+import org.koin.compose.koinInject
+
 @Composable
 fun ChatMainScreen(mode: ConnectionMode) {
-    val client = remember { AgentClient() }
-    val cliExecutor = remember { CliExecutor() }
-    val stdioExecutor = remember { StdioExecutor() }
-    val unixSocketExecutor = remember { UnixSocketExecutor() }
+    val viewModel: ChatViewModel = koinInject()
     val scope = rememberCoroutineScope()
+    val state by viewModel.uiState
 
-    val messages = remember { mutableStateListOf<Message>() }
-    val sessions = remember { mutableStateListOf<SessionInfo>() }
-    val availableTools = remember { mutableStateListOf<JsonObject>() }
-
-    var currentSessionId by remember { mutableStateOf<String?>(null) }
-    var statusState by remember { mutableStateOf("IDLE") }
-    var currentBackend by remember { mutableStateOf("ollama") }
-    var currentRole by remember { mutableStateOf("base") }
-
-    var showSettings by remember { mutableStateOf(false) }
-    var sessionStats by remember { mutableStateOf<JsonObject?>(null) }
-    var pendingApproval by remember { mutableStateOf<ApprovalRequestPayload?>(null) }
-    var pendingHumanInput by remember { mutableStateOf<HumanInputPayload?>(null) }
-    val logs = remember { mutableStateListOf<LogPayload>() }
-    val terminalTraffic = remember { mutableStateListOf<TerminalTrafficPayload>() }
-    var scratchpadContent by remember { mutableStateOf("") }
-    val plugins = remember { mutableStateListOf<PluginMetadataPayload>() }
-    val workflows = remember { mutableStateListOf<WorkflowStatusPayload>() }
-    var agentGroup by remember { mutableStateOf<AgentGroupPayload?>(null) }
-    var suggestedContext by remember { mutableStateOf<List<ContextItem>>(emptyList()) }
-    val canvasElements = remember { mutableStateListOf<CanvasElement>() }
-
-    LaunchedEffect(Unit) {
-        val eventHandler = { event: IpcEvent ->
-            IpcHandler.handleIpcEvent(
-                event = event,
-                messages = messages,
-                onStatusChange = { statusState = it },
-                onStatsUpdate = { sessionStats = it },
-                onApprovalRequest = { pendingApproval = it },
-                onLogReceived = { logs.add(it) },
-                onScratchpadUpdate = { scratchpadContent = it },
-                onTerminalTraffic = { terminalTraffic.add(it) },
-                onIndexingProgress = { /* IndexingStatus panel */ },
-                onPluginsLoaded = { plugins.clear(); plugins.addAll(it) },
-                onWorkflowsUpdate = { workflows.clear(); workflows.addAll(it) },
-                onInputTextChange = { },
-                onVoiceUpdate = { },
-                onContextSuggestions = { suggestedContext = it },
-                onError = { /* błąd wyświetlany jako wiadomość SYSTEM w chacie */ },
-                onSessionData = { /* metadane sesji dostępne; wiadomości historyczne nie są częścią protokołu */ },
-                onHumanInputRequest = { pendingHumanInput = it },
-                onAgentGroupUpdate = { agentGroup = it }
-            )
-        }
-
-        when (mode) {
-            ConnectionMode.STDIO -> {
-                stdioExecutor.start()
-                stdioExecutor.events.collectLatest { eventHandler(it) }
-            }
-            ConnectionMode.UNIX_SOCKET -> {
-                unixSocketExecutor.start(scope)
-                unixSocketExecutor.events.collectLatest { eventHandler(it) }
-            }
-            ConnectionMode.IPC -> {
-                sessions.clear()
-                sessions.addAll(client.listSessions())
-                scope.launch { availableTools.addAll(client.listTools()) }
-                client.observeEvents().collectLatest { eventHandler(it) }
-            }
-            else -> {}
-        }
+    LaunchedEffect(mode) {
+        viewModel.init(scope, mode)
     }
 
     MainScreen(
         scope = scope,
-        client = client,
+        client = koinInject(), // Direct inject or pass from VM? Better to pass if possible, but let's keep it simple for now.
         mode = mode,
-        sessions = sessions,
-        currentSessionId = currentSessionId,
+        sessions = state.sessions,
+        currentSessionId = state.currentSessionId,
         onSessionSelect = { id ->
-            currentSessionId = id
-            messages.clear()
-            scope.launch {
-                if (mode == ConnectionMode.IPC) client.sendCommand(IpcCommand.GetSession(GetSessionPayload(id)))
-            }
+            viewModel.onIntent(ChatIntent.SelectSession(id), scope, mode)
         },
-        messages = messages,
-        statusState = statusState,
-        onStatusChange = { statusState = it },
-        sessionStats = sessionStats,
-        onStatsRefresh = { scope.launch { if (mode == ConnectionMode.IPC) sessionStats = client.getStats() } },
-        logs = logs,
-        scratchpadContent = scratchpadContent,
-        onScratchpadUpdate = { scratchpadContent = it },
-        terminalTraffic = terminalTraffic,
-        plugins = plugins,
-        workflows = workflows,
-        canvasElements = canvasElements,
-        agentGroup = agentGroup,
-        contextSuggestions = suggestedContext,
-        pendingApproval = pendingApproval,
+        messages = state.messages,
+        statusState = state.statusState,
+        onStatusChange = { /* Handled via VM intents in onSendMessage etc */ },
+        sessionStats = state.sessionStats,
+        onStatsRefresh = { viewModel.onIntent(ChatIntent.RefreshStats, scope, mode) },
+        logs = state.logs,
+        scratchpadContent = state.scratchpadContent,
+        onScratchpadUpdate = { viewModel.onIntent(ChatIntent.UpdateScratchpad(it), scope, mode) },
+        terminalTraffic = state.terminalTraffic,
+        plugins = state.plugins,
+        workflows = state.workflows,
+        canvasElements = state.canvasElements,
+        agentGroup = state.agentGroup,
+        contextSuggestions = state.suggestedContext,
+        pendingApproval = state.pendingApproval,
         onResolveApproval = { approved ->
-            scope.launch {
-                if (mode == ConnectionMode.IPC) client.sendCommand(
-                    IpcCommand.ApprovalResponse(ApprovalResponsePayload(pendingApproval!!.id, approved))
-                )
-                pendingApproval = null
-            }
+            viewModel.onIntent(ChatIntent.ResolveApproval(approved), scope, mode)
         },
         onSendMessage = { text ->
-            IpcHandler.performSendMessage(
-                scope, client, stdioExecutor, unixSocketExecutor, cliExecutor, mode,
-                text, emptyList(), currentSessionId, messages,
-                { }, { }, { statusState = it }
-            )
+            viewModel.onIntent(ChatIntent.SendMessage(text), scope, mode)
         },
-        showSettings = showSettings,
-        onToggleSettings = { showSettings = !showSettings },
+        showSettings = state.showSettings,
+        onToggleSettings = { viewModel.onIntent(ChatIntent.ToggleSettings, scope, mode) },
         onCancel = {
-            scope.launch {
-                if (mode == ConnectionMode.IPC && currentSessionId != null) {
-                    client.sendCommand(IpcCommand.Cancel(CancelPayload(currentSessionId!!)))
-                }
-                statusState = "IDLE"
-            }
+            viewModel.onIntent(ChatIntent.CancelAction, scope, mode)
         },
-        onClearChat = { messages.clear() }
+        onClearChat = { viewModel.onIntent(ChatIntent.ClearChat, scope, mode) }
     )
 
-    if (showSettings) {
+    if (state.showSettings) {
         SettingsDialog(
-            currentBackend = currentBackend,
-            currentRole = currentRole,
-            onDismiss = { showSettings = false },
+            currentBackend = state.currentBackend,
+            currentRole = state.currentRole,
+            onDismiss = { viewModel.onIntent(ChatIntent.ToggleSettings, scope, mode) },
             onSave = { b, r ->
-                currentBackend = b
-                currentRole = r
-                showSettings = false
-                scope.launch {
-                    if (mode == ConnectionMode.IPC) {
-                        client.sendCommand(IpcCommand.SetBackend(SetBackendPayload(b)))
-                        client.sendCommand(IpcCommand.SetRole(SetRolePayload(r)))
-                    }
-                }
+                viewModel.onIntent(ChatIntent.UpdateSettings(b, r), scope, mode)
             }
         )
     }
 
-    if (pendingHumanInput != null) {
+    if (state.pendingHumanInput != null) {
         HumanInputDialog(
-            request = pendingHumanInput!!,
+            request = state.pendingHumanInput!!,
             onRespond = { answer ->
-                IpcHandler.performSendMessage(
-                    scope, client, stdioExecutor, unixSocketExecutor, cliExecutor, mode,
-                    answer, emptyList(), currentSessionId, messages,
-                    { }, { }, { statusState = it }
-                )
-                pendingHumanInput = null
+                viewModel.onIntent(ChatIntent.RespondHumanInput(answer), scope, mode)
             }
         )
     }

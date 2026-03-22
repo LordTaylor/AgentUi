@@ -19,11 +19,13 @@ class IpcHandlerTest {
     @Test
     fun testHandleStatusEvent() {
         var status = ""
-        val messages = mutableStateListOf<Message>()
+        val messages = mutableListOf<Message>()
         
         IpcHandler.handleIpcEvent(
             event = IpcEvent.Status(StatusPayload("THINKING")),
-            messages = messages,
+            currentMessages = messages,
+            onMessageAdded = { messages.add(it) },
+            onLastMessageUpdated = { messages[messages.size - 1] = it },
             onStatusChange = { status = it },
             onStatsUpdate = {},
             onApprovalRequest = {},
@@ -33,7 +35,6 @@ class IpcHandlerTest {
             onIndexingProgress = {},
             onPluginsLoaded = {},
             onWorkflowsUpdate = {},
-            onInputTextChange = {},
             onVoiceUpdate = {},
             onContextSuggestions = {},
             onError = {},
@@ -48,11 +49,13 @@ class IpcHandlerTest {
     @Test
     fun testHandleMessageStartEvent() {
         var status = ""
-        val messages = mutableStateListOf<Message>()
+        val messages = mutableListOf<Message>()
         
         IpcHandler.handleIpcEvent(
-            event = IpcEvent.MessageStart(MessageStartPayload("1", "ollama", "base")),
-            messages = messages,
+            event = IpcEvent.MessageStart(MessageStartPayload("1", "m1", "1.0")),
+            currentMessages = messages,
+            onMessageAdded = { messages.add(it) },
+            onLastMessageUpdated = { messages[messages.size - 1] = it },
             onStatusChange = { status = it },
             onStatsUpdate = {},
             onApprovalRequest = {},
@@ -62,7 +65,6 @@ class IpcHandlerTest {
             onIndexingProgress = {},
             onPluginsLoaded = {},
             onWorkflowsUpdate = {},
-            onInputTextChange = {},
             onVoiceUpdate = {},
             onContextSuggestions = {},
             onError = {},
@@ -87,7 +89,6 @@ class IpcHandlerTest {
         val commandSlot = slot<IpcCommand>()
         coEvery { client.sendCommand(capture(commandSlot)) } returns null
 
-        println("--- Starting testPerformSendMessage ---")
         IpcHandler.performSendMessage(
             scope = this,
             client = client,
@@ -101,29 +102,21 @@ class IpcHandlerTest {
             messages = messages,
             onClearInput = {},
             onClearAttachments = {},
-            onStatusChange = { 
-                println("[testPerformSendMessage] Status changed to: $it")
-                status = it 
-            }
+            onStatusChange = { status = it }
         )
 
-        println("[testPerformSendMessage] Initial assertions...")
         assertEquals(1, messages.size)
         assertEquals("Test command", messages[0].text)
         assertEquals("THINKING", status)
         
-        println("[testPerformSendMessage] Waiting for coroutines...")
         testScheduler.advanceUntilIdle()
 
-        println("[testPerformSendMessage] Verifying command...")
         coVerify { client.sendCommand(any()) }
         
         val captured = commandSlot.captured
-        println("[testPerformSendMessage] Captured command: $captured")
         assertTrue(captured is IpcCommand.SendMessage)
         val payload = (captured as IpcCommand.SendMessage).payload
         assertEquals("Test command", payload.text)
         assertEquals("session-123", payload.session_id)
-        println("--- Finished testPerformSendMessage ---")
     }
 }
