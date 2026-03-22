@@ -19,6 +19,14 @@ Granular components for performance and maintainability.
 - **`StatsDashboard`**: Dynamic token and cost tracking.
 - **`LogViewer`**: Real-time engine log streaming with level filtering.
 - **`Scratchpad`**: Persistent markdown notes and code snippet storage.
+- **`TerminalViewer`**: Raw IPC traffic inspector for real-time debugging.
+- **`IndexingStatus`**: Progress indicator for workspace semantic indexing (Local RAG).
+- **`PluginManager`**: Dynamic extension and tool management interface.
+- **`WorkflowBuilder`**: Visual orchestrator for multi-step agentic tasks.
+- **`InteractiveCanvas`**: Shared drawing and prototyping space for multimodal agents.
+- **`HelpSystem`**: Interactive guidance system with usage examples for all features.
+- **`AgentOrchestrator`**: Hierarchical visualization and task delegation for multi-agent teams.
+- **`PredictiveContext`**: Smart UI component for context-aware file and resource suggestions.
 
 ### 3. Protocol (`core-api`)
 Unified IPC models shared between client and core.

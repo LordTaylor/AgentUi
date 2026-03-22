@@ -52,6 +52,70 @@ sealed class IpcCommand {
     @Serializable
     @SerialName("update_scratchpad")
     data class UpdateScratchpad(val payload: UpdateScratchpadPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("start_indexing")
+    class StartIndexing : IpcCommand()
+
+    @Serializable
+    @SerialName("get_indexing_status")
+    class GetIndexingStatus : IpcCommand()
+
+    @Serializable
+    @SerialName("list_plugins")
+    class ListPlugins : IpcCommand()
+
+    @Serializable
+    @SerialName("enable_plugin")
+    data class EnablePlugin(val pluginId: String) : IpcCommand()
+
+    @Serializable
+    @SerialName("disable_plugin")
+    data class DisablePlugin(val pluginId: String) : IpcCommand()
+
+    @Serializable
+    @SerialName("list_workflows")
+    class ListWorkflows : IpcCommand()
+
+    @Serializable
+    @SerialName("start_workflow")
+    data class StartWorkflow(val workflowId: String) : IpcCommand()
+
+    @Serializable
+    @SerialName("stop_workflow")
+    data class StopWorkflow(val workflowId: String) : IpcCommand()
+
+    @Serializable
+    @SerialName("start_voice_session")
+    class StartVoiceSession : IpcCommand()
+
+    @Serializable
+    @SerialName("stop_voice_session")
+    class StopVoiceSession : IpcCommand()
+
+    @Serializable
+    @SerialName("speak_text")
+    data class SpeakText(val text: String) : IpcCommand()
+
+    @Serializable
+    @SerialName("get_canvas_state")
+    class GetCanvasState : IpcCommand()
+
+    @Serializable
+    @SerialName("update_canvas")
+    data class UpdateCanvas(val elements: List<CanvasElement>) : IpcCommand()
+
+    @Serializable
+    @SerialName("get_agent_groups")
+    class GetAgentGroups : IpcCommand()
+
+    @Serializable
+    @SerialName("assign_task")
+    data class AssignTask(val agentId: String, val task: String) : IpcCommand()
+
+    @Serializable
+    @SerialName("get_context_suggestions")
+    class GetContextSuggestions : IpcCommand()
 }
 
 @Serializable
@@ -149,6 +213,42 @@ sealed class IpcEvent {
     @Serializable
     @SerialName("scratchpad_data")
     data class Scratchpad(val payload: ScratchpadPayload) : IpcEvent()
+
+    @Serializable
+    @SerialName("terminal_traffic")
+    data class TerminalTraffic(val payload: TerminalTrafficPayload) : IpcEvent()
+
+    @Serializable
+    @SerialName("indexing_progress")
+    data class IndexingProgress(val payload: IndexingProgressPayload) : IpcEvent()
+
+    @Serializable
+    @SerialName("plugin_metadata")
+    data class PluginMetadata(val payload: List<PluginMetadataPayload>) : IpcEvent()
+
+    @Serializable
+    @SerialName("workflow_status")
+    data class WorkflowStatus(val payload: List<WorkflowStatusPayload>) : IpcEvent()
+
+    @Serializable
+    @SerialName("voice_transcription")
+    data class VoiceTranscription(val payload: VoiceTranscriptionPayload) : IpcEvent()
+
+    @Serializable
+    @SerialName("voice_status")
+    data class VoiceStatus(val payload: VoiceStatusPayload) : IpcEvent()
+
+    @Serializable
+    @SerialName("canvas_update")
+    data class CanvasUpdate(val payload: CanvasUpdatePayload) : IpcEvent()
+
+    @Serializable
+    @SerialName("agent_group_update")
+    data class AgentGroupUpdate(val payload: AgentGroupPayload) : IpcEvent()
+
+    @Serializable
+    @SerialName("context_suggestions")
+    data class ContextSuggestions(val payload: ContextSuggestionsPayload) : IpcEvent()
 }
 
 @Serializable
@@ -216,6 +316,103 @@ data class LogPayload(
 
 @Serializable
 data class ScratchpadPayload(val content: String)
+
+@Serializable
+data class TerminalTrafficPayload(
+    val direction: String, // IN, OUT
+    val data: String,
+    val timestamp: String
+)
+
+@Serializable
+data class IndexingProgressPayload(
+    val status: String, // IDLE, INDEXING, COMPLETED
+    val progress: Float, // 0.0 to 1.0
+    val totalFiles: Int,
+    val indexedFiles: Int,
+    val currentFile: String? = null
+)
+
+@Serializable
+data class PluginMetadataPayload(
+    val id: String,
+    val name: String,
+    val description: String,
+    val version: String,
+    val author: String,
+    val isEnabled: Boolean = false
+)
+
+@Serializable
+data class WorkflowStatusPayload(
+    val id: String,
+    val name: String,
+    val status: String, // IDLE, RUNNING, COMPLETED, FAILED
+    val currentStep: Int,
+    val totalSteps: Int,
+    val lastError: String? = null
+)
+
+@Serializable
+data class VoiceTranscriptionPayload(
+    val text: String,
+    val isFinal: Boolean
+)
+
+@Serializable
+data class VoiceStatusPayload(
+    val isRecording: Boolean,
+    val isPlaying: Boolean,
+    val level: Float = 0f // 0.0 to 1.0 for visualization
+)
+
+@Serializable
+data class CanvasUpdatePayload(
+    val elements: List<CanvasElement>
+)
+
+@Serializable
+data class CanvasElement(
+    val id: String,
+    val type: String, // RECT, CIRCLE, LINE, TEXT
+    val x: Float,
+    val y: Float,
+    val width: Float = 0f,
+    val height: Float = 0f,
+    val color: String = "#000000",
+    val text: String? = null,
+    val strokeWidth: Float = 1f
+)
+
+@Serializable
+data class AgentGroupPayload(
+    val leader: AgentMetadata,
+    val workers: List<AgentMetadata>
+)
+
+@Serializable
+data class AgentMetadata(
+    val id: String,
+    val name: String,
+    val role: String, // LEADER, WORKER
+    val status: String, // IDLE, BUSY, OFFLINE
+    val currentTask: String? = null,
+    val cpuUsage: Float = 0f,
+    val memoryUsage: Long = 0
+)
+
+@Serializable
+data class ContextSuggestionsPayload(
+    val suggestions: List<ContextItem>
+)
+
+@Serializable
+data class ContextItem(
+    val path: String,
+    val reason: String,
+    val type: String, // FILE, DOC, WEB
+    val score: Float = 1.0f
+)
 
 @Serializable
 data class UpdateScratchpadPayload_Obsolete(val content: String) // Duplicate removed, payload already defined above

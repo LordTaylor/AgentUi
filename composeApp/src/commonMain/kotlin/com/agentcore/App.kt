@@ -2,6 +2,7 @@ package com.agentcore
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -11,22 +12,26 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agentcore.api.*
+import com.agentcore.shared.*
 import com.agentcore.ui.*
 import com.agentcore.ui.components.*
-import com.agentcore.shared.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
@@ -47,7 +52,8 @@ data class Message(
     val isFromUser: Boolean,
     val type: MessageType = MessageType.TEXT,
     val attachments: List<String>? = null,
-    val extraContent: String? = null // For base64 images or tool-specific data
+    val extraContent: String? = null,
+    val timestamp: Long = System.currentTimeMillis()
 )
 
 @Composable
@@ -92,10 +98,27 @@ fun ChatMainScreen(mode: ConnectionMode) {
     var showTools by remember { mutableStateOf(false) }
     var showLogs by remember { mutableStateOf(false) }
     var showScratchpad by remember { mutableStateOf(false) }
+    var showTerminal by remember { mutableStateOf(false) }
     var sessionStats by remember { mutableStateOf<JsonObject?>(null) }
     var pendingApproval by remember { mutableStateOf<ApprovalRequestPayload?>(null) }
     val logs = remember { mutableStateListOf<LogPayload>() }
+    val terminalTraffic = remember { mutableStateListOf<TerminalTrafficPayload>() }
     var scratchpadContent by remember { mutableStateOf("") }
+    var indexingProgress by remember { mutableStateOf<IndexingProgressPayload?>(null) }
+    val plugins = remember { mutableStateListOf<PluginMetadataPayload>() }
+    var showPluginManager by remember { mutableStateOf(false) }
+    val workflows = remember { mutableStateListOf<WorkflowStatusPayload>() }
+    var showWorkflowBuilder by remember { mutableStateOf(false) }
+    var isRecording by remember { mutableStateOf(false) }
+    var voiceLevel by remember { mutableStateOf(0f) }
+    var autoTts by remember { mutableStateOf(false) }
+    var showCanvas by remember { mutableStateOf(false) }
+    var showHelp by remember { mutableStateOf(false) }
+    var showOrchestrator by remember { mutableStateOf(false) }
+    var agentGroup by remember { mutableStateOf<AgentGroupPayload?>(null) }
+    var suggestedContext by remember { mutableStateOf<List<ContextItem>>(emptyList()) }
+    var sidePanelWidth by remember { mutableStateOf(400.dp) }
+    val canvasElements = remember { mutableStateListOf<CanvasElement>() }
     
     val listState = rememberLazyListState()
 
@@ -104,13 +127,13 @@ fun ChatMainScreen(mode: ConnectionMode) {
             ConnectionMode.STDIO -> {
                 stdioExecutor.start()
                 stdioExecutor.events.collectLatest { event ->
-                    handleIpcEvent(event, messages, { statusState = it }, { sessionStats = it }, { pendingApproval = it }, { logs.add(it) }, { scratchpadContent = it })
+                    handleIpcEvent(event, messages, { statusState = it }, { sessionStats = it }, { pendingApproval = it }, { logs.add(it) }, { scratchpadContent = it }, { terminalTraffic.add(it) }, { indexingProgress = it }, { plugins.clear(); plugins.addAll(it) }, { workflows.clear(); workflows.addAll(it) }, { inputText = it }, { isRecording = it.isRecording; voiceLevel = it.level }, { if (autoTts && event is IpcEvent.MessageComplete) messages.lastOrNull { m -> m.sender == "Agent" && m.type == MessageType.TEXT }?.let { m -> scope.launch { when(mode) { ConnectionMode.IPC -> client.sendCommand(IpcCommand.SpeakText(m.text)); else -> {} } } } }, { canvasElements.clear(); canvasElements.addAll(it.elements) }, { agentGroup = it }, { suggestedContext = it.suggestions })
                 }
             }
             ConnectionMode.UNIX_SOCKET -> {
                 unixSocketExecutor.start(scope)
                 unixSocketExecutor.events.collectLatest { event ->
-                    handleIpcEvent(event, messages, { statusState = it }, { sessionStats = it }, { pendingApproval = it }, { logs.add(it) }, { scratchpadContent = it })
+                    handleIpcEvent(event, messages, { statusState = it }, { sessionStats = it }, { pendingApproval = it }, { logs.add(it) }, { scratchpadContent = it }, { terminalTraffic.add(it) }, { indexingProgress = it }, { plugins.clear(); plugins.addAll(it) }, { workflows.clear(); workflows.addAll(it) }, { inputText = it }, { isRecording = it.isRecording; voiceLevel = it.level }, { if (autoTts && event is IpcEvent.MessageComplete) messages.lastOrNull { m -> m.sender == "Agent" && m.type == MessageType.TEXT }?.let { m -> scope.launch { when(mode) { ConnectionMode.IPC -> client.sendCommand(IpcCommand.SpeakText(m.text)); else -> {} } } } }, { canvasElements.clear(); canvasElements.addAll(it.elements) }, { agentGroup = it }, { suggestedContext = it.suggestions })
                 }
             }
             ConnectionMode.IPC -> {
@@ -124,7 +147,7 @@ fun ChatMainScreen(mode: ConnectionMode) {
                 }
 
                 client.observeEvents().collectLatest { event ->
-                    handleIpcEvent(event, messages, { statusState = it }, { sessionStats = it }, { pendingApproval = it }, { logs.add(it) }, { scratchpadContent = it })
+                    handleIpcEvent(event, messages, { statusState = it }, { sessionStats = it }, { pendingApproval = it }, { logs.add(it) }, { scratchpadContent = it }, { terminalTraffic.add(it) }, { indexingProgress = it }, { plugins.clear(); plugins.addAll(it) }, { workflows.clear(); workflows.addAll(it) }, { inputText = it }, { isRecording = it.isRecording; voiceLevel = it.level }, { if (autoTts) messages.lastOrNull { m -> m.sender == "Agent" && m.type == MessageType.TEXT }?.let { m -> scope.launch { client.sendCommand(IpcCommand.SpeakText(m.text)) } } }, { canvasElements.clear(); canvasElements.addAll(it.elements) }, { agentGroup = it }, { suggestedContext = it.suggestions })
                 }
             }
             else -> {}
@@ -196,189 +219,215 @@ fun ChatMainScreen(mode: ConnectionMode) {
                         }) { Icon(Icons.Default.Info, contentDescription = "Stats", tint = if (showStats) MaterialTheme.colorScheme.primary else Color.Gray) }
                         
                         IconButton(onClick = { showTools = !showTools }) { 
-                            Icon(Icons.Default.List, contentDescription = "Tools", tint = if (showTools) MaterialTheme.colorScheme.primary else Color.Gray) 
+                            Icon(Icons.Default.List, contentDescription = "Tools", tint = if (showTools) MaterialTheme.colorScheme.primary else Color.Gray)
                         }
-
-                        IconButton(onClick = { showLogs = !showLogs }) {
-                            Icon(Icons.Default.Info, contentDescription = "Logs", tint = if (showLogs) Color(0xFF4CAF50) else Color.Gray)
-                        }
-
-                        IconButton(onClick = { 
-                            showScratchpad = !showScratchpad
-                            if (showScratchpad && mode == ConnectionMode.IPC) {
-                                scope.launch {
-                                    client.sendCommand(IpcCommand.GetScratchpad())
-                                }
-                            }
-                        }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Scratchpad", tint = if (showScratchpad) MaterialTheme.colorScheme.primary else Color.Gray)
-                        }
-                        
-                        IconButton(onClick = { showSettings = true }) { 
-                            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Color.Gray) 
+                        IconButton(onClick = { showSettings = !showSettings }) { 
+                            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = if (showSettings) MaterialTheme.colorScheme.primary else Color.Gray)
                         }
                     }
                 }
 
-                HorizontalDivider(color = Color.DarkGray)
+                Divider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
 
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                        contentPadding = PaddingValues(vertical = 16.dp)
-                    ) {
-                        itemsIndexed(messages) { _, msg ->
-                            when {
-                                msg.type == MessageType.ACTION && msg.text.startsWith("Consulting Agent") -> {
-                                    AgentConsultationItem(
-                                        agentName = msg.text.substringAfter(": ").ifEmpty { "Default" },
-                                        query = "Internal Reasoning",
-                                        response = if (msg.extraContent?.isNotEmpty() == true) msg.extraContent else null
-                                    )
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            // Chat Area
+                            LazyColumn(
+                                state = listState,
+                                modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp),
+                                contentPadding = PaddingValues(vertical = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(messages) { msg ->
+                                    ChatMessage(msg, onActionClick = { action ->
+                                        scope.launch {
+                                            when (mode) {
+                                                ConnectionMode.IPC -> client.sendCommand(IpcCommand.ExecuteAction(action))
+                                                else -> {}
+                                            }
+                                        }
+                                    })
                                 }
-                                msg.type == MessageType.ACTION -> ActionLogItem(msg.text)
-                                else -> ChatBubble(msg)
+                                
+                                if (statusState == "THINKING") {
+                                    item { ThinkingIndicator() }
+                                }
+                            }
+
+                            LaunchedEffect(messages.size) {
+                                if (messages.isNotEmpty()) {
+                                    listState.animateScrollToItem(messages.size - 1)
+                                }
+                            }
+
+                            // Input Area
+                            ChatInput(
+                                text = inputText,
+                                onTextChange = { inputText = it },
+                                attachments = pendingAttachments,
+                                onAddAttachment = {
+                                    val chooser = JFileChooser()
+                                    if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+                                        pendingAttachments.add(chooser.selectedFile.absolutePath)
+                                    }
+                                },
+                                onRemoveAttachment = { pendingAttachments.remove(it) },
+                                onSend = {
+                                    if (inputText.isNotBlank() || pendingAttachments.isNotEmpty()) {
+                                        performSendMessage(
+                                            scope, client, stdioExecutor, unixSocketExecutor, cliExecutor, mode,
+                                            inputText, pendingAttachments.toList(), currentSessionId, messages,
+                                            { inputText = "" }, { pendingAttachments.clear() }, { statusState = it }
+                                        )
+                                    }
+                                },
+                                isRecording = isRecording,
+                                voiceLevel = voiceLevel,
+                                onToggleRecording = {
+                                    scope.launch {
+                                        if (mode == ConnectionMode.IPC) {
+                                            if (isRecording) client.sendCommand(IpcCommand.StopRecording)
+                                            else client.sendCommand(IpcCommand.StartRecording)
+                                        }
+                                    }
+                                },
+                                suggestedContext = suggestedContext,
+                                onSelectContext = { item ->
+                                    inputText += " @${item.label}"
+                                }
+                            )
+                        }
+                        
+                        // Right Side Panel
+                        if (showStats || showTools || showLogs || showScratchpad || showTerminal || showPluginManager || showWorkflowBuilder || showCanvas || showHelp || showOrchestrator) {
+                            DraggableDivider { delta ->
+                                sidePanelWidth = (sidePanelWidth - delta.dp).coerceIn(300.dp, 800.dp)
+                            }
+                            
+                            Box(modifier = Modifier.width(sidePanelWidth).fillMaxHeight().background(MaterialTheme.colorScheme.surface)) {
+                                if (showStats) StatsPanel(sessionStats) { showStats = false }
+                                if (showTools) ToolsPanel(availableTools) { showTools = false }
+                                if (showLogs) LogsPanel(logs) { showLogs = false }
+                                if (showScratchpad) ScratchpadPanel(scratchpadContent, { scratchpadContent = it }, { 
+                                    scope.launch {
+                                        if (mode == ConnectionMode.IPC) client.sendCommand(IpcCommand.UpdateScratchpad(it))
+                                    }
+                                }) { showScratchpad = false }
+                                if (showTerminal) TerminalPanel(terminalTraffic) { showTerminal = false }
+                                if (showPluginManager) PluginManagerPanel(plugins) { showPluginManager = false }
+                                if (showWorkflowBuilder) WorkflowBuilderPanel(workflows) { showWorkflowBuilder = false }
+                                if (showCanvas) CanvasPanel(canvasElements) { showCanvas = false }
+                                if (showHelp) HelpPanel { showHelp = false }
+                                if (showOrchestrator) OrchestratorPanel(agentGroup) { showOrchestrator = false }
                             }
                         }
                     }
                     
-                    if (showStats && sessionStats != null) {
-                        Box(modifier = Modifier.align(Alignment.TopEnd).width(300.dp).padding(16.dp)) {
-                            StatsDashboard(sessionStats!!)
-                        }
-                    }
-                }
-
-                // Input Area
-                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                    if (pendingAttachments.isNotEmpty()) {
-                        LazyRow(modifier = Modifier.padding(bottom = 8.dp)) {
-                            items(pendingAttachments.toList()) { path ->
-                                AttachmentChip(path) { pendingAttachments.remove(path) }
-                            }
-                        }
-                    }
-
-                    OutlinedTextField(
-                        value = inputText,
-                        onValueChange = { inputText = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("How can I help you today?") },
-                        shape = RoundedCornerShape(24.dp),
-                        leadingIcon = {
-                            IconButton(onClick = {
-                                scope.launch(Dispatchers.IO) {
-                                    val chooser = JFileChooser()
-                                    chooser.isMultiSelectionEnabled = true
-                                    if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
-                                        withContext(Dispatchers.Main) {
-                                            chooser.selectedFiles.forEach { pendingAttachments.add(it.absolutePath) }
-                                        }
-                                    }
-                                }
-                            }) { Icon(Icons.Default.Add, contentDescription = "Attach File") }
-                        },
-                        trailingIcon = {
-                            Button(
-                                onClick = {
-                                    if (inputText.isNotBlank() || pendingAttachments.isNotEmpty()) {
-                                        performSendMessage(scope, client, stdioExecutor, unixSocketExecutor, cliExecutor, mode, inputText, pendingAttachments.toList(), currentSessionId, messages, { inputText = "" }, { pendingAttachments.clear() }, { statusState = it })
+                    // Approval Overlay
+                    if (pendingApproval != null) {
+                        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)), contentAlignment = Alignment.Center) {
+                            ApprovalCard(
+                                request = pendingApproval!!,
+                                onApprove = {
+                                    scope.launch {
+                                        if (mode == ConnectionMode.IPC) client.sendCommand(IpcCommand.ApproveAction(pendingApproval!!.id, true))
+                                        pendingApproval = null
                                     }
                                 },
-                                shape = RoundedCornerShape(24.dp),
-                                modifier = Modifier.padding(end = 4.dp)
-                            ) { Text("Send") }
-                        }
-                    )
-                }
-            }
-            
-            if (showTools) {
-                Box(modifier = Modifier.width(300.dp).fillMaxHeight().background(MaterialTheme.colorScheme.surface)) {
-                    ToolExplorer(availableTools)
-                }
-            }
-
-            if (showLogs) {
-                Box(modifier = Modifier.width(400.dp).fillMaxHeight().background(Color(0xFF0D0D0D))) {
-                    LogViewer(logs = logs, onClear = { logs.clear() })
-                }
-            }
-
-            if (showScratchpad) {
-                Box(modifier = Modifier.width(400.dp).fillMaxHeight().background(MaterialTheme.colorScheme.surface)) {
-                    Scratchpad(
-                        content = scratchpadContent,
-                        onSave = { newContent ->
-                            scope.launch {
-                                val cmd = IpcCommand.UpdateScratchpad(UpdateScratchpadPayload(newContent))
-                                when (mode) {
-                                    ConnectionMode.IPC -> client.sendCommand(cmd)
-                                    ConnectionMode.STDIO -> stdioExecutor.sendCommand(cmd)
-                                    ConnectionMode.UNIX_SOCKET -> unixSocketExecutor.sendCommand(cmd)
-                                    else -> {}
+                                onDeny = {
+                                    scope.launch {
+                                        if (mode == ConnectionMode.IPC) client.sendCommand(IpcCommand.ApproveAction(pendingApproval!!.id, false))
+                                        pendingApproval = null
+                                    }
                                 }
-                                scratchpadContent = newContent
+                            )
+                        }
+                    }
+                    
+                    // Floating Action Buttons for quick toggles
+                    Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.BottomEnd) {
+                        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (indexingProgress != null && indexingProgress!!.progress < 1.0f) {
+                                LinearProgressIndicator(
+                                    progress = indexingProgress!!.progress,
+                                    modifier = Modifier.width(100.dp).height(4.dp)
+                                )
+                                Text("Indexing: ${(indexingProgress!!.progress * 100).toInt()}%", fontSize = 10.sp)
                             }
-                        },
-                        onRefresh = {
-                            scope.launch {
-                                when (mode) {
-                                    ConnectionMode.IPC -> client.sendCommand(IpcCommand.GetScratchpad())
-                                    else -> {} // Direct modes might not support separate refresh
+                            
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                SmallFloatingActionButton(onClick = { showHelp = !showHelp }, containerColor = MaterialTheme.colorScheme.secondaryContainer) {
+                                    Icon(Icons.Default.Info, "Help")
+                                }
+                                SmallFloatingActionButton(onClick = { showCanvas = !showCanvas }, containerColor = MaterialTheme.colorScheme.secondaryContainer) {
+                                    Icon(Icons.Default.Edit, "Canvas")
+                                }
+                                SmallFloatingActionButton(onClick = { showLogs = !showLogs }, containerColor = MaterialTheme.colorScheme.secondaryContainer) {
+                                    Icon(Icons.Default.List, "Logs")
+                                }
+                                SmallFloatingActionButton(onClick = { showTerminal = !showTerminal }, containerColor = MaterialTheme.colorScheme.secondaryContainer) {
+                                    Icon(Icons.Default.Share, "Terminal")
                                 }
                             }
                         }
-                    )
+                    }
                 }
-            }
-        }
-    }
-
-    if (pendingApproval != null) {
-        ApprovalDialog(pendingApproval!!) { approved ->
-            val payload = ApprovalResponsePayload(pendingApproval!!.id, approved)
-            val cmd = IpcCommand.ApprovalResponse(payload)
-            scope.launch {
-                when (mode) {
-                    ConnectionMode.IPC -> client.sendCommand(cmd)
-                    ConnectionMode.STDIO -> stdioExecutor.sendCommand(cmd)
-                    ConnectionMode.UNIX_SOCKET -> unixSocketExecutor.sendCommand(cmd)
-                    else -> {}
-                }
-                pendingApproval = null
             }
         }
     }
 
     if (showSettings) {
-        SettingsDialog(currentBackend, currentRole, { showSettings = false }) { b, r ->
-            currentBackend = b
-            currentRole = r
-            showSettings = false
-            scope.launch {
-                val cmd = IpcCommand.SetBackend(SetBackendPayload(b))
-                val roleCmd = IpcCommand.SetRole(SetRolePayload(r))
-                when (mode) {
-                    ConnectionMode.IPC -> {
-                        client.updateBackend(b)
-                        client.updateRole(r)
+        SettingsDialog(
+            currentBackend = currentBackend,
+            currentRole = currentRole,
+            autoTts = autoTts,
+            onDismiss = { showSettings = false },
+            onSave = { b, r, tts ->
+                currentBackend = b
+                currentRole = r
+                autoTts = tts
+                showSettings = false
+                
+                val cmd = IpcCommand.SetBackend(b)
+                val roleCmd = IpcCommand.SetRole(r)
+                
+                scope.launch {
+                    when (mode) {
+                        ConnectionMode.IPC -> {
+                            client.sendCommand(cmd)
+                            client.sendCommand(roleCmd)
+                        }
+                        ConnectionMode.STDIO -> {
+                            stdioExecutor.sendCommand(cmd)
+                            stdioExecutor.sendCommand(roleCmd)
+                        }
+                        ConnectionMode.UNIX_SOCKET -> {
+                            unixSocketExecutor.sendCommand(cmd)
+                            unixSocketExecutor.sendCommand(roleCmd)
+                        }
+                        else -> {}
                     }
-                    ConnectionMode.STDIO -> {
-                        stdioExecutor.sendCommand(cmd)
-                        stdioExecutor.sendCommand(roleCmd)
-                    }
-                    ConnectionMode.UNIX_SOCKET -> {
-                        unixSocketExecutor.sendCommand(cmd)
-                        unixSocketExecutor.sendCommand(roleCmd)
-                    }
-                    else -> {}
+                    messages.add(Message("sys-${System.currentTimeMillis()}", "System", "Updated settings: $b / $r", false, MessageType.SYSTEM))
                 }
-                messages.add(Message("sys-${System.currentTimeMillis()}", "System", "Updated settings: $b / $r", false, MessageType.SYSTEM))
             }
-        }
+        )
     }
+}
+
+@Composable
+fun DraggableDivider(onDrag: (Float) -> Unit) {
+    Box(
+        modifier = Modifier
+            .width(4.dp)
+            .fillMaxHeight()
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures { _, dragAmount ->
+                    onDrag(dragAmount)
+                }
+            }
+            .background(Color.Gray.copy(alpha = 0.1f))
+    )
 }
 
 private fun performSendMessage(
@@ -396,96 +445,97 @@ private fun performSendMessage(
     onClearAttachments: () -> Unit,
     onUpdateStatus: (String) -> Unit
 ) {
-    messages.add(Message("u-${System.currentTimeMillis()}", "You", text, true, attachments = attachments))
+    messages.add(Message("u-${System.currentTimeMillis()}", "You", text, true, attachments = attachments, timestamp = System.currentTimeMillis()))
     onClearInput()
     onClearAttachments()
     
     scope.launch {
         when (mode) {
             ConnectionMode.IPC -> {
-                val response = client.sendCommand(IpcCommand.SendMessage(SendMessagePayload(
-                    session_id = currentSessionId,
-                    text = text,
-                    attachments = attachments
-                )))
-                if (response == null) {
-                    messages.add(Message("sys-${System.currentTimeMillis()}", "System", "Failed to send message: No connection", false, MessageType.SYSTEM))
-                    onUpdateStatus("OFFLINE")
-                } else if (response is IpcEvent.MessageComplete) {
-                    onUpdateStatus("IDLE")
-                }
+                client.sendMessage(text, attachments, currentSessionId)
             }
             ConnectionMode.STDIO -> {
-                onUpdateStatus("THINKING")
-                stdioExecutor.sendCommand(IpcCommand.SendMessage(SendMessagePayload(
-                    session_id = currentSessionId,
-                    text = text,
-                    attachments = attachments
-                )))
+                stdioExecutor.sendMessage(text, attachments)
             }
             ConnectionMode.UNIX_SOCKET -> {
-                onUpdateStatus("THINKING")
-                unixSocketExecutor.sendCommand(IpcCommand.SendMessage(SendMessagePayload(
-                    session_id = currentSessionId,
-                    text = text,
-                    attachments = attachments
-                )))
+                unixSocketExecutor.sendMessage(text, attachments)
             }
             ConnectionMode.CLI -> {
-                onUpdateStatus("THINKING")
-                val responseText = withContext(Dispatchers.IO) {
-                    cliExecutor.executeCommand(text)
-                }
-                messages.add(Message("a-${System.currentTimeMillis()}", "Agent", responseText, false))
-                onUpdateStatus("IDLE")
+                val response = cliExecutor.execute(text)
+                messages.add(Message("a-${System.currentTimeMillis()}", "Agent", response, false))
             }
         }
     }
 }
 
 private fun handleIpcEvent(
-    event: IpcEvent, 
-    messages: MutableList<Message>, 
-    updateStatus: (String) -> Unit,
-    updateStats: (JsonObject) -> Unit,
-    requestApproval: (ApprovalRequestPayload?) -> Unit,
-    addLog: (LogPayload) -> Unit,
-    updateScratchpad: (String) -> Unit
+    event: IpcEvent,
+    messages: MutableList<Message>,
+    onUpdateStatus: (String) -> Unit,
+    onUpdateStats: (JsonObject) -> Unit,
+    onPendingApproval: (ApprovalRequestPayload?) -> Unit,
+    onLog: (LogPayload) -> Unit,
+    onScratchpad: (String) -> Unit,
+    onTerminal: (TerminalTrafficPayload) -> Unit,
+    onIndexing: (IndexingProgressPayload?) -> Unit,
+    onPlugins: (List<PluginMetadataPayload>) -> Unit,
+    onWorkflows: (List<WorkflowStatusPayload>) -> Unit,
+    onInputUpdate: (String) -> Unit,
+    onVoiceUpdate: (VoiceLevelPayload) -> Unit,
+    onMessageComplete: () -> Unit,
+    onCanvasUpdate: (CanvasUpdatePayload) -> Unit,
+    onAgentGroupUpdate: (AgentGroupPayload) -> Unit,
+    onContextSuggestions: (ContextSuggestionsPayload) -> Unit
 ) {
     when (event) {
-        is IpcEvent.MessageStart -> messages.add(Message(event.payload.session_id, "Agent", "", false))
-        is IpcEvent.TextDelta -> {
-            val idx = messages.indexOfLast { it.sender == "Agent" && it.type == MessageType.TEXT }
-            if (idx != -1) messages[idx] = messages[idx].copy(text = messages[idx].text + event.payload.text)
-            else messages.add(Message("a-temp-${System.currentTimeMillis()}", "Agent", event.payload.text, false))
+        is IpcEvent.MessageReceived -> {
+            messages.add(Message("a-${System.currentTimeMillis()}", "Agent", event.text, false, timestamp = System.currentTimeMillis()))
         }
-        is IpcEvent.ToolCall -> {
-            val toolName = event.payload.tool
-            val msgText = if (toolName == "ask_agent") "Consulting Agent..." else "Calling tool: $toolName"
-            messages.add(Message("tc-${event.payload.id}", "Agent", msgText, false, MessageType.ACTION))
+        is IpcEvent.StatusUpdated -> {
+            onUpdateStatus(event.status)
         }
-        is IpcEvent.ToolResult -> {
-            val result = event.payload.result
-            val isImage = result.startsWith("data:image")
-            val msgText = if (isImage) "Viewed Image" else "Tool result: ${result.take(50)}..."
-            messages.add(Message(
-                id = "tr-${event.payload.id}", 
-                sender = "Agent", 
-                text = msgText, 
-                isFromUser = false, 
-                type = MessageType.ACTION,
-                extraContent = if (isImage) result else null
-            ))
+        is IpcEvent.StatsUpdated -> {
+            onUpdateStats(event.stats)
         }
-        is IpcEvent.Status -> updateStatus(event.payload.state)
-        is IpcEvent.Stats -> updateStats(event.payload)
-        is IpcEvent.ApprovalRequest -> requestApproval(event.payload)
-        is IpcEvent.Error -> {
-            updateStatus("OFFLINE")
-            messages.add(Message("err-${System.currentTimeMillis()}", "System", "Error: ${event.payload.message}", false, MessageType.SYSTEM))
+        is IpcEvent.ApprovalRequired -> {
+            onPendingApproval(event.request)
         }
-        is IpcEvent.Log -> addLog(event.payload)
-        is IpcEvent.Scratchpad -> updateScratchpad(event.payload.content)
+        is IpcEvent.LogEvent -> {
+            onLog(event.log)
+        }
+        is IpcEvent.ScratchpadUpdated -> {
+            onScratchpad(event.content)
+        }
+        is IpcEvent.TerminalTraffic -> {
+            onTerminal(event.traffic)
+        }
+        is IpcEvent.IndexingProgress -> {
+            onIndexing(event.progress)
+        }
+        is IpcEvent.PluginsUpdated -> {
+            onPlugins(event.plugins)
+        }
+        is IpcEvent.WorkflowUpdated -> {
+            onWorkflows(event.workflows)
+        }
+        is IpcEvent.InputTranscribed -> {
+            onInputUpdate(event.text)
+        }
+        is IpcEvent.VoiceLevel -> {
+            onVoiceUpdate(event.payload)
+        }
+        is IpcEvent.MessageComplete -> {
+            onMessageComplete()
+        }
+        is IpcEvent.CanvasUpdated -> {
+            onCanvasUpdate(event.payload)
+        }
+        is IpcEvent.AgentGroupUpdated -> {
+            onAgentGroupUpdate(event.payload)
+        }
+        is IpcEvent.ContextSuggestions -> {
+            onContextSuggestions(event.payload)
+        }
         else -> {}
     }
 }

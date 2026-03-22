@@ -1,0 +1,443 @@
+Starting Agent Core UI in DEBUG mode...
+Initialized native services in: /Users/jaroslawkrawczyk/.gradle/native
+Initialized jansi services in: /Users/jaroslawkrawczyk/.gradle/native
+Found daemon DaemonInfo{pid=40895, address=[c7464c4a-5ecc-45d9-9f65-6575ea4c18ca port:51699, addresses:[/127.0.0.1]], state=Idle, lastBusy=1774191022721, context=DefaultDaemonContext[uid=ce23a8eb-5ac2-47cf-a186-2ad585e6748e,javaHome=/opt/homebrew/Cellar/openjdk/25.0.2/libexec/openjdk.jdk/Contents/Home,javaVersion=25,javaVendor=Homebrew,daemonRegistryDir=/Users/jaroslawkrawczyk/.gradle/daemon,pid=40895,idleTimeout=10800000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:MaxMetaspaceSize=384m,-XX:+HeapDumpOnOutOfMemoryError,-Xms256m,-Xmx512m,-Dfile.encoding=UTF-8,-Duser.country=PL,-Duser.language=pl,-Duser.variant]} however its context does not match the desired criteria.
+JVM is incompatible.
+Wanted: DaemonRequestContext{jvmCriteria=/Users/jaroslawkrawczyk/Library/Java/JavaVirtualMachines/corretto-17.0.16/Contents/Home (from org.gradle.java.home), daemonOpts=[-XX:MaxMetaspaceSize=384m, -XX:+HeapDumpOnOutOfMemoryError, -Xms256m, -Xmx512m, -Dfile.encoding=UTF-8, -Duser.country=PL, -Duser.language=pl, -Duser.variant], applyInstrumentationAgent=true, nativeServicesMode=ENABLED, priority=NORMAL}
+Actual: DefaultDaemonContext[uid=ce23a8eb-5ac2-47cf-a186-2ad585e6748e,javaHome=/opt/homebrew/Cellar/openjdk/25.0.2/libexec/openjdk.jdk/Contents/Home,javaVersion=25,javaVendor=Homebrew,daemonRegistryDir=/Users/jaroslawkrawczyk/.gradle/daemon,pid=40895,idleTimeout=10800000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:MaxMetaspaceSize=384m,-XX:+HeapDumpOnOutOfMemoryError,-Xms256m,-Xmx512m,-Dfile.encoding=UTF-8,-Duser.country=PL,-Duser.language=pl,-Duser.variant]
+
+  Looking for a different daemon...
+The client will now receive all logging from the daemon (pid: 50618). The daemon log file: /Users/jaroslawkrawczyk/.gradle/daemon/9.4.1/daemon-50618.out.log
+Starting 17th build in daemon [uptime: 23 mins 3.958 secs, performance: 100%, GC rate: 0.00/s, heap usage: 0% of 512 MiB, non-heap usage: 23% of 384 MiB]
+Using 10 worker leases.
+Operational build model parameters: {cachingModelBuilding=false, configurationCache=false, configurationCacheDisabledReason=null, configurationCacheParallelLoad=false, configurationCacheParallelStore=false, configureOnDemand=false, invalidateCoupledProjects=false, isolatedProjects=false, modelAsProjectDependency=false, modelBuilding=false, parallelModelBuilding=false, parallelProjectConfiguration=false, parallelProjectExecution=false, resilientModelBuilding=false}
+Now considering [/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin] as hierarchies to watch
+Watching the file system is configured to be enabled if available
+File system watching is active
+Starting Build
+Settings evaluated using settings file '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/settings.gradle.kts'.
+Projects loaded. Root project using build file '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/build.gradle.kts'.
+Included projects: [root project 'uiKotlin', project ':composeApp', project ':core-api', project ':shared']
+
+> Configure project :
+Evaluating root project 'uiKotlin' using build file '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/build.gradle.kts'.
+Resolved plugin [id: 'org.jetbrains.kotlin.multiplatform', version: '2.0.0', apply: false]
+Resolved plugin [id: 'org.jetbrains.compose', version: '1.6.11', apply: false]
+Resolved plugin [id: 'org.jetbrains.kotlin.plugin.compose', version: '2.0.0', apply: false]
+Resolved plugin [id: 'com.android.application', version: '8.2.0', apply: false]
+Resolved plugin [id: 'org.jetbrains.kotlin.plugin.serialization', version: '2.0.0', apply: false]
+
+> Configure project :composeApp
+Evaluating project ':composeApp' using build file '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build.gradle.kts'.
+Resolved plugin [id: 'org.jetbrains.kotlin.multiplatform', version: '2.0.0']
+Resolved plugin [id: 'org.jetbrains.compose', version: '1.6.11']
+Resolved plugin [id: 'org.jetbrains.kotlin.plugin.compose', version: '2.0.0']
+Using Kotlin Gradle Plugin gradle85 variant
+Configure KMP resources
+Configure compose resources generation
+Configure Res class generation for commonMain
+Configure resource accessors generation for commonMain
+Configure resource accessors generation for commonTest
+Configure resource accessors generation for desktopMain
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+Configure resource accessors generation for desktopTest
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Configure resources publication for 'desktop' target
+Check that new 'org.jetbrains.kotlin.plugin.compose' was applied
+
+> Configure project :core-api
+Evaluating project ':core-api' using build file '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/build.gradle.kts'.
+Resolved plugin [id: 'org.jetbrains.kotlin.multiplatform', version: '2.0.0']
+Resolved plugin [id: 'org.jetbrains.kotlin.plugin.serialization', version: '2.0.0']
+Using Kotlin Gradle Plugin gradle85 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+
+> Configure project :shared
+Evaluating project ':shared' using build file '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/shared/build.gradle.kts'.
+Resolved plugin [id: 'org.jetbrains.kotlin.multiplatform', version: '2.0.0']
+Resolved plugin [id: 'org.jetbrains.kotlin.plugin.serialization', version: '2.0.0']
+Using Kotlin Gradle Plugin gradle85 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+All projects evaluated.
+Task path ':composeApp:run' matched project ':composeApp'
+Task name matched 'run'
+Selected primary task 'run' from project :composeApp
+Tasks to be executed: [task ':composeApp:checkKotlinGradlePluginConfigurationErrors', task ':composeApp:generateComposeResClass', task ':composeApp:convertXmlValueResourcesForCommonMain', task ':composeApp:copyNonXmlValueResourcesForCommonMain', task ':composeApp:prepareComposeResourcesTaskForCommonMain', task ':composeApp:generateResourceAccessorsForCommonMain', task ':composeApp:convertXmlValueResourcesForDesktopMain', task ':composeApp:copyNonXmlValueResourcesForDesktopMain', task ':composeApp:prepareComposeResourcesTaskForDesktopMain', task ':composeApp:generateResourceAccessorsForDesktopMain', task ':core-api:checkKotlinGradlePluginConfigurationErrors', task ':core-api:compileKotlinJvm', task ':core-api:jvmProcessResources', task ':core-api:jvmMainClasses', task ':core-api:jvmJar', task ':shared:checkKotlinGradlePluginConfigurationErrors', task ':shared:compileKotlinJvm', task ':shared:jvmProcessResources', task ':shared:jvmMainClasses', task ':shared:jvmJar', task ':composeApp:compileKotlinDesktop', task ':composeApp:desktopCopyHierarchicalMultiplatformResources', task ':composeApp:desktopProcessResources', task ':composeApp:desktopMainClasses', task ':composeApp:desktopJar', task ':composeApp:prepareAppResources', task ':composeApp:run']
+Tasks that were excluded: []
+Resolve mutations for :composeApp:checkKotlinGradlePluginConfigurationErrors (Thread[Execution worker,5,main]) started.
+:composeApp:checkKotlinGradlePluginConfigurationErrors (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:checkKotlinGradlePluginConfigurationErrors SKIPPED
+Skipping task ':composeApp:checkKotlinGradlePluginConfigurationErrors' as task onlyIf 'errorDiagnostics are present' is false.
+Resolve mutations for :composeApp:generateComposeResClass (Thread[Execution worker,5,main]) started.
+:composeApp:generateComposeResClass (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:generateComposeResClass UP-TO-DATE
+Caching disabled for task ':composeApp:generateComposeResClass' because:
+  Build cache is disabled
+  Caching has not been enabled for the task
+Skipping task ':composeApp:generateComposeResClass' as it is up-to-date.
+Resolve mutations for :composeApp:convertXmlValueResourcesForCommonMain (Thread[Execution worker,5,main]) started.
+:composeApp:convertXmlValueResourcesForCommonMain (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:convertXmlValueResourcesForCommonMain NO-SOURCE
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/preparedResources/commonMain/composeResources', not found
+Skipping task ':composeApp:convertXmlValueResourcesForCommonMain' as it has no source files and no previous output files.
+Resolve mutations for :composeApp:copyNonXmlValueResourcesForCommonMain (Thread[Execution worker,5,main]) started.
+:composeApp:copyNonXmlValueResourcesForCommonMain (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/preparedResources/commonMain/composeResources', not found
+Skipping task ':composeApp:copyNonXmlValueResourcesForCommonMain' as it has no source files and no previous output files.
+Resolve mutations for :composeApp:prepareComposeResourcesTaskForCommonMain (Thread[Execution worker,5,main]) started.
+:composeApp:prepareComposeResourcesTaskForCommonMain (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+Skipping task ':composeApp:prepareComposeResourcesTaskForCommonMain' as it has no source files and no previous output files.
+Resolve mutations for :composeApp:generateResourceAccessorsForCommonMain (Thread[Execution worker,5,main]) started.
+:composeApp:generateResourceAccessorsForCommonMain (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:generateResourceAccessorsForCommonMain NO-SOURCE
+Skipping task ':composeApp:generateResourceAccessorsForCommonMain' as it has no source files and no previous output files.
+Resolve mutations for :composeApp:convertXmlValueResourcesForDesktopMain (Thread[Execution worker,5,main]) started.
+:composeApp:convertXmlValueResourcesForDesktopMain (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:convertXmlValueResourcesForDesktopMain NO-SOURCE
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/preparedResources/desktopMain/composeResources', not found
+Skipping task ':composeApp:convertXmlValueResourcesForDesktopMain' as it has no source files and no previous output files.
+Resolve mutations for :composeApp:copyNonXmlValueResourcesForDesktopMain (Thread[Execution worker,5,main]) started.
+:composeApp:copyNonXmlValueResourcesForDesktopMain (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:copyNonXmlValueResourcesForDesktopMain NO-SOURCE
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/preparedResources/desktopMain/composeResources', not found
+Skipping task ':composeApp:copyNonXmlValueResourcesForDesktopMain' as it has no source files and no previous output files.
+Resolve mutations for :composeApp:prepareComposeResourcesTaskForDesktopMain (Thread[Execution worker,5,main]) started.
+:composeApp:prepareComposeResourcesTaskForDesktopMain (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:prepareComposeResourcesTaskForDesktopMain NO-SOURCE
+Skipping task ':composeApp:prepareComposeResourcesTaskForDesktopMain' as it has no source files and no previous output files.
+Resolve mutations for :composeApp:generateResourceAccessorsForDesktopMain (Thread[Execution worker,5,main]) started.
+:composeApp:generateResourceAccessorsForDesktopMain (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:generateResourceAccessorsForDesktopMain NO-SOURCE
+Skipping task ':composeApp:generateResourceAccessorsForDesktopMain' as it has no source files and no previous output files.
+Resolve mutations for :core-api:checkKotlinGradlePluginConfigurationErrors (Thread[Execution worker,5,main]) started.
+:core-api:checkKotlinGradlePluginConfigurationErrors (Thread[Execution worker,5,main]) started.
+
+> Task :core-api:checkKotlinGradlePluginConfigurationErrors SKIPPED
+Skipping task ':core-api:checkKotlinGradlePluginConfigurationErrors' as task onlyIf 'errorDiagnostics are present' is false.
+Resolve mutations for :core-api:compileKotlinJvm (Thread[Execution worker,5,main]) started.
+:core-api:compileKotlinJvm (Thread[Execution worker,5,main]) started.
+Resolve mutations for :core-api:jvmProcessResources (Thread[Execution worker Thread 3,5,main]) started.
+:core-api:jvmProcessResources (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :core-api:jvmProcessResources NO-SOURCE
+Skipping task ':core-api:jvmProcessResources' as it has no source files and no previous output files.
+Resolve mutations for :shared:checkKotlinGradlePluginConfigurationErrors (Thread[Execution worker Thread 3,5,main]) started.
+:shared:checkKotlinGradlePluginConfigurationErrors (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+Skipping task ':shared:checkKotlinGradlePluginConfigurationErrors' as task onlyIf 'errorDiagnostics are present' is false.
+Resolve mutations for :shared:jvmProcessResources (Thread[Execution worker Thread 3,5,main]) started.
+:shared:jvmProcessResources (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :shared:jvmProcessResources NO-SOURCE
+Skipping task ':shared:jvmProcessResources' as it has no source files and no previous output files.
+Resolve mutations for :composeApp:desktopCopyHierarchicalMultiplatformResources (Thread[Execution worker Thread 3,5,main]) started.
+:composeApp:desktopCopyHierarchicalMultiplatformResources (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :composeApp:desktopCopyHierarchicalMultiplatformResources UP-TO-DATE
+Caching disabled for task ':composeApp:desktopCopyHierarchicalMultiplatformResources' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Skipping task ':composeApp:desktopCopyHierarchicalMultiplatformResources' as it is up-to-date.
+Resolve mutations for :composeApp:desktopProcessResources (Thread[Execution worker Thread 3,5,main]) started.
+:composeApp:desktopProcessResources (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :composeApp:desktopProcessResources UP-TO-DATE
+Caching disabled for task ':composeApp:desktopProcessResources' because:
+  Build cache is disabled
+  Not worth caching
+Skipping task ':composeApp:desktopProcessResources' as it is up-to-date.
+Resolve mutations for :composeApp:prepareAppResources (Thread[Execution worker Thread 3,5,main]) started.
+:composeApp:prepareAppResources (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :composeApp:prepareAppResources NO-SOURCE
+Skipping task ':composeApp:prepareAppResources' as it has no source files and no previous output files.
+
+> Task :core-api:compileKotlinJvm
+Caching disabled for task ':core-api:compileKotlinJvm' because:
+  Build cache is disabled
+Task ':core-api:compileKotlinJvm' is not up-to-date because:
+  Input property 'commonSourceSet$kotlin_gradle_plugin_common' file /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/src/commonMain/kotlin/com/agentcore/api/IpcModels.kt has changed.
+  Input property 'multiplatformStructure.fragments.$1.sources' file /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/src/commonMain/kotlin/com/agentcore/api/IpcModels.kt has changed.
+  Input property 'sources' file /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/src/commonMain/kotlin/com/agentcore/api/IpcModels.kt has changed.
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/src/jvmMain/kotlin', not found
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/src/jvmMain/kotlin', not found
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/src/jvmMain/kotlin', not found
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/src/jvmMain/kotlin', not found
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/src/jvmMain/kotlin', not found
+Kotlin source files: /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/src/commonMain/kotlin/com/agentcore/api/AgentClient.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/src/commonMain/kotlin/com/agentcore/api/IpcModels.kt
+Java source files: 
+Script source files: 
+Script file extensions: 
+Using Kotlin/JVM incremental compilation
+[KOTLIN] Kotlin compilation 'jdkHome' argument: /Users/jaroslawkrawczyk/Library/Java/JavaVirtualMachines/corretto-17.0.16/Contents/Home
+Options for KOTLIN DAEMON: IncrementalCompilationOptions(super=CompilationOptions(compilerMode=INCREMENTAL_COMPILER, targetPlatform=JVM, reportCategories=[0, 3], reportSeverity=2, requestedCompilationResults=[0], kotlinScriptExtensions=[]), areFileChangesKnown=true, modifiedFiles=[/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/src/commonMain/kotlin/com/agentcore/api/IpcModels.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/src/commonMain/kotlin/com/agentcore/api/IpcModels.kt], deletedFiles=[], classpathChanges=NoChanges, workingDir=/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/build/kotlin/compileKotlinJvm/cacheable, multiModuleICSettings=MultiModuleICSettings(buildHistoryFile=/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/build/kotlin/compileKotlinJvm/local-state/build-history.bin, useModuleDetection=false), usePreciseJavaTracking=true, icFeatures=IncrementalCompilationFeatures(withAbiSnapshot=false, preciseCompilationResultsBackup=true, keepIncrementalCompilationCachesInMemory=true, enableUnsafeIncrementalCompilationForMultiplatform=false), outputFiles=[/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/build/classes/kotlin/jvm/main, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/build/kotlin/compileKotlinJvm/cacheable, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/build/kotlin/compileKotlinJvm/local-state])
+Finished executing kotlin compiler using DAEMON strategy
+Resolve mutations for :core-api:jvmMainClasses (Thread[Execution worker,5,main]) started.
+:core-api:jvmMainClasses (Thread[Execution worker,5,main]) started.
+
+> Task :core-api:jvmMainClasses
+Skipping task ':core-api:jvmMainClasses' as it has no actions.
+Resolve mutations for :core-api:jvmJar (Thread[Execution worker,5,main]) started.
+:core-api:jvmJar (Thread[Execution worker,5,main]) started.
+
+> Task :core-api:jvmJar
+Caching disabled for task ':core-api:jvmJar' because:
+  Build cache is disabled
+  Not worth caching
+Task ':core-api:jvmJar' is not up-to-date because:
+  Input property 'rootSpec$1' file /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/build/classes/kotlin/jvm/main/com/agentcore/api/ApprovalRequestPayload$$serializer.class has changed.
+  Input property 'rootSpec$1' file /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/build/classes/kotlin/jvm/main/com/agentcore/api/ApprovalRequestPayload$Companion.class has changed.
+  Input property 'rootSpec$1' file /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/build/classes/kotlin/jvm/main/com/agentcore/api/ApprovalRequestPayload.class has changed.
+  and more...
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/build/processedResources/jvm/main', not found
+work action resolve core-api-jvm.jar (project :core-api) (Thread[Execution worker,5,main]) started.
+Resolve mutations for :shared:compileKotlinJvm (Thread[Execution worker,5,main]) started.
+:shared:compileKotlinJvm (Thread[Execution worker,5,main]) started.
+
+> Task :shared:compileKotlinJvm
+Caching disabled for BuildToolsApiClasspathEntrySnapshotTransform: /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/build/libs/core-api-jvm.jar because:
+  Build cache is disabled
+Caching disabled for task ':shared:compileKotlinJvm' because:
+  Build cache is disabled
+Task ':shared:compileKotlinJvm' is not up-to-date because:
+  Input property 'classpathSnapshotProperties.classpathSnapshot' file /Users/jaroslawkrawczyk/.gradle/caches/9.4.1/transforms/c125a5c8999cf9fde4e37ba3767aa150/transformed/core-api-jvm_jar-snapshot.bin has been removed.
+  Input property 'classpathSnapshotProperties.classpathSnapshot' file /Users/jaroslawkrawczyk/.gradle/caches/9.4.1/transforms/09933402ae29f59a7fc8fb230dfe2ae4/transformed/core-api-jvm_jar-snapshot.bin has been added.
+Kotlin source files: /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/shared/src/jvmMain/kotlin/com/agentcore/shared/UnixSocketExecutor.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/shared/src/jvmMain/kotlin/com/agentcore/shared/CoreLauncher.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/shared/src/jvmMain/kotlin/com/agentcore/shared/CliExecutor.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/shared/src/jvmMain/kotlin/com/agentcore/shared/StdioExecutor.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/shared/src/commonMain/kotlin/com/agentcore/shared/Models.kt
+Java source files: 
+Script source files: 
+Script file extensions: 
+Using Kotlin/JVM incremental compilation
+[KOTLIN] Kotlin compilation 'jdkHome' argument: /Users/jaroslawkrawczyk/Library/Java/JavaVirtualMachines/corretto-17.0.16/Contents/Home
+Options for KOTLIN DAEMON: IncrementalCompilationOptions(super=CompilationOptions(compilerMode=INCREMENTAL_COMPILER, targetPlatform=JVM, reportCategories=[0, 3], reportSeverity=2, requestedCompilationResults=[0], kotlinScriptExtensions=[]), areFileChangesKnown=true, modifiedFiles=[/Users/jaroslawkrawczyk/.gradle/caches/9.4.1/transforms/09933402ae29f59a7fc8fb230dfe2ae4/transformed/core-api-jvm_jar-snapshot.bin], deletedFiles=[/Users/jaroslawkrawczyk/.gradle/caches/9.4.1/transforms/c125a5c8999cf9fde4e37ba3767aa150/transformed/core-api-jvm_jar-snapshot.bin], classpathChanges=ToBeComputedByIncrementalCompiler, workingDir=/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/shared/build/kotlin/compileKotlinJvm/cacheable, multiModuleICSettings=MultiModuleICSettings(buildHistoryFile=/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/shared/build/kotlin/compileKotlinJvm/local-state/build-history.bin, useModuleDetection=false), usePreciseJavaTracking=true, icFeatures=IncrementalCompilationFeatures(withAbiSnapshot=false, preciseCompilationResultsBackup=true, keepIncrementalCompilationCachesInMemory=true, enableUnsafeIncrementalCompilationForMultiplatform=false), outputFiles=[/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/shared/build/classes/kotlin/jvm/main, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/shared/build/kotlin/compileKotlinJvm/cacheable, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/shared/build/kotlin/compileKotlinJvm/local-state])
+Finished executing kotlin compiler using DAEMON strategy
+Resolve mutations for :shared:jvmMainClasses (Thread[Execution worker,5,main]) started.
+:shared:jvmMainClasses (Thread[Execution worker,5,main]) started.
+
+> Task :shared:jvmMainClasses
+Skipping task ':shared:jvmMainClasses' as it has no actions.
+Resolve mutations for :shared:jvmJar (Thread[Execution worker,5,main]) started.
+:shared:jvmJar (Thread[Execution worker,5,main]) started.
+
+> Task :shared:jvmJar UP-TO-DATE
+Caching disabled for task ':shared:jvmJar' because:
+  Build cache is disabled
+  Not worth caching
+Skipping task ':shared:jvmJar' as it is up-to-date.
+work action resolve shared-jvm.jar (project :shared) (Thread[Execution worker,5,main]) started.
+Resolve mutations for :composeApp:compileKotlinDesktop (Thread[Execution worker,5,main]) started.
+:composeApp:compileKotlinDesktop (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:compileKotlinDesktop
+Caching disabled for task ':composeApp:compileKotlinDesktop' because:
+  Build cache is disabled
+Task ':composeApp:compileKotlinDesktop' is not up-to-date because:
+  Input property 'classpathSnapshotProperties.classpathSnapshot' file /Users/jaroslawkrawczyk/.gradle/caches/9.4.1/transforms/c125a5c8999cf9fde4e37ba3767aa150/transformed/core-api-jvm_jar-snapshot.bin has been removed.
+  Input property 'classpathSnapshotProperties.classpathSnapshot' file /Users/jaroslawkrawczyk/.gradle/caches/9.4.1/transforms/09933402ae29f59a7fc8fb230dfe2ae4/transformed/core-api-jvm_jar-snapshot.bin has been added.
+  Input property 'commonSourceSet$kotlin_gradle_plugin_common' file /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/App.kt has changed.
+  and more...
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/kotlin/desktopMainResourceAccessors', not found
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/kotlin/commonMainResourceAccessors', not found
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/kotlin/desktopMainResourceAccessors', not found
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/kotlin/commonMainResourceAccessors', not found
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/kotlin/desktopMainResourceAccessors', not found
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/kotlin/commonMainResourceAccessors', not found
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/kotlin/desktopMainResourceAccessors', not found
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/kotlin/commonMainResourceAccessors', not found
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/kotlin/desktopMainResourceAccessors', not found
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/kotlin/commonMainResourceAccessors', not found
+Kotlin source files: /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/desktopMain/kotlin/Main.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/AgentConsultationItem.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/PluginManager.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/ChatBubble.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/LogViewer.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/CommonUI.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/TerminalViewer.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/IndexingStatus.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/AdvancedComponents.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/WorkflowBuilder.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/HelpSystem.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/SyntaxHighlighter.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/TokenTracker.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/Sidebar.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/Scratchpad.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/SettingsDialog.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/AgentOrchestrator.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/InteractiveCanvas.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/ApprovalDialog.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/Theme.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/ConnectionScreen.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/App.kt
+Java source files: 
+Script source files: 
+Script file extensions: 
+Using Kotlin/JVM incremental compilation
+[KOTLIN] Kotlin compilation 'jdkHome' argument: /Users/jaroslawkrawczyk/Library/Java/JavaVirtualMachines/corretto-17.0.16/Contents/Home
+Options for KOTLIN DAEMON: IncrementalCompilationOptions(super=CompilationOptions(compilerMode=INCREMENTAL_COMPILER, targetPlatform=JVM, reportCategories=[0, 3], reportSeverity=2, requestedCompilationResults=[0], kotlinScriptExtensions=[]), areFileChangesKnown=true, modifiedFiles=[/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/App.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/AgentOrchestrator.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/App.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/AgentOrchestrator.kt, /Users/jaroslawkrawczyk/.gradle/caches/9.4.1/transforms/09933402ae29f59a7fc8fb230dfe2ae4/transformed/core-api-jvm_jar-snapshot.bin], deletedFiles=[/Users/jaroslawkrawczyk/.gradle/caches/9.4.1/transforms/c125a5c8999cf9fde4e37ba3767aa150/transformed/core-api-jvm_jar-snapshot.bin], classpathChanges=ToBeComputedByIncrementalCompiler, workingDir=/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/kotlin/compileKotlinDesktop/cacheable, multiModuleICSettings=MultiModuleICSettings(buildHistoryFile=/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/kotlin/compileKotlinDesktop/local-state/build-history.bin, useModuleDetection=false), usePreciseJavaTracking=true, icFeatures=IncrementalCompilationFeatures(withAbiSnapshot=false, preciseCompilationResultsBackup=true, keepIncrementalCompilationCachesInMemory=true, enableUnsafeIncrementalCompilationForMultiplatform=false), outputFiles=[/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/classes/kotlin/desktop/main, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/kotlin/compileKotlinDesktop/cacheable, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/kotlin/compileKotlinDesktop/local-state])
+w: file:///Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/App.kt:217:48 '@property:Deprecated(...) val Icons.Filled.List: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.List.
+w: file:///Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/App.kt:225:48 '@property:Deprecated(...) val Icons.Filled.List: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.List.
+w: file:///Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/App.kt:279:48 '@property:Deprecated(...) val Icons.Filled.List: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.List.
+w: file:///Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/HelpSystem.kt:64:13 '@Deprecated(...) @Composable() @ComposableTarget(...) fun Divider(modifier: Modifier = ..., thickness: Dp = ..., color: Color = ...): Unit' is deprecated. Renamed to HorizontalDivider.
+w: file:///Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/IndexingStatus.kt:69:17 '@Deprecated(...) @Composable() @ComposableTarget(...) fun LinearProgressIndicator(progress: Float, modifier: Modifier = ..., color: Color = ..., trackColor: Color = ..., strokeCap: StrokeCap = ...): Unit' is deprecated. Use the overload that takes `progress` as a lambda.
+w: file:///Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/LogViewer.kt:57:32 '@property:Deprecated(...) val Icons.Filled.List: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.List.
+w: file:///Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/LogViewer.kt:93:9 '@Deprecated(...) @Composable() @ComposableTarget(...) fun Divider(modifier: Modifier = ..., thickness: Dp = ..., color: Color = ...): Unit' is deprecated. Renamed to HorizontalDivider.
+w: file:///Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/WorkflowBuilder.kt:108:17 '@Deprecated(...) @Composable() @ComposableTarget(...) fun LinearProgressIndicator(progress: Float, modifier: Modifier = ..., color: Color = ..., trackColor: Color = ..., strokeCap: StrokeCap = ...): Unit' is deprecated. Use the overload that takes `progress` as a lambda.
+Finished executing kotlin compiler using DAEMON strategy
+Resolve mutations for :composeApp:desktopMainClasses (Thread[Execution worker,5,main]) started.
+:composeApp:desktopMainClasses (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:desktopMainClasses
+Skipping task ':composeApp:desktopMainClasses' as it has no actions.
+Resolve mutations for :composeApp:desktopJar (Thread[Execution worker,5,main]) started.
+:composeApp:desktopJar (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:desktopJar
+Caching disabled for task ':composeApp:desktopJar' because:
+  Build cache is disabled
+  Not worth caching
+Task ':composeApp:desktopJar' is not up-to-date because:
+  Input property 'rootSpec$1' file /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/classes/kotlin/desktop/main/META-INF/composeApp.kotlin_module has changed.
+  Input property 'rootSpec$1' file /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/classes/kotlin/desktop/main/com/agentcore/AppKt$App$1$1.class has changed.
+  Input property 'rootSpec$1' file /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/classes/kotlin/desktop/main/com/agentcore/AppKt$ChatMainScreen$1$1$12$2$1.class has changed.
+  and more...
+Resolve mutations for :composeApp:run (Thread[Execution worker,5,main]) started.
+:composeApp:run (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:run
+Caching disabled for task ':composeApp:run' because:
+  Build cache is disabled
+Task ':composeApp:run' is not up-to-date because:
+  Task has not declared any outputs despite executing actions.
+Starting process 'command '/Users/jaroslawkrawczyk/Library/Java/JavaVirtualMachines/corretto-17.0.16/Contents/Home/bin/java''. Working directory: /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp Command: /Users/jaroslawkrawczyk/Library/Java/JavaVirtualMachines/corretto-17.0.16/Contents/Home/bin/java -Dcompose.application.configure.swing.globals=true -Dcompose.application.resources.dir=/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/compose/tmp/prepareAppResources -Dfile.encoding=UTF-8 -Duser.country=PL -Duser.language=pl -Duser.variant -cp /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/libs/composeApp-desktop.jar:/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/shared/build/libs/shared-jvm.jar:/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/build/libs/core-api-jvm.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/io.ktor/ktor-client-content-negotiation-jvm/2.3.11/2f739fb5e47be0158b174fefd1bb5a827fbc3243/ktor-client-content-negotiation-jvm-2.3.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/io.ktor/ktor-client-okhttp-jvm/2.3.11/7f2bb0c9c918dca6ac832d710ab10ea1c9ba67af/ktor-client-okhttp-jvm-2.3.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/io.ktor/ktor-client-core-jvm/2.3.11/1ead4100b66a375ccc808bede2e2c1e480c015f/ktor-client-core-jvm-2.3.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.compose.material3/material3-desktop/1.6.11/aca6ea9607c8a4d9254c14b7192fdd07ea76e2cc/material3-desktop-1.6.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.compose.desktop/desktop-jvm/1.6.11/4c88c77f0770ee2c111199047d90ed5a47e4482b/desktop-jvm-1.6.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.compose.material/material-desktop/1.6.11/d3e4b632fadb752973fa898989e4666e986011e6/material-desktop-1.6.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.compose.material/material-ripple-desktop/1.6.11/81d8093be11dfbc4ce334bad9bcfc237f21ed701/material-ripple-desktop-1.6.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.compose.foundation/foundation-desktop/1.6.11/c9a646ef258f51a7be4929848e951ea02bb80ddf/foundation-desktop-1.6.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.compose.animation/animation-desktop/1.6.11/ce21e9b6dea3019932615f2211ddec7eb4525cd6/animation-desktop-1.6.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.compose.foundation/foundation-layout-desktop/1.6.11/da4289cf3f4f7b0ee49c7db8bd2f5db09aac6dee/foundation-layout-desktop-1.6.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.compose.animation/animation-core-desktop/1.6.11/f6404cd973e8dc12994f487a61967aa4f8a949b4/animation-core-desktop-1.6.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.compose.material/material-icons-core-desktop/1.6.11/47e99680d4e5f234dc4514fd12fec4daf1af4597/material-icons-core-desktop-1.6.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.compose.ui/ui-desktop/1.6.11/aa323518f3353e2ea331e1093081329a437e60b8/ui-desktop-1.6.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/io.insert-koin/koin-compose-jvm/1.1.5/649d5cc2f6d87573865769e280d41961b78ab439/koin-compose-jvm-1.1.5.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.compose.ui/ui-text-desktop/1.6.11/c84eb9f99b8492775cfc57b458a2c113b2139041/ui-text-desktop-1.6.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.compose.ui/ui-graphics-desktop/1.6.11/9e80f1f2e3104ef38e6e274576c8162bd9854afe/ui-graphics-desktop-1.6.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.androidx.lifecycle/lifecycle-runtime-compose-desktop/2.8.0/4120374fb483acbf8077d5e43ebb74820a565ac1/lifecycle-runtime-compose-desktop-2.8.0.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.compose.runtime/runtime-saveable-desktop/1.6.11/74106ad127dea1103cfa5517287147da68694e9f/runtime-saveable-desktop-1.6.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.compose.ui/ui-unit-desktop/1.6.11/6489dd3c2b6122e1ebba9e9c1081779dc4e125ee/ui-unit-desktop-1.6.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.compose.ui/ui-geometry-desktop/1.6.11/7eae6ed5c40e7e61eb16c2c7edfbd2019f2c239d/ui-geometry-desktop-1.6.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.compose.ui/ui-tooling-preview-desktop/1.6.11/62232c44c61692b56d3071c29b0f9c8481b20574/ui-tooling-preview-desktop-1.6.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.compose.runtime/runtime-desktop/1.6.11/328c18df89b7bf14a52d2d39e20065b029cdfeeb/runtime-desktop-1.6.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/io.ktor/ktor-serialization-kotlinx-json-jvm/2.3.11/af0bc6f7ce125f8d3ddb0bc95273c3154447b618/ktor-serialization-kotlinx-json-jvm-2.3.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.skiko/skiko-awt-runtime-macos-arm64/0.8.4/8c6815877da068d972fa2d74d7014c4be8c80044/skiko-awt-runtime-macos-arm64-0.8.4.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.skiko/skiko-awt/0.8.4/d86c3b412d118aa62c8cdf606fc364e2cb4ff1f9/skiko-awt-0.8.4.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/io.ktor/ktor-events-jvm/2.3.11/e6a6d901927636a1fad5617397f5d40d2fc1d54b/ktor-events-jvm-2.3.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/io.ktor/ktor-websocket-serialization-jvm/2.3.11/195426b52d1647738a12022d1e0728326940a358/ktor-websocket-serialization-jvm-2.3.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/io.ktor/ktor-serialization-kotlinx-jvm/2.3.11/cfb1cc8db157f49fca372d4cf860b5dc7fe42623/ktor-serialization-kotlinx-jvm-2.3.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/io.ktor/ktor-serialization-jvm/2.3.11/5fd3c07683c145e49ff26d22af898178f20d813d/ktor-serialization-jvm-2.3.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/io.ktor/ktor-websockets-jvm/2.3.11/23bd6a7d3d1fed4ffb56a08f93e72eadb9818a1b/ktor-websockets-jvm-2.3.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/io.ktor/ktor-http-jvm/2.3.11/80eaa88b1c5f966ef87ca205bb05beb0e50cf99f/ktor-http-jvm-2.3.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/io.ktor/ktor-utils-jvm/2.3.11/db227e84b9b155891262f7376ad22b6fb9e4ae6/ktor-utils-jvm-2.3.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/io.ktor/ktor-io-jvm/2.3.11/a129eccdd57a710f402661c89498abdd52107e6a/ktor-io-jvm-2.3.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlinx/kotlinx-coroutines-jdk8/1.8.1/a9c5828df815ab41dd9063fda549715c41e8bfab/kotlinx-coroutines-jdk8-1.8.1.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlinx/kotlinx-coroutines-slf4j/1.8.1/a64ea6ebcb63208589fd45a00a1f47985ecd34c3/kotlinx-coroutines-slf4j-1.8.1.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-runtime-desktop/2.8.0/fed8b9973735cbe77645edf153d5f7bb412bfd45/lifecycle-runtime-desktop-2.8.0.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-common-jvm/2.8.0/7174a594afb73a9ad9ac9074ce78b94af3cc52a7/lifecycle-common-jvm-2.8.0.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-viewmodel-desktop/2.8.0/b7e91a95c8ed79cde23e08651bc34f3d43392f0d/lifecycle-viewmodel-desktop-2.8.0.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlinx/kotlinx-coroutines-core-jvm/1.8.1/bb0e192bd7c2b6b8217440d36e9758e377e450/kotlinx-coroutines-core-jvm-1.8.1.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlinx/kotlinx-coroutines-swing/1.8.1/baed985c79f69a4325ac49f52b802d90c43786bd/kotlinx-coroutines-swing-1.8.1.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/com.mikepenz/multiplatform-markdown-renderer-m3-jvm/0.21.0/b0a04a747d76751cb97c40d996d47b1c8b50aa49/multiplatform-markdown-renderer-m3-jvm-0.21.0.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlinx/kotlinx-serialization-core-jvm/1.6.3/6b6c17d0312ba7192893adea9d52959941d0119b/kotlinx-serialization-core-jvm-1.6.3.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlinx/kotlinx-serialization-json-jvm/1.6.3/2241746853abf04073e3ab0dcd9e6729d363b313/kotlinx-serialization-json-jvm-1.6.3.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/io.insert-koin/koin-core-jvm/3.5.6/71c101744c62708690796cdb48ed8522a74687c7/koin-core-jvm-3.5.6.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/com.squareup.okhttp3/okhttp/4.12.0/2f4525d4a200e97e1b87449c2cd9bd2e25b7e8cd/okhttp-4.12.0.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/co.touchlab/stately-concurrent-collections-jvm/2.0.6/fb80df9c69dd0e154c346ee5510601e2d148e23d/stately-concurrent-collections-jvm-2.0.6.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/co.touchlab/stately-concurrency-jvm/2.0.6/14dcbce3fc3d80a5a07f9df33dd2dc54e437e8d0/stately-concurrency-jvm-2.0.6.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/co.touchlab/stately-strict-jvm/2.0.6/fdbcb1fc1c9219aa5a5f2b1c9084a4ed8b2a8f8b/stately-strict-jvm-2.0.6.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib-jdk8/1.9.23/557350a0941ddfe919fd2a30d996355bebc8a3a3/kotlin-stdlib-jdk8-1.9.23.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlinx/atomicfu-jvm/0.23.2/a4601dc42dceb031a586058e8356ff778a57dea0/atomicfu-jvm-0.23.2.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.compose.ui/ui-util-desktop/1.6.11/64039cd04d69b704a0b59a45567d2e4fc9fb0582/ui-util-desktop-1.6.11.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlinx/kotlinx-datetime-jvm/0.6.0/a6362032556c0fa4a06be6105a21e944f120fd2d/kotlinx-datetime-jvm-0.6.0.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib-jdk7/1.9.23/b8eca9abec56bee1d01c788e3d571114416ea56d/kotlin-stdlib-jdk7-1.9.23.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/com.mikepenz/multiplatform-markdown-renderer-jvm/0.21.0/f316a3f02f010d00aa31bcaf109e1d0a0af7df/multiplatform-markdown-renderer-jvm-0.21.0.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains/markdown-jvm/0.7.2/c52771a981cfd0d0562082c28bf230c366038700/markdown-jvm-0.7.2.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/com.squareup.okio/okio-jvm/3.7.0/276b999b41f7dcde00054848fc53af338d86b349/okio-jvm-3.7.0.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/androidx.collection/collection-jvm/1.4.0/e209fb7bd1183032f55a0408121c6251a81acb49/collection-jvm-1.4.0.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/androidx.arch.core/core-common/2.2.0/5e1b8b81dfd5f52c56a8d53b18ca759c19a301f3/core-common-2.2.0.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/androidx.annotation/annotation-jvm/1.8.0/b8a16fe526014b7941c1debaccaf9c5153692dbb/annotation-jvm-1.8.0.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib/2.0.0/b48df2c4aede9586cc931ead433bc02d6fd7879e/kotlin-stdlib-2.0.0.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.jetbrains/annotations/23.0.0/8cc20c07506ec18e0834947b84a864bfc094484e/annotations-23.0.0.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/org.slf4j/slf4j-api/1.7.36/6c62681a2f655b49963a5983b8b0950a6120ae14/slf4j-api-1.7.36.jar:/Users/jaroslawkrawczyk/.gradle/caches/modules-2/files-2.1/it.unimi.dsi/fastutil-core/8.5.12/d07afc8c78d4ab62240fc53cc4809f07af8b72b8/fastutil-core-8.5.12.jar MainKt
+Successfully started process 'command '/Users/jaroslawkrawczyk/Library/Java/JavaVirtualMachines/corretto-17.0.16/Contents/Home/bin/java''
+Starting agent-core...
+   Compiling pyo3-build-config v0.21.2
+   Compiling pyo3-macros-backend v0.21.2
+   Compiling pyo3-ffi v0.21.2
+   Compiling pyo3 v0.21.2
+   Compiling pyo3-macros v0.21.2
+   Compiling pythonize v0.21.1
+   Compiling agent-core v0.1.0 (/Users/jaroslawkrawczyk/AgentCl2.0/CoreApp)
+warning: unused import: `warn`
+ --> src/session/mod.rs:8:21
+  |
+8 | use tracing::{info, warn};
+  |                     ^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `Duration`
+  --> src/stats/mod.rs:23:17
+   |
+23 | use std::time::{Duration, Instant};
+   |                 ^^^^^^^^
+
+warning: use of deprecated associated function `pyo3::types::PyDict::new`: `PyDict::new` will be replaced by `PyDict::new_bound` in a future PyO3 version
+  --> src/hooks/mod.rs:80:42
+   |
+80 |                     let locals = PyDict::new(py);
+   |                                          ^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated method `pyo3::Python::<'py>::run`: `Python::run` will be replaced by `Python::run_bound` in a future PyO3 version
+  --> src/hooks/mod.rs:83:24
+   |
+83 |                     py.run(&code, None, Some(locals))
+   |                        ^^^
+
+warning: use of deprecated associated function `pyo3::prelude::PyModule::from_code`: `PyModule::from_code` will be replaced by `PyModule::from_code_bound` in a future PyO3 version
+ --> src/python_host/executor.rs:9:28
+  |
+9 |     let module = PyModule::from_code(py, code, &format!("{}.py", module_name), module_name)
+  |                            ^^^^^^^^^
+
+warning: use of deprecated associated function `pyo3::types::PyDict::new`: `PyDict::new` will be replaced by `PyDict::new_bound` in a future PyO3 version
+  --> src/python_host/executor.rs:21:26
+   |
+21 |     let kwargs = PyDict::new(py);
+   |                          ^^^
+
+warning: use of deprecated method `pyo3::Python::<'py>::import`: `Python::import` will be replaced by `Python::import_bound` in a future PyO3 version
+  --> src/python_host/executor.rs:30:18
+   |
+30 |     let sys = py.import("sys")?;
+   |                  ^^^^^^
+
+warning: use of deprecated method `pyo3::Python::<'py>::import`: `Python::import` will be replaced by `Python::import_bound` in a future PyO3 version
+  --> src/python_host/executor.rs:31:17
+   |
+31 |     let io = py.import("io")?;
+   |                 ^^^^^^
+
+warning: use of deprecated associated function `pyo3::types::PyList::empty`: `PyList::empty` will be replaced by `PyList::empty_bound` in a future PyO3 version
+   --> src/python_host/executor.rs:105:32
+    |
+105 |             let list = PyList::empty(py);
+    |                                ^^^^^
+
+warning: use of deprecated associated function `pyo3::types::PyDict::new`: `PyDict::new` will be replaced by `PyDict::new_bound` in a future PyO3 version
+   --> src/python_host/executor.rs:112:32
+    |
+112 |             let dict = PyDict::new(py);
+    |                                ^^^
+
+warning: unused import: `BufRead`
+  --> src/agent/mod.rs:25:15
+   |
+25 | use std::io::{BufRead, Write};
+   |               ^^^^^^^
+
+warning: methods `execute_tool` and `execute_tool_with_timeout` are never used
+   --> src/agent/mod.rs:846:8
+    |
+ 53 | impl AgentLoop {
+    | -------------- methods in this implementation
+...
+846 |     fn execute_tool(&self, tc: &ToolCall) -> Result<String> {
+    |        ^^^^^^^^^^^^
+...
+856 |     async fn execute_tool_with_timeout(&self, tc: &ToolCall) -> Result<String> {
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `result_tx` is never read
+  --> src/agent/subagent.rs:45:5
+   |
+40 | struct SubAgentEntry {
+   |        ------------- field in this struct
+...
+45 |     result_tx: Option<oneshot::Sender<SubAgentResult>>,
+   |     ^^^^^^^^^
+
+warning: field `client` is never read
+  --> src/backends/lmstudio.rs:11:5
+   |
+ 8 | pub struct LmStudioBackend {
+   |            --------------- field in this struct
+...
+11 |     client: reqwest::Client,
+   |     ^^^^^^
+
+warning: `agent-core` (lib) generated 14 warnings (run `cargo fix --lib -p agent-core` to apply 2 suggestions)
+warning: unused import: `std::io::Write`
+   --> src/main.rs:360:13
+    |
+360 |         use std::io::Write;
+    |             ^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `agent-core` (bin "agent-core") generated 1 warning (run `cargo fix --bin "agent-core" -p agent-core` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.83s
+     Running `target/debug/agent-core --server`
+Error: Address already in use (os error 48)
+agent-core process exited.
+Warning: agent-core did not respond within 10 seconds.
+
+[Incubating] Problems report is available at: file:///Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.4.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 54s
+10 actionable tasks: 6 executed, 4 up-to-date
+Watched directory hierarchies: [/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin]
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.4.1/userguide/configuration_cache_enabling.html

@@ -1,0 +1,453 @@
+Starting Agent Core UI in DEBUG mode...
+Initialized native services in: /Users/jaroslawkrawczyk/.gradle/native
+Initialized jansi services in: /Users/jaroslawkrawczyk/.gradle/native
+Found daemon DaemonInfo{pid=40895, address=[c7464c4a-5ecc-45d9-9f65-6575ea4c18ca port:51699, addresses:[/127.0.0.1]], state=Idle, lastBusy=1774191022721, context=DefaultDaemonContext[uid=ce23a8eb-5ac2-47cf-a186-2ad585e6748e,javaHome=/opt/homebrew/Cellar/openjdk/25.0.2/libexec/openjdk.jdk/Contents/Home,javaVersion=25,javaVendor=Homebrew,daemonRegistryDir=/Users/jaroslawkrawczyk/.gradle/daemon,pid=40895,idleTimeout=10800000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:MaxMetaspaceSize=384m,-XX:+HeapDumpOnOutOfMemoryError,-Xms256m,-Xmx512m,-Dfile.encoding=UTF-8,-Duser.country=PL,-Duser.language=pl,-Duser.variant]} however its context does not match the desired criteria.
+JVM is incompatible.
+Wanted: DaemonRequestContext{jvmCriteria=/Users/jaroslawkrawczyk/Library/Java/JavaVirtualMachines/corretto-17.0.16/Contents/Home (from org.gradle.java.home), daemonOpts=[-XX:MaxMetaspaceSize=384m, -XX:+HeapDumpOnOutOfMemoryError, -Xms256m, -Xmx512m, -Dfile.encoding=UTF-8, -Duser.country=PL, -Duser.language=pl, -Duser.variant], applyInstrumentationAgent=true, nativeServicesMode=ENABLED, priority=NORMAL}
+Actual: DefaultDaemonContext[uid=ce23a8eb-5ac2-47cf-a186-2ad585e6748e,javaHome=/opt/homebrew/Cellar/openjdk/25.0.2/libexec/openjdk.jdk/Contents/Home,javaVersion=25,javaVendor=Homebrew,daemonRegistryDir=/Users/jaroslawkrawczyk/.gradle/daemon,pid=40895,idleTimeout=10800000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:MaxMetaspaceSize=384m,-XX:+HeapDumpOnOutOfMemoryError,-Xms256m,-Xmx512m,-Dfile.encoding=UTF-8,-Duser.country=PL,-Duser.language=pl,-Duser.variant]
+
+  Looking for a different daemon...
+The client will now receive all logging from the daemon (pid: 50618). The daemon log file: /Users/jaroslawkrawczyk/.gradle/daemon/9.4.1/daemon-50618.out.log
+Starting 12th build in daemon [uptime: 16 mins 46.043 secs, performance: 100%, GC rate: 0.00/s, heap usage: 0% of 512 MiB, non-heap usage: 22% of 384 MiB]
+Using 10 worker leases.
+Operational build model parameters: {cachingModelBuilding=false, configurationCache=false, configurationCacheDisabledReason=null, configurationCacheParallelLoad=false, configurationCacheParallelStore=false, configureOnDemand=false, invalidateCoupledProjects=false, isolatedProjects=false, modelAsProjectDependency=false, modelBuilding=false, parallelModelBuilding=false, parallelProjectConfiguration=false, parallelProjectExecution=false, resilientModelBuilding=false}
+Now considering [/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin] as hierarchies to watch
+Watching the file system is configured to be enabled if available
+File system watching is active
+Starting Build
+Settings evaluated using settings file '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/settings.gradle.kts'.
+Projects loaded. Root project using build file '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/build.gradle.kts'.
+Included projects: [root project 'uiKotlin', project ':composeApp', project ':core-api', project ':shared']
+
+> Configure project :
+Evaluating root project 'uiKotlin' using build file '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/build.gradle.kts'.
+Resolved plugin [id: 'org.jetbrains.kotlin.multiplatform', version: '2.0.0', apply: false]
+Resolved plugin [id: 'org.jetbrains.compose', version: '1.6.11', apply: false]
+Resolved plugin [id: 'org.jetbrains.kotlin.plugin.compose', version: '2.0.0', apply: false]
+Resolved plugin [id: 'com.android.application', version: '8.2.0', apply: false]
+Resolved plugin [id: 'org.jetbrains.kotlin.plugin.serialization', version: '2.0.0', apply: false]
+
+> Configure project :composeApp
+Evaluating project ':composeApp' using build file '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build.gradle.kts'.
+Resolved plugin [id: 'org.jetbrains.kotlin.multiplatform', version: '2.0.0']
+Resolved plugin [id: 'org.jetbrains.compose', version: '1.6.11']
+Resolved plugin [id: 'org.jetbrains.kotlin.plugin.compose', version: '2.0.0']
+Using Kotlin Gradle Plugin gradle85 variant
+Configure KMP resources
+Configure compose resources generation
+Configure Res class generation for commonMain
+Configure resource accessors generation for commonMain
+Configure resource accessors generation for commonTest
+Configure resource accessors generation for desktopMain
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+Configure resource accessors generation for desktopTest
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Configure resources publication for 'desktop' target
+Check that new 'org.jetbrains.kotlin.plugin.compose' was applied
+
+> Configure project :core-api
+Evaluating project ':core-api' using build file '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/core-api/build.gradle.kts'.
+Resolved plugin [id: 'org.jetbrains.kotlin.multiplatform', version: '2.0.0']
+Resolved plugin [id: 'org.jetbrains.kotlin.plugin.serialization', version: '2.0.0']
+Using Kotlin Gradle Plugin gradle85 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+
+> Configure project :shared
+Evaluating project ':shared' using build file '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/shared/build.gradle.kts'.
+Resolved plugin [id: 'org.jetbrains.kotlin.multiplatform', version: '2.0.0']
+Resolved plugin [id: 'org.jetbrains.kotlin.plugin.serialization', version: '2.0.0']
+Using Kotlin Gradle Plugin gradle85 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+All projects evaluated.
+Task path ':composeApp:run' matched project ':composeApp'
+Task name matched 'run'
+Selected primary task 'run' from project :composeApp
+Tasks to be executed: [task ':composeApp:checkKotlinGradlePluginConfigurationErrors', task ':composeApp:generateComposeResClass', task ':composeApp:convertXmlValueResourcesForCommonMain', task ':composeApp:copyNonXmlValueResourcesForCommonMain', task ':composeApp:prepareComposeResourcesTaskForCommonMain', task ':composeApp:generateResourceAccessorsForCommonMain', task ':composeApp:convertXmlValueResourcesForDesktopMain', task ':composeApp:copyNonXmlValueResourcesForDesktopMain', task ':composeApp:prepareComposeResourcesTaskForDesktopMain', task ':composeApp:generateResourceAccessorsForDesktopMain', task ':core-api:checkKotlinGradlePluginConfigurationErrors', task ':core-api:compileKotlinJvm', task ':core-api:jvmProcessResources', task ':core-api:jvmMainClasses', task ':core-api:jvmJar', task ':shared:checkKotlinGradlePluginConfigurationErrors', task ':shared:compileKotlinJvm', task ':shared:jvmProcessResources', task ':shared:jvmMainClasses', task ':shared:jvmJar', task ':composeApp:compileKotlinDesktop', task ':composeApp:desktopCopyHierarchicalMultiplatformResources', task ':composeApp:desktopProcessResources', task ':composeApp:desktopMainClasses', task ':composeApp:desktopJar', task ':composeApp:prepareAppResources', task ':composeApp:run']
+Tasks that were excluded: []
+Resolve mutations for :composeApp:checkKotlinGradlePluginConfigurationErrors (Thread[Execution worker,5,main]) started.
+:composeApp:checkKotlinGradlePluginConfigurationErrors (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:checkKotlinGradlePluginConfigurationErrors SKIPPED
+Skipping task ':composeApp:checkKotlinGradlePluginConfigurationErrors' as task onlyIf 'errorDiagnostics are present' is false.
+Resolve mutations for :composeApp:generateComposeResClass (Thread[Execution worker,5,main]) started.
+:composeApp:generateComposeResClass (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:generateComposeResClass UP-TO-DATE
+Caching disabled for task ':composeApp:generateComposeResClass' because:
+  Build cache is disabled
+  Caching has not been enabled for the task
+Skipping task ':composeApp:generateComposeResClass' as it is up-to-date.
+Resolve mutations for :composeApp:convertXmlValueResourcesForCommonMain (Thread[Execution worker,5,main]) started.
+:composeApp:convertXmlValueResourcesForCommonMain (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:convertXmlValueResourcesForCommonMain NO-SOURCE
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/preparedResources/commonMain/composeResources', not found
+Skipping task ':composeApp:convertXmlValueResourcesForCommonMain' as it has no source files and no previous output files.
+Resolve mutations for :composeApp:copyNonXmlValueResourcesForCommonMain (Thread[Execution worker,5,main]) started.
+:composeApp:copyNonXmlValueResourcesForCommonMain (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/preparedResources/commonMain/composeResources', not found
+Skipping task ':composeApp:copyNonXmlValueResourcesForCommonMain' as it has no source files and no previous output files.
+Resolve mutations for :composeApp:prepareComposeResourcesTaskForCommonMain (Thread[Execution worker,5,main]) started.
+:composeApp:prepareComposeResourcesTaskForCommonMain (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+Skipping task ':composeApp:prepareComposeResourcesTaskForCommonMain' as it has no source files and no previous output files.
+Resolve mutations for :composeApp:generateResourceAccessorsForCommonMain (Thread[Execution worker,5,main]) started.
+:composeApp:generateResourceAccessorsForCommonMain (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:generateResourceAccessorsForCommonMain NO-SOURCE
+Skipping task ':composeApp:generateResourceAccessorsForCommonMain' as it has no source files and no previous output files.
+Resolve mutations for :composeApp:convertXmlValueResourcesForDesktopMain (Thread[Execution worker,5,main]) started.
+:composeApp:convertXmlValueResourcesForDesktopMain (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:convertXmlValueResourcesForDesktopMain NO-SOURCE
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/preparedResources/desktopMain/composeResources', not found
+Skipping task ':composeApp:convertXmlValueResourcesForDesktopMain' as it has no source files and no previous output files.
+Resolve mutations for :composeApp:copyNonXmlValueResourcesForDesktopMain (Thread[Execution worker,5,main]) started.
+:composeApp:copyNonXmlValueResourcesForDesktopMain (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:copyNonXmlValueResourcesForDesktopMain NO-SOURCE
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/preparedResources/desktopMain/composeResources', not found
+Skipping task ':composeApp:copyNonXmlValueResourcesForDesktopMain' as it has no source files and no previous output files.
+Resolve mutations for :composeApp:prepareComposeResourcesTaskForDesktopMain (Thread[Execution worker,5,main]) started.
+:composeApp:prepareComposeResourcesTaskForDesktopMain (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:prepareComposeResourcesTaskForDesktopMain NO-SOURCE
+Skipping task ':composeApp:prepareComposeResourcesTaskForDesktopMain' as it has no source files and no previous output files.
+Resolve mutations for :composeApp:generateResourceAccessorsForDesktopMain (Thread[Execution worker,5,main]) started.
+:composeApp:generateResourceAccessorsForDesktopMain (Thread[Execution worker,5,main]) started.
+
+> Task :composeApp:generateResourceAccessorsForDesktopMain NO-SOURCE
+Skipping task ':composeApp:generateResourceAccessorsForDesktopMain' as it has no source files and no previous output files.
+Resolve mutations for :core-api:checkKotlinGradlePluginConfigurationErrors (Thread[Execution worker,5,main]) started.
+:core-api:checkKotlinGradlePluginConfigurationErrors (Thread[Execution worker,5,main]) started.
+
+> Task :core-api:checkKotlinGradlePluginConfigurationErrors SKIPPED
+Skipping task ':core-api:checkKotlinGradlePluginConfigurationErrors' as task onlyIf 'errorDiagnostics are present' is false.
+Resolve mutations for :core-api:compileKotlinJvm (Thread[Execution worker,5,main]) started.
+:core-api:compileKotlinJvm (Thread[Execution worker,5,main]) started.
+
+> Task :core-api:compileKotlinJvm UP-TO-DATE
+Caching disabled for task ':core-api:compileKotlinJvm' because:
+  Build cache is disabled
+Skipping task ':core-api:compileKotlinJvm' as it is up-to-date.
+Resolve mutations for :core-api:jvmProcessResources (Thread[Execution worker,5,main]) started.
+:core-api:jvmProcessResources (Thread[Execution worker,5,main]) started.
+
+> Task :core-api:jvmProcessResources NO-SOURCE
+Skipping task ':core-api:jvmProcessResources' as it has no source files and no previous output files.
+Resolve mutations for :core-api:jvmMainClasses (Thread[Execution worker,5,main]) started.
+:core-api:jvmMainClasses (Thread[Execution worker,5,main]) started.
+
+> Task :core-api:jvmMainClasses UP-TO-DATE
+Skipping task ':core-api:jvmMainClasses' as it has no actions.
+Resolve mutations for :core-api:jvmJar (Thread[Execution worker Thread 3,5,main]) started.
+:core-api:jvmJar (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :core-api:jvmJar UP-TO-DATE
+Caching disabled for task ':core-api:jvmJar' because:
+  Build cache is disabled
+  Not worth caching
+Skipping task ':core-api:jvmJar' as it is up-to-date.
+work action resolve core-api-jvm.jar (project :core-api) (Thread[Execution worker Thread 3,5,main]) started.
+Resolve mutations for :shared:checkKotlinGradlePluginConfigurationErrors (Thread[Execution worker Thread 3,5,main]) started.
+:shared:checkKotlinGradlePluginConfigurationErrors (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+Skipping task ':shared:checkKotlinGradlePluginConfigurationErrors' as task onlyIf 'errorDiagnostics are present' is false.
+Resolve mutations for :shared:compileKotlinJvm (Thread[Execution worker Thread 3,5,main]) started.
+:shared:compileKotlinJvm (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :shared:compileKotlinJvm UP-TO-DATE
+Caching disabled for task ':shared:compileKotlinJvm' because:
+  Build cache is disabled
+Skipping task ':shared:compileKotlinJvm' as it is up-to-date.
+Resolve mutations for :shared:jvmProcessResources (Thread[Execution worker Thread 3,5,main]) started.
+:shared:jvmProcessResources (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :shared:jvmProcessResources NO-SOURCE
+Skipping task ':shared:jvmProcessResources' as it has no source files and no previous output files.
+Resolve mutations for :shared:jvmMainClasses (Thread[Execution worker Thread 3,5,main]) started.
+:shared:jvmMainClasses (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :shared:jvmMainClasses UP-TO-DATE
+Skipping task ':shared:jvmMainClasses' as it has no actions.
+Resolve mutations for :shared:jvmJar (Thread[Execution worker Thread 3,5,main]) started.
+:shared:jvmJar (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :shared:jvmJar UP-TO-DATE
+Caching disabled for task ':shared:jvmJar' because:
+  Build cache is disabled
+  Not worth caching
+Skipping task ':shared:jvmJar' as it is up-to-date.
+work action resolve shared-jvm.jar (project :shared) (Thread[Execution worker Thread 3,5,main]) started.
+Resolve mutations for :composeApp:compileKotlinDesktop (Thread[Execution worker Thread 3,5,main]) started.
+:composeApp:compileKotlinDesktop (Thread[Execution worker Thread 3,5,main]) started.
+Resolve mutations for :composeApp:desktopCopyHierarchicalMultiplatformResources (Thread[Execution worker Thread 5,5,main]) started.
+:composeApp:desktopCopyHierarchicalMultiplatformResources (Thread[Execution worker Thread 5,5,main]) started.
+
+> Task :composeApp:desktopCopyHierarchicalMultiplatformResources UP-TO-DATE
+Caching disabled for task ':composeApp:desktopCopyHierarchicalMultiplatformResources' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Skipping task ':composeApp:desktopCopyHierarchicalMultiplatformResources' as it is up-to-date.
+Resolve mutations for :composeApp:desktopProcessResources (Thread[Execution worker Thread 5,5,main]) started.
+:composeApp:desktopProcessResources (Thread[Execution worker Thread 5,5,main]) started.
+
+> Task :composeApp:desktopProcessResources UP-TO-DATE
+Caching disabled for task ':composeApp:desktopProcessResources' because:
+  Build cache is disabled
+  Not worth caching
+Skipping task ':composeApp:desktopProcessResources' as it is up-to-date.
+Resolve mutations for :composeApp:prepareAppResources (Thread[Execution worker Thread 5,5,main]) started.
+:composeApp:prepareAppResources (Thread[Execution worker Thread 5,5,main]) started.
+
+> Task :composeApp:prepareAppResources NO-SOURCE
+Skipping task ':composeApp:prepareAppResources' as it has no source files and no previous output files.
+
+> Task :composeApp:compileKotlinDesktop FAILED
+Caching disabled for task ':composeApp:compileKotlinDesktop' because:
+  Build cache is disabled
+Task ':composeApp:compileKotlinDesktop' is not up-to-date because:
+  Task has failed previously.
+The input changes require a full rebuild for incremental task ':composeApp:compileKotlinDesktop'.
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/kotlin/desktopMainResourceAccessors', not found
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/kotlin/commonMainResourceAccessors', not found
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/kotlin/desktopMainResourceAccessors', not found
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/kotlin/commonMainResourceAccessors', not found
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/kotlin/desktopMainResourceAccessors', not found
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/kotlin/commonMainResourceAccessors', not found
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/kotlin/desktopMainResourceAccessors', not found
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/kotlin/commonMainResourceAccessors', not found
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/kotlin/desktopMainResourceAccessors', not found
+file or directory '/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/generated/compose/resourceGenerator/kotlin/commonMainResourceAccessors', not found
+Kotlin source files: /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/desktopMain/kotlin/Main.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/AgentConsultationItem.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/PluginManager.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/ChatBubble.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/LogViewer.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/CommonUI.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/TerminalViewer.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/IndexingStatus.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/AdvancedComponents.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/WorkflowBuilder.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/SyntaxHighlighter.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/TokenTracker.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/Sidebar.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/Scratchpad.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/SettingsDialog.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/components/ApprovalDialog.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/Theme.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/ui/ConnectionScreen.kt, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/App.kt
+Java source files: 
+Script source files: 
+Script file extensions: 
+Using Kotlin/JVM incremental compilation
+[KOTLIN] Kotlin compilation 'jdkHome' argument: /Users/jaroslawkrawczyk/Library/Java/JavaVirtualMachines/corretto-17.0.16/Contents/Home
+Options for KOTLIN DAEMON: IncrementalCompilationOptions(super=CompilationOptions(compilerMode=INCREMENTAL_COMPILER, targetPlatform=JVM, reportCategories=[0, 3], reportSeverity=2, requestedCompilationResults=[0], kotlinScriptExtensions=[]), areFileChangesKnown=false, modifiedFiles=null, deletedFiles=null, classpathChanges=NotAvailableForNonIncrementalRun, workingDir=/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/kotlin/compileKotlinDesktop/cacheable, multiModuleICSettings=MultiModuleICSettings(buildHistoryFile=/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/kotlin/compileKotlinDesktop/local-state/build-history.bin, useModuleDetection=false), usePreciseJavaTracking=true, icFeatures=IncrementalCompilationFeatures(withAbiSnapshot=false, preciseCompilationResultsBackup=true, keepIncrementalCompilationCachesInMemory=true, enableUnsafeIncrementalCompilationForMultiplatform=false), outputFiles=[/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/classes/kotlin/desktop/main, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/kotlin/compileKotlinDesktop/cacheable, /Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/build/kotlin/compileKotlinDesktop/local-state])
+e: file:///Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/App.kt:119:545 Unresolved reference 'text'.
+e: file:///Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/App.kt:125:545 Unresolved reference 'text'.
+e: file:///Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/App.kt:139:504 Unresolved reference 'text'.
+e: file:///Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/App.kt:241:29 Overload resolution ambiguity between candidates:
+@Composable() @ComposableTarget(...) fun Icon(bitmap: ImageBitmap, contentDescription: String?, modifier: Modifier = ..., tint: Color = ...): Unit
+@Composable() @ComposableTarget(...) fun Icon(painter: Painter, contentDescription: String?, modifier: Modifier = ..., tint: Color = ...): Unit
+@Composable() @ComposableTarget(...) fun Icon(imageVector: ImageVector, contentDescription: String?, modifier: Modifier = ..., tint: Color = ...): Unit
+e: file:///Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/App.kt:241:48 Unresolved reference 'Add'.
+e: file:///Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/App.kt:339:34 Overload resolution ambiguity between candidates:
+@Composable() @ComposableTarget(...) fun Icon(bitmap: ImageBitmap, contentDescription: String?, modifier: Modifier = ..., tint: Color = ...): Unit
+@Composable() @ComposableTarget(...) fun Icon(painter: Painter, contentDescription: String?, modifier: Modifier = ..., tint: Color = ...): Unit
+@Composable() @ComposableTarget(...) fun Icon(imageVector: ImageVector, contentDescription: String?, modifier: Modifier = ..., tint: Color = ...): Unit
+e: file:///Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/composeApp/src/commonMain/kotlin/com/agentcore/App.kt:339:53 Unresolved reference 'Add'.
+Finished executing kotlin compiler using DAEMON strategy
+
+[Incubating] Problems report is available at: file:///Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':composeApp:compileKotlinDesktop'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+* Exception is:
+org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':composeApp:compileKotlinDesktop'.
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.lambda$executeIfValid$1(ExecuteActionsTaskExecuter.java:135)
+	at org.gradle.internal.Try$Failure.ifSuccessfulOrElse(Try.java:288)
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:133)
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.execute(ExecuteActionsTaskExecuter.java:121)
+	at org.gradle.api.internal.tasks.execution.ProblemsTaskPathTrackingTaskExecuter.execute(ProblemsTaskPathTrackingTaskExecuter.java:41)
+	at org.gradle.api.internal.tasks.execution.ResolveTaskExecutionModeExecuter.execute(ResolveTaskExecutionModeExecuter.java:51)
+	at org.gradle.api.internal.tasks.execution.FinalizePropertiesTaskExecuter.execute(FinalizePropertiesTaskExecuter.java:46)
+	at org.gradle.api.internal.tasks.execution.SkipTaskWithNoActionsExecuter.execute(SkipTaskWithNoActionsExecuter.java:57)
+	at org.gradle.api.internal.tasks.execution.SkipOnlyIfTaskExecuter.execute(SkipOnlyIfTaskExecuter.java:74)
+	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.executeTask(EventFiringTaskExecuter.java:77)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:55)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:52)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:210)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:205)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:54)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter.execute(EventFiringTaskExecuter.java:52)
+	at org.gradle.execution.plan.DefaultNodeExecutor.executeLocalTaskNode(DefaultNodeExecutor.java:55)
+	at org.gradle.execution.plan.DefaultNodeExecutor.execute(DefaultNodeExecutor.java:34)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:355)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:343)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.lambda$execute$0(DefaultTaskExecutionGraph.java:339)
+	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:84)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:339)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:328)
+	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:459)
+	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:376)
+	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
+Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+	at org.gradle.workers.internal.DefaultWorkerExecutor$WorkItemExecution.waitForCompletion(DefaultWorkerExecutor.java:289)
+	at org.gradle.internal.work.DefaultAsyncWorkTracker.lambda$waitForItemsAndGatherFailures$2(DefaultAsyncWorkTracker.java:130)
+	at org.gradle.internal.Factories$1.create(Factories.java:30)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.lambda$withoutLocks$2(DefaultWorkerLeaseService.java:350)
+	at org.gradle.internal.work.ResourceLockStatistics$1.measure(ResourceLockStatistics.java:43)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withoutLocks(DefaultWorkerLeaseService.java:348)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withoutLocks(DefaultWorkerLeaseService.java:332)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withoutLock(DefaultWorkerLeaseService.java:337)
+	at org.gradle.internal.work.DefaultAsyncWorkTracker.waitForItemsAndGatherFailures(DefaultAsyncWorkTracker.java:126)
+	at org.gradle.internal.work.DefaultAsyncWorkTracker.waitForItemsAndGatherFailures(DefaultAsyncWorkTracker.java:92)
+	at org.gradle.internal.work.DefaultAsyncWorkTracker.waitForAll(DefaultAsyncWorkTracker.java:78)
+	at org.gradle.internal.work.DefaultAsyncWorkTracker.waitForCompletion(DefaultAsyncWorkTracker.java:66)
+	at org.gradle.api.internal.tasks.execution.TaskExecution$3.run(TaskExecution.java:267)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:30)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:27)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.run(DefaultBuildOperationRunner.java:48)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.executeAction(TaskExecution.java:244)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.executeActions(TaskExecution.java:227)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.executeWithPreviousOutputFiles(TaskExecution.java:210)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.execute(TaskExecution.java:176)
+	at org.gradle.internal.execution.steps.ExecuteStep.executeInternal(ExecuteStep.java:167)
+	at org.gradle.internal.execution.steps.ExecuteStep.access$000(ExecuteStep.java:47)
+	at org.gradle.internal.execution.steps.ExecuteStep$1.call(ExecuteStep.java:137)
+	at org.gradle.internal.execution.steps.ExecuteStep$1.call(ExecuteStep.java:134)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:210)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:205)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:54)
+	at org.gradle.internal.execution.steps.ExecuteStep.execute(ExecuteStep.java:134)
+	at org.gradle.internal.execution.steps.ExecuteStep$Mutable.execute(ExecuteStep.java:80)
+	at org.gradle.internal.execution.steps.CancelExecutionStep.execute(CancelExecutionStep.java:42)
+	at org.gradle.internal.execution.steps.TimeoutStep.executeWithoutTimeout(TimeoutStep.java:75)
+	at org.gradle.internal.execution.steps.TimeoutStep.execute(TimeoutStep.java:55)
+	at org.gradle.internal.execution.steps.PreCreateOutputParentsStep.execute(PreCreateOutputParentsStep.java:51)
+	at org.gradle.internal.execution.steps.PreCreateOutputParentsStep.execute(PreCreateOutputParentsStep.java:29)
+	at org.gradle.internal.execution.steps.RemovePreviousOutputsStep.executeMutable(RemovePreviousOutputsStep.java:67)
+	at org.gradle.internal.execution.steps.RemovePreviousOutputsStep.executeMutable(RemovePreviousOutputsStep.java:39)
+	at org.gradle.internal.execution.steps.MutableStep.execute(MutableStep.java:26)
+	at org.gradle.internal.execution.steps.BroadcastChangingOutputsStep.execute(BroadcastChangingOutputsStep.java:42)
+	at org.gradle.internal.execution.steps.BroadcastChangingOutputsStep.execute(BroadcastChangingOutputsStep.java:24)
+	at org.gradle.internal.execution.steps.CaptureOutputsAfterExecutionStep.execute(CaptureOutputsAfterExecutionStep.java:69)
+	at org.gradle.internal.execution.steps.CaptureOutputsAfterExecutionStep.execute(CaptureOutputsAfterExecutionStep.java:46)
+	at org.gradle.internal.execution.steps.ResolveInputChangesStep.executeMutable(ResolveInputChangesStep.java:39)
+	at org.gradle.internal.execution.steps.ResolveInputChangesStep.executeMutable(ResolveInputChangesStep.java:28)
+	at org.gradle.internal.execution.steps.MutableStep.execute(MutableStep.java:26)
+	at org.gradle.internal.execution.steps.BuildCacheStep.executeWithoutCache(BuildCacheStep.java:189)
+	at org.gradle.internal.execution.steps.BuildCacheStep.lambda$execute$1(BuildCacheStep.java:76)
+	at org.gradle.internal.Either$Right.fold(Either.java:176)
+	at org.gradle.internal.execution.caching.CachingState.fold(CachingState.java:62)
+	at org.gradle.internal.execution.steps.BuildCacheStep.execute(BuildCacheStep.java:74)
+	at org.gradle.internal.execution.steps.BuildCacheStep.execute(BuildCacheStep.java:49)
+	at org.gradle.internal.execution.steps.StoreExecutionStateStep.executeMutable(StoreExecutionStateStep.java:46)
+	at org.gradle.internal.execution.steps.StoreExecutionStateStep.executeMutable(StoreExecutionStateStep.java:35)
+	at org.gradle.internal.execution.steps.MutableStep.execute(MutableStep.java:26)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.executeBecause(SkipUpToDateStep.java:75)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.lambda$execute$2(SkipUpToDateStep.java:53)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:53)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:35)
+	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:37)
+	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:27)
+	at org.gradle.internal.execution.steps.ResolveMutableCachingStateStep.executeDelegate(ResolveMutableCachingStateStep.java:70)
+	at org.gradle.internal.execution.steps.ResolveMutableCachingStateStep.executeDelegate(ResolveMutableCachingStateStep.java:32)
+	at org.gradle.internal.execution.steps.AbstractResolveCachingStateStep.execute(AbstractResolveCachingStateStep.java:69)
+	at org.gradle.internal.execution.steps.AbstractResolveCachingStateStep.execute(AbstractResolveCachingStateStep.java:37)
+	at org.gradle.internal.execution.steps.ResolveChangesStep.executeMutable(ResolveChangesStep.java:63)
+	at org.gradle.internal.execution.steps.ResolveChangesStep.executeMutable(ResolveChangesStep.java:34)
+	at org.gradle.internal.execution.steps.MutableStep.execute(MutableStep.java:26)
+	at org.gradle.internal.execution.steps.ValidateStep$Mutable.executeDelegate(ValidateStep.java:79)
+	at org.gradle.internal.execution.steps.ValidateStep$Mutable.executeDelegate(ValidateStep.java:65)
+	at org.gradle.internal.execution.steps.ValidateStep.execute(ValidateStep.java:99)
+	at org.gradle.internal.execution.steps.ValidateStep$Mutable.execute(ValidateStep.java:65)
+	at org.gradle.internal.execution.steps.CaptureMutableStateBeforeExecutionStep.executeMutable(CaptureMutableStateBeforeExecutionStep.java:86)
+	at org.gradle.internal.execution.steps.CaptureMutableStateBeforeExecutionStep.execute(CaptureMutableStateBeforeExecutionStep.java:65)
+	at org.gradle.internal.execution.steps.CaptureMutableStateBeforeExecutionStep.execute(CaptureMutableStateBeforeExecutionStep.java:45)
+	at org.gradle.internal.execution.steps.SkipEmptyMutableWorkStep.executeWithNonEmptySources(SkipEmptyMutableWorkStep.java:210)
+	at org.gradle.internal.execution.steps.SkipEmptyMutableWorkStep.executeMutable(SkipEmptyMutableWorkStep.java:90)
+	at org.gradle.internal.execution.steps.SkipEmptyMutableWorkStep.executeMutable(SkipEmptyMutableWorkStep.java:53)
+	at org.gradle.internal.execution.steps.MutableStep.execute(MutableStep.java:26)
+	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsStartedStep.execute(MarkSnapshottingInputsStartedStep.java:38)
+	at org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.executeMutable(LoadPreviousExecutionStateStep.java:36)
+	at org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.executeMutable(LoadPreviousExecutionStateStep.java:23)
+	at org.gradle.internal.execution.steps.MutableStep.execute(MutableStep.java:26)
+	at org.gradle.internal.execution.steps.HandleStaleOutputsStep.executeMutable(HandleStaleOutputsStep.java:77)
+	at org.gradle.internal.execution.steps.HandleStaleOutputsStep.executeMutable(HandleStaleOutputsStep.java:43)
+	at org.gradle.internal.execution.steps.MutableStep.execute(MutableStep.java:26)
+	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.lambda$executeMutable$0(AssignMutableWorkspaceStep.java:34)
+	at org.gradle.api.internal.tasks.execution.TaskExecution$4.withWorkspace(TaskExecution.java:305)
+	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.executeMutable(AssignMutableWorkspaceStep.java:30)
+	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.executeMutable(AssignMutableWorkspaceStep.java:21)
+	at org.gradle.internal.execution.steps.MutableStep.execute(MutableStep.java:26)
+	at org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:40)
+	at org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:23)
+	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.lambda$execute$2(ExecuteWorkBuildOperationFiringStep.java:67)
+	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:67)
+	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:39)
+	at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:46)
+	at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:34)
+	at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:56)
+	at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:38)
+	at org.gradle.internal.execution.impl.DefaultExecutionEngine$1.execute(DefaultExecutionEngine.java:68)
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:132)
+	... 30 more
+Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilation error. See log for more details
+	at org.jetbrains.kotlin.gradle.tasks.TasksUtilsKt.throwExceptionIfCompilationFailed(tasksUtils.kt:21)
+	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.run(GradleKotlinCompilerWork.kt:119)
+	at org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction.execute(GradleCompilerRunnerWithWorkers.kt:76)
+	at org.gradle.workers.internal.DefaultWorkerServer.execute(DefaultWorkerServer.java:68)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:64)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:61)
+	at org.gradle.internal.classloader.ClassLoaderUtils.executeInClassloader(ClassLoaderUtils.java:102)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.lambda$execute$0(NoIsolationWorkerFactory.java:61)
+	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:44)
+	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:41)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:210)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:205)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:54)
+	at org.gradle.workers.internal.AbstractWorker.executeWrappedInBuildOperation(AbstractWorker.java:41)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.execute(NoIsolationWorkerFactory.java:58)
+	at org.gradle.workers.internal.DefaultWorkerExecutor.lambda$submitWork$0(DefaultWorkerExecutor.java:176)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runExecution(DefaultConditionalExecutionQueue.java:194)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.access$700(DefaultConditionalExecutionQueue.java:127)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner$1.run(DefaultConditionalExecutionQueue.java:169)
+	at org.gradle.internal.Factories$1.create(Factories.java:30)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.lambda$withLocksAcquired$0(DefaultWorkerLeaseService.java:275)
+	at org.gradle.internal.work.ResourceLockStatistics$1.measure(ResourceLockStatistics.java:43)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocksAcquired(DefaultWorkerLeaseService.java:273)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:265)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:128)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:133)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runBatch(DefaultConditionalExecutionQueue.java:164)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.run(DefaultConditionalExecutionQueue.java:133)
+	... 2 more
+
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.4.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 1s
+8 actionable tasks: 1 executed, 7 up-to-date
+Watched directory hierarchies: [/Users/jaroslawkrawczyk/AgentCl2.0/uiKotlin]

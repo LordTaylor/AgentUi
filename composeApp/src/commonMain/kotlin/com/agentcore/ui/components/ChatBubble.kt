@@ -17,11 +17,19 @@ import com.agentcore.Message
 import com.mikepenz.markdown.m3.Markdown
 
 @Composable
-fun ChatBubble(msg: Message) {
+fun ChatBubble(msg: Message, isGrouped: Boolean = false) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = if (isGrouped) 2.dp else 8.dp, bottom = 2.dp),
         horizontalAlignment = if (msg.isFromUser) androidx.compose.ui.Alignment.End else androidx.compose.ui.Alignment.Start
     ) {
+        if (!isGrouped && !msg.isFromUser) {
+            Text(
+                text = msg.sender,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
+            )
+        }
         Surface(
             shape = RoundedCornerShape(12.dp),
             color = if (msg.isFromUser) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface,
@@ -70,9 +78,16 @@ fun ChatBubble(msg: Message) {
                             }
                         }
                     }
-                } else {
-                    Markdown(content = text)
                 }
+
+                Spacer(modifier = Modifier.height(4.dp))
+                val timeStr = com.agentcore.shared.DateTimeUtils.formatTime(msg.timestamp)
+                Text(
+                    text = timeStr,
+                    fontSize = 9.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.align(androidx.compose.ui.Alignment.End)
+                )
             }
         }
     }
