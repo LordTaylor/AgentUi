@@ -120,12 +120,13 @@ Format JSON: `{"cmd":"<nazwa>","payload":{...}}`.
 | `get_stats` | Kliknięcie ikony Stats | `IpcCommand.GetStats` |
 | `list_tools` | Inicjalizacja w trybie IPC | `IpcCommand.ListTools` |
 | `approval_response` | Zatwierdzenie/odrzucenie narzędzia | `IpcCommand.ApprovalResponse` |
-| `cancel` | Przycisk Cancel (THINKING) | `IpcCommand.Cancel` ⚠️ |
+| `cancel` | Przycisk Cancel (THINKING) | `IpcCommand.Cancel` ✅ |
 | `ping` | AgentClient.ping() | `IpcCommand.Ping` |
 | `delete_session` | AgentClient.deleteSession() | `IpcCommand.DeleteSession` |
 
-> ⚠️ `cancel` — backend oznacza jako `NOT_IMPLEMENTED`. UI wysyła komendę, ale ustawia też
-> `statusState = "IDLE"` lokalnie jako fallback.
+> ✅ `cancel` — zaimplementowany w CoreApp (commit `5fc2fc2`). Backend ustawia `AtomicBool`
+> cancel token + przerywa task cooperative na granicy iteracji pętli agenta.
+> UI może usunąć lokalny fallback `statusState = "IDLE"` i polegać na zdarzeniu `message_end`.
 
 ### Payload `send_message` — pełna struktura
 
@@ -264,8 +265,10 @@ Użytkownik klika Cancel (przycisk widoczny gdy THINKING)
   ▼
 ChatMainScreen.onCancel()
   │  AgentClient.sendCommand(IpcCommand.Cancel(session_id))
-  │  ⚠️ Backend zwraca error NOT_IMPLEMENTED
-  │  statusState = "IDLE"  ← lokalny fallback
+  │  ✅ Backend ustawia AtomicBool cancel token
+  │  Agent przerywa na granicy iteracji (cooperative cancellation)
+  │  Backend emituje message_end
+  │  statusState = "IDLE"  ← ustawiany przez message_end
 ```
 
 ---
@@ -279,7 +282,7 @@ ChatMainScreen.onCancel()
 | # | Problem | Backend mówi | UI robi | Ryzyko |
 |---|---------|-------------|---------|--------|
 | 1 | **Format odpowiedzi POST /command** | `{"events":[{...},{...}]}` (tablica) | `AgentClient.sendCommand()` parsuje jako pojedynczy `IpcEvent` | Komendy HTTP zwracają null zamiast odpowiedzi |
-| 2 | **`cancel` NOT_IMPLEMENTED** | Zwraca `error: NOT_IMPLEMENTED` | UI wysyła i oczekuje anulowania | Agent nie jest przerywany |
+| 2 | **`cancel` NAPRAWIONY** | Cooperative AtomicBool token (commit `5fc2fc2`) | UI wysyła i oczekuje `message_end` | ✅ Agent jest przerywany na granicy iteracji |
 
 ### 🟡 Rozbieżności modelu (działają dzięki `ignoreUnknownKeys`)
 

@@ -155,6 +155,25 @@ class AgentClient(private val serverUrl: String = "http://localhost:7700") {
         }
     }
 
+    suspend fun listBackends(): List<BackendInfo> {
+        return try {
+            val response: HttpResponse = client.post(commandUrl) {
+                contentType(ContentType.Application.Json)
+                setBody(IpcCommand.ListBackends())
+            }
+            if (response.status == HttpStatusCode.OK) {
+                val body = response.bodyAsText()
+                val json = Json { ignoreUnknownKeys = true }
+                val event = json.decodeFromString<IpcEvent>(body)
+                if (event is IpcEvent.BackendsList) event.payload.backends else emptyList()
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
     fun observeEvents(): Flow<IpcEvent> = flow {
         val maxAttempts = 3
         val backoffDelays = listOf(2_000L, 4_000L, 8_000L)

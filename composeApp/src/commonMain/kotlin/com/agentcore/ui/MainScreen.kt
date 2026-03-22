@@ -34,6 +34,7 @@ fun MainScreen(
     sessions: List<SessionInfo>,
     currentSessionId: String?,
     onSessionSelect: (String) -> Unit,
+    availableTools: List<JsonObject>,
     messages: List<Message>,
     statusState: String,
     onStatusChange: (String) -> Unit,
@@ -53,6 +54,8 @@ fun MainScreen(
     onSendMessage: (String) -> Unit,
     showSettings: Boolean,
     onToggleSettings: () -> Unit,
+    onSessionDelete: (String) -> Unit,
+    onReloadTools: () -> Unit,
     onCancel: () -> Unit = {},
     onClearChat: () -> Unit = {}
 ) {
@@ -98,8 +101,10 @@ fun MainScreen(
                 Sidebar(
                     sessions = sessions,
                     onSessionSelect = onSessionSelect,
+                    onSessionDelete = onSessionDelete,
                     modifier = Modifier
-                        .width(240.dp)
+                        .width(300.dp)
+                        .background(MaterialTheme.colorScheme.surface)
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                         .padding(end = 1.dp)
                 )
@@ -304,7 +309,7 @@ fun MainScreen(
                                     .padding(start = 1.dp)
                                 ) {
                                     if (showStats) StatsPanel(sessionStats) { showStats = false }
-                                    if (showTools) ToolsPanel(availableTools = emptyList(), onDismiss = { showTools = false }) // availableTools mapping needed
+                                    if (showTools) ToolsPanel(availableTools = availableTools, onReloadTools = onReloadTools, onDismiss = { showTools = false })
                                     if (showLogs) LogsPanel(logs) { showLogs = false }
                                     if (showScratchpad) ScratchpadPanel(scratchpadContent, onScratchpadUpdate, { onScratchpadUpdate(it) }) { showScratchpad = false }
                                     if (showTerminal) TerminalPanel(terminalTraffic) { showTerminal = false }
@@ -346,12 +351,12 @@ fun StatsPanel(stats: JsonObject?, onDismiss: () -> Unit) {
 }
 
 @Composable
-fun ToolsPanel(availableTools: List<JsonObject>, onDismiss: () -> Unit) {
+fun ToolsPanel(availableTools: List<JsonObject>, onReloadTools: () -> Unit, onDismiss: () -> Unit) {
     Column {
         Row(modifier = Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.End) {
             IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, contentDescription = "Close") }
         }
-        ToolExplorer(availableTools)
+        ToolExplorer(availableTools, onReloadTools)
     }
 }
 

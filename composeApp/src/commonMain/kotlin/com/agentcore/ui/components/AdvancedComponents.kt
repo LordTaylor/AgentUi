@@ -48,10 +48,22 @@ private fun StatRow(label: String, value: String) {
     }
 }
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
+
 @Composable
-fun ToolExplorer(tools: List<JsonObject>) {
+fun ToolExplorer(tools: List<JsonObject>, onReloadTools: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Available Tools", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Available Tools", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            IconButton(onClick = onReloadTools) {
+                Icon(Icons.Default.Refresh, contentDescription = "Reload Tools")
+            }
+        }
         Spacer(modifier = Modifier.height(16.dp))
         
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {

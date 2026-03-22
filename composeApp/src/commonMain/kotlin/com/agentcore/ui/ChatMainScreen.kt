@@ -35,11 +35,13 @@ fun ChatMainScreen(mode: ConnectionMode) {
         onSessionSelect = { id ->
             viewModel.onIntent(ChatIntent.SelectSession(id), scope, mode)
         },
+        availableTools = state.availableTools,
         messages = state.messages,
         statusState = state.statusState,
         onStatusChange = { /* Handled via VM intents in onSendMessage etc */ },
         sessionStats = state.sessionStats,
         onStatsRefresh = { viewModel.onIntent(ChatIntent.RefreshStats, scope, mode) },
+        onReloadTools = { viewModel.onIntent(ChatIntent.ReloadTools, scope, mode) },
         logs = state.logs,
         scratchpadContent = state.scratchpadContent,
         onScratchpadUpdate = { viewModel.onIntent(ChatIntent.UpdateScratchpad(it), scope, mode) },
@@ -58,6 +60,7 @@ fun ChatMainScreen(mode: ConnectionMode) {
         },
         showSettings = state.showSettings,
         onToggleSettings = { viewModel.onIntent(ChatIntent.ToggleSettings, scope, mode) },
+        onSessionDelete = { id -> viewModel.onIntent(ChatIntent.DeleteSession(id), scope, mode) },
         onCancel = {
             viewModel.onIntent(ChatIntent.CancelAction, scope, mode)
         },
@@ -68,6 +71,7 @@ fun ChatMainScreen(mode: ConnectionMode) {
         SettingsDialog(
             currentBackend = state.currentBackend,
             currentRole = state.currentRole,
+            availableBackends = state.availableBackends,
             onDismiss = { viewModel.onIntent(ChatIntent.ToggleSettings, scope, mode) },
             onSave = { b, r ->
                 viewModel.onIntent(ChatIntent.UpdateSettings(b, r), scope, mode)
