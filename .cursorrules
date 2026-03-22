@@ -1,0 +1,22 @@
+# AgentCore Project Rules
+
+These rules apply to all AI agents working on this project.
+
+## 1. Roadmap Maintenance
+- **Rule**: Always keep `docs/ROADMAP.md` up to date.
+- **Action**: When a feature is completed, mark it as `[x]`. When a new feature is discussed or planned, add it to the appropriate Phase.
+
+## 2. Post-Task Workflow
+- **Rule**: Every task must be followed by documentation updates and internal verification.
+- **Action**: After code changes:
+    1.  Update relevant documentation in `docs/` (e.g., `ARCHITECTURE.md`, `README.md`).
+    2.  Run the debug script: `./scripts/debug.sh` and verify the output.
+    3.  Report any issues found during the debug run.
+
+## 3. Architecture Consistency
+- **Rule**: Follow the established multi-module structure.
+- **Action**: Ensure new logic is placed in the correct module (`:shared`, `:core-api`, or `:composeApp`).
+
+## 4. Git Restrictions
+- **Rule**: NEVER perform a `git commit`.
+- **Action**: You can initialize repositories, add remotes, and stage files (`git add`), but you must NEVER execute `git commit`. Staging is the final step for the agent.

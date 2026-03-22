@@ -1,0 +1,53 @@
+package com.agentcore.ui.components
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import java.io.File
+
+@Composable
+fun AttachmentChip(path: String, onRemove: () -> Unit) {
+    val name = File(path).name
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = Modifier.padding(end = 8.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+        ) {
+            Text(name, fontSize = 12.sp)
+            Spacer(modifier = Modifier.width(4.dp))
+            Icon(
+                Icons.Default.Close, 
+                contentDescription = "Remove", 
+                modifier = Modifier.size(14.dp).clickable { onRemove() },
+                tint = Color.Gray
+            )
+        }
+    }
+}
+
+@Composable
+fun ActionLogItem(text: String) {
+    Text(
+        text = "⚙️ $text",
+        fontSize = 10.sp,
+        color = Color.Gray,
+        modifier = Modifier.padding(vertical = 2.dp, horizontal = 8.dp),
+        maxLines = 1
+    )
+}
