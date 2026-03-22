@@ -116,6 +116,42 @@ sealed class IpcCommand {
     @Serializable
     @SerialName("get_context_suggestions")
     class GetContextSuggestions : IpcCommand()
+
+    @Serializable
+    @SerialName("cancel")
+    data class Cancel(val payload: CancelPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("ping")
+    class Ping : IpcCommand()
+
+    @Serializable
+    @SerialName("list_backends")
+    class ListBackends : IpcCommand()
+
+    @Serializable
+    @SerialName("delete_session")
+    data class DeleteSession(val payload: DeleteSessionPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("prune_session")
+    data class PruneSession(val payload: PruneSessionPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("fork_session")
+    data class ForkSession(val payload: ForkSessionPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("get_config")
+    class GetConfig : IpcCommand()
+
+    @Serializable
+    @SerialName("reload_tools")
+    class ReloadTools : IpcCommand()
+
+    @Serializable
+    @SerialName("set_system_prompt")
+    data class SetSystemPrompt(val payload: SetSystemPromptPayload) : IpcCommand()
 }
 
 @Serializable
@@ -123,6 +159,7 @@ data class SetBackendPayload(val backend: String, val model: String? = null)
 
 @Serializable
 data class GetStatsPayload(val dummy: String? = null)
+
 @Serializable
 data class ApprovalResponsePayload(val id: String, val approved: Boolean)
 
@@ -136,11 +173,28 @@ data class GetSessionPayload(val session_id: String)
 data class SendMessagePayload(
     val session_id: String? = null,
     val text: String,
-    val attachments: List<String>? = null
+    val attachments: List<String>? = null,
+    val include_stats: Boolean = false,
+    val images: List<String>? = null
 )
 
 @Serializable
 data class UpdateScratchpadPayload(val content: String)
+
+@Serializable
+data class CancelPayload(val session_id: String)
+
+@Serializable
+data class DeleteSessionPayload(val session_id: String)
+
+@Serializable
+data class PruneSessionPayload(val session_id: String, val keep_last: Int = 20)
+
+@Serializable
+data class ForkSessionPayload(val session_id: String, val from_message_idx: Int)
+
+@Serializable
+data class SetSystemPromptPayload(val session_id: String, val prompt: String)
 
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
@@ -159,8 +213,8 @@ sealed class IpcEvent {
     ) : IpcEvent()
 
     @Serializable
-    @SerialName("message_complete")
-    data class MessageComplete(val payload: MessageCompletePayload) : IpcEvent()
+    @SerialName("message_end")
+    data class MessageEnd(val payload: MessageEndPayload) : IpcEvent()
 
     @Serializable
     @SerialName("stats")
@@ -181,7 +235,7 @@ sealed class IpcEvent {
     data class Error(
         val payload: ErrorPayload
     ) : IpcEvent()
-    
+
     @Serializable
     @SerialName("tool_call")
     data class ToolCall(
@@ -249,6 +303,38 @@ sealed class IpcEvent {
     @Serializable
     @SerialName("context_suggestions")
     data class ContextSuggestions(val payload: ContextSuggestionsPayload) : IpcEvent()
+
+    @Serializable
+    @SerialName("thought")
+    data class Thought(val payload: ThoughtPayload) : IpcEvent()
+
+    @Serializable
+    @SerialName("tool_progress")
+    data class ToolProgress(val payload: ToolProgressPayload) : IpcEvent()
+
+    @Serializable
+    @SerialName("tool_created")
+    data class ToolCreated(val payload: ToolCreatedPayload) : IpcEvent()
+
+    @Serializable
+    @SerialName("human_input_request")
+    data class HumanInputRequest(val payload: HumanInputPayload) : IpcEvent()
+
+    @Serializable
+    @SerialName("ping_result")
+    data class PingResult(val payload: PingResultPayload) : IpcEvent()
+
+    @Serializable
+    @SerialName("backends_list")
+    data class BackendsList(val payload: BackendsListPayload) : IpcEvent()
+
+    @Serializable
+    @SerialName("task_scheduled")
+    data class TaskScheduled(val payload: TaskScheduledPayload) : IpcEvent()
+
+    @Serializable
+    @SerialName("config")
+    data class Config(val payload: ConfigPayload) : IpcEvent()
 }
 
 @Serializable
@@ -261,6 +347,18 @@ data class MessageStartPayload(
 @Serializable
 data class TextDeltaPayload(
     val text: String
+)
+
+@Serializable
+data class MessageEndPayload(
+    val finish_reason: String = "stop",
+    val usage: UsagePayload? = null
+)
+
+@Serializable
+data class UsagePayload(
+    val input_tokens: Int = 0,
+    val output_tokens: Int = 0
 )
 
 @Serializable
@@ -290,17 +388,30 @@ data class ToolResultPayload(
     val result: String,
     val error: String? = null
 )
-@Serializable
-data class MessageCompletePayload(val events: List<IpcEvent>)
 
 @Serializable
-data class SessionsListPayload(val count: Int, val sessions: List<String>)
+data class SessionInfo(
+    val id: String,
+    val backend: String = "unknown",
+    val role: String = "base",
+    val message_count: Int = 0,
+    val tags: List<String> = emptyList(),
+    val created_at: String = "",
+    val updated_at: String = ""
+)
+
+@Serializable
+data class SessionsListPayload(val count: Int, val sessions: List<SessionInfo>)
 
 @Serializable
 data class SessionDataPayload(
     val session_id: String,
     val message_count: Int,
-    val role: String
+    val role: String,
+    val backend: String = "unknown",
+    val tags: List<String> = emptyList(),
+    val created_at: String = "",
+    val updated_at: String = ""
 )
 
 @Serializable
@@ -415,4 +526,36 @@ data class ContextItem(
 )
 
 @Serializable
-data class UpdateScratchpadPayload_Obsolete(val content: String) // Duplicate removed, payload already defined above
+data class ThoughtPayload(val text: String)
+
+@Serializable
+data class ToolProgressPayload(val call_id: String, val chunk: String)
+
+@Serializable
+data class ToolCreatedPayload(val name: String, val path: String)
+
+@Serializable
+data class HumanInputPayload(val prompt: String, val request_id: String)
+
+@Serializable
+data class PingResultPayload(val version: String, val uptime_secs: Long)
+
+@Serializable
+data class BackendInfo(
+    val name: String,
+    val is_available: Boolean,
+    val model: String? = null
+)
+
+@Serializable
+data class BackendsListPayload(val backends: List<BackendInfo>)
+
+@Serializable
+data class TaskScheduledPayload(
+    val task_id: String,
+    val next_fire: String,
+    val kind: String
+)
+
+@Serializable
+data class ConfigPayload(val config: kotlinx.serialization.json.JsonObject)

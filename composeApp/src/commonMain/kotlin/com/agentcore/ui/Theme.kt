@@ -8,15 +8,16 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// Midnight Premium Palette
+// Midnight Premium Palette - Refined
 val PrimaryColor = Color(0xFF0A84FF)       // iOS Style Blue
 val SecondaryColor = Color(0xFF5E5CE6)     // Indigo
 val AccentColor = Color(0xFF30D158)       // Success Green
 val ErrorColor = Color(0xFFFF453A)        // System Red
 
-val BackgroundColor = Color(0xFF000000)    // Pure Black
-val SurfaceColor = Color(0xFF1C1C1E)      // Elevate Dark Gray
-val SurfaceVariantColor = Color(0xFF2C2C2E) // Lighter Gray for Cards
+val BackgroundColor = Color(0xFF000000)    // Pure Obsidian
+val SurfaceColor = Color(0xFF121214)      // Deep Surface
+val SurfaceVariantColor = Color(0x991C1C1E) // Semi-Transparent for Glassmorphism
+val GlassBorderColor = Color(0x33FFFFFF)   // Subtle Light Border for Glass
 
 val AgentColorScheme = darkColorScheme(
     primary = PrimaryColor,
@@ -25,12 +26,13 @@ val AgentColorScheme = darkColorScheme(
     background = BackgroundColor,
     surface = SurfaceColor,
     surfaceVariant = SurfaceVariantColor,
+    outline = GlassBorderColor,
     error = ErrorColor,
     onPrimary = Color.White,
     onSecondary = Color.White,
-    onBackground = Color(0xFFF2F2F7), // Light Gray Text
+    onBackground = Color(0xFFE5E5EA), 
     onSurface = Color(0xFFF2F2F7),
-    onSurfaceVariant = Color(0xFFE5E5EA)
+    onSurfaceVariant = Color.White
 )
 
 val AgentTypography = Typography(

@@ -28,10 +28,15 @@ Granular components for performance and maintainability.
 - **`AgentOrchestrator`**: Hierarchical visualization and task delegation for multi-agent teams.
 - **`PredictiveContext`**: Smart UI component for context-aware file and resource suggestions.
 
+## Core Principles
+
+- **Divide and Conquer**: Avoid large monolithic files. Always split code into smaller, focused modules and components.
+- **IPC-First**: Communication between the UI and the Backend must happen via the strictly typed IPC protocol.
+
 ### 3. Protocol (`core-api`)
 Unified IPC models shared between client and core.
-- **Current Version**: v1.3
-- **Features**: Approval requests, streaming events, and session persistence.
+- **Current Version**: v1.5 (target: v1.6)
+- **Features**: Approval requests, streaming events, session persistence, scheduling, multi-modal images, tool management, backend plugins, context summarisation.
 
 ## Security & Safety
 Interactive Tool Approval ensures that critical tools (file deletion, shell execution) require explicit user consent before execution.

@@ -14,6 +14,13 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.swing)
             }
         }
+        val desktopTest by getting {
+            dependencies {
+                implementation(libs.mockk)
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutines.test)
+            }
+        }
         commonMain.dependencies {
             implementation(project(":shared"))
             implementation(project(":core-api"))
@@ -25,6 +32,13 @@ kotlin {
             implementation(libs.koin.compose)
             implementation(libs.markdown.renderer)
             implementation(libs.kotlinx.serialization.json)
+        }
+        val commonTest by getting {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.mockk)
+            }
         }
     }
 }
