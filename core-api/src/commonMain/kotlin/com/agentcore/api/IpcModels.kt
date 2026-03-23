@@ -224,7 +224,14 @@ sealed class IpcCommand {
     @Serializable
     @SerialName("restore_checkpoint")
     data class RestoreCheckpoint(val payload: RestoreCheckpointPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("list_models")
+    data class ListModels(val payload: ListModelsPayload) : IpcCommand()
 }
+
+@Serializable
+data class ListModelsPayload(val backend: String, val base_url: String? = null)
 
 @Serializable
 data class SetBackendPayload(val backend: String, val model: String? = null)
@@ -472,7 +479,14 @@ sealed class IpcEvent {
     @Serializable
     @SerialName("ready")
     class Ready : IpcEvent()
+
+    @Serializable
+    @SerialName("models_list")
+    data class ModelsList(val payload: ModelsListPayload) : IpcEvent()
 }
+
+@Serializable
+data class ModelsListPayload(val backend: String, val models: List<String>)
 
 @Serializable
 data class MessageStartPayload(
@@ -500,7 +514,11 @@ data class UsagePayload(
 
 @Serializable
 data class StatusPayload(
-    val state: String
+    val state: String,
+    val role: String? = null,
+    val backend: String? = null,
+    val updated_key: String? = null,
+    val value: kotlinx.serialization.json.JsonElement? = null
 )
 
 @Serializable

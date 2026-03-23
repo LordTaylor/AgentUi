@@ -2,6 +2,19 @@ package com.agentcore.api
 
 import kotlinx.serialization.Serializable
 
+/**
+ * Per-provider connection configuration stored locally in UiSettings.
+ * [model]   — model name to pass to set_backend
+ * [baseUrl] — server address (LM Studio, Ollama, HuggingFace)
+ * [apiKey]  — API key (Claude → ANTHROPIC_API_KEY, OpenAI → OPENAI_API_KEY, …)
+ */
+@Serializable
+data class ProviderConfig(
+    val model: String = "",
+    val baseUrl: String = "",
+    val apiKey: String = ""
+)
+
 @Serializable
 data class UiSettings(
     val sidebarVisible: Boolean = true,
@@ -16,4 +29,8 @@ data class UiSettings(
     val showCanvas: Boolean = false,
     val showHelp: Boolean = false,
     val showOrchestrator: Boolean = false,
+    val workingDir: String = "",
+    val autoAccept: Boolean = false,
+    /** Per-provider configs keyed by backend name (lmstudio, ollama, claude, openai, google, huggingface) */
+    val providerConfigs: Map<String, ProviderConfig> = emptyMap()
 )

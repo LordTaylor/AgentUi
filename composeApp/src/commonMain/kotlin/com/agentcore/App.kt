@@ -9,15 +9,21 @@ import com.agentcore.ui.AgentTypography
 import com.agentcore.ui.ChatMainScreen
 import com.agentcore.ui.ConnectionScreen
 import com.agentcore.ui.SetupInstructions
-
 import com.agentcore.ui.connection.ConnectionIntent
 import com.agentcore.ui.connection.ConnectionViewModel
 import org.koin.compose.koinInject
 
 @Composable
-fun App() {
+fun App(autoMode: ConnectionMode? = null) {
     val viewModel: ConnectionViewModel = koinInject()
     val state by viewModel.uiState
+
+    // Auto-connect: if a mode was detected/chosen at startup, skip connection screen
+    LaunchedEffect(autoMode) {
+        if (autoMode != null && !state.isAutoConnected) {
+            viewModel.onIntent(ConnectionIntent.AutoConnect(autoMode))
+        }
+    }
 
     MaterialTheme(
         colorScheme = AgentColorScheme,
@@ -26,6 +32,7 @@ fun App() {
         AnimatedContent(targetState = state.selectedMode, label = "ConnectionScreenTransition") { mode ->
             when {
                 mode == null -> {
+                    // Manual mode selection (only shown if auto-detection was not used)
                     ConnectionScreen(
                         state = state,
                         onIntent = { viewModel.onIntent(it) },
@@ -33,6 +40,7 @@ fun App() {
                     )
                 }
                 !state.isSetupConfirmed -> {
+                    // Manual setup instructions (skipped on auto-connect)
                     SetupInstructions(
                         mode = mode,
                         onBack = { viewModel.onIntent(ConnectionIntent.GoBack) },

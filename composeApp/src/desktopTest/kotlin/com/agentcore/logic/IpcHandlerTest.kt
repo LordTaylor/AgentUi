@@ -99,7 +99,7 @@ class IpcHandlerTest {
             text = "Test command",
             attachments = emptyList(),
             sessionId = "session-123",
-            messages = messages,
+            onMessageAdded = { messages.add(it) },
             onClearInput = {},
             onClearAttachments = {},
             onStatusChange = { status = it }

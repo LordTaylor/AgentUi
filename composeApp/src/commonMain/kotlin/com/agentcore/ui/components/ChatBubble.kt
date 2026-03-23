@@ -3,6 +3,7 @@ package com.agentcore.ui.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -98,11 +99,13 @@ fun ChatBubble(
                 }
 
                 val text = msg.text
-                if (text.contains("```") && !msg.isFromUser) {
-                    // Render Markdown/Code parts
-                    Markdown(content = text)
-                } else {
-                    Text(text = text, style = MaterialTheme.typography.bodyMedium)
+                SelectionContainer {
+                    if (text.contains("```") && !msg.isFromUser) {
+                        // Render Markdown/Code parts
+                        Markdown(content = text)
+                    } else {
+                        Text(text = text, style = MaterialTheme.typography.bodyMedium)
+                    }
                 }
 
                 Row(
@@ -118,16 +121,18 @@ fun ChatBubble(
                     
                     if (!msg.isFromUser && msg.type != MessageType.ACTION) {
                         Spacer(modifier = Modifier.width(8.dp))
-                        IconButton(
-                            onClick = onFork,
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Share,
-                                contentDescription = "Fork From Here",
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                                modifier = Modifier.size(14.dp)
-                            )
+                        AppTooltip("Rozgałęź sesję od tej wiadomości") {
+                            IconButton(
+                                onClick = onFork,
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Share,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
                         }
                     }
                 }

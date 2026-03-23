@@ -38,15 +38,26 @@ class AgentClient(private val serverUrl: String = "http://localhost:7700") {
                 setBody(command)
             }
             if (response.status == HttpStatusCode.OK) {
-                val jsonBody = response.bodyAsText()
-                val json = Json { ignoreUnknownKeys = true }
-                val element = json.parseToJsonElement(jsonBody)
-                if (element is JsonObject && element["event"]?.jsonPrimitive?.content == "message_end") {
-                    return json.decodeFromJsonElement<IpcEvent>(element)
-                }
-                json.decodeFromString<IpcEvent>(jsonBody)
+                parseCommandResponse(response.bodyAsText())
             } else {
                 null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun parseCommandResponse(body: String): IpcEvent? {
+        val j = Json { ignoreUnknownKeys = true }
+        return try {
+            val element = j.parseToJsonElement(body)
+            if (element is JsonObject && element.containsKey("events")) {
+                // Backend format: {"events": [{...}, {...}]}
+                val arr = element["events"]!!.jsonArray
+                arr.lastOrNull()?.let { j.decodeFromJsonElement<IpcEvent>(it) }
+            } else {
+                // Fallback: single event object (legacy / stdio path)
+                j.decodeFromJsonElement<IpcEvent>(element)
             }
         } catch (e: Exception) {
             null

@@ -32,10 +32,11 @@ object IpcHandler {
         onAgentGroupUpdate: (AgentGroupPayload) -> Unit,
         onSessionForked: (SessionForkedPayload) -> Unit = {},
         onTaskScheduled: (TaskScheduledPayload) -> Unit = {},
-        onScheduledTasksList: (ScheduledTasksListPayload) -> Unit = {}
+        onScheduledTasksList: (ScheduledTasksListPayload) -> Unit = {},
+        onModelsList: (String, List<String>) -> Unit = { _, _ -> }
     ) {
         when (event) {
-            is IpcEvent.Status -> onStatusChange(event.payload.state)
+            is IpcEvent.Status -> onStatusChange(event.payload.state.uppercase())
             is IpcEvent.MessageStart -> onStatusChange("THINKING")
             is IpcEvent.TextDelta -> {
                 val lastMsg = currentMessages.lastOrNull()
@@ -121,6 +122,7 @@ object IpcHandler {
             is IpcEvent.SessionForked -> onSessionForked(event.payload)
             is IpcEvent.TaskScheduled -> onTaskScheduled(event.payload)
             is IpcEvent.ScheduledTasksList -> onScheduledTasksList(event.payload)
+            is IpcEvent.ModelsList -> onModelsList(event.payload.backend, event.payload.models)
             is IpcEvent.Ready -> onStatusChange("IDLE")
             else -> {}
         }
@@ -136,7 +138,7 @@ object IpcHandler {
         text: String,
         attachments: List<String>,
         sessionId: String?,
-        messages: SnapshotStateList<Message>,
+        onMessageAdded: (Message) -> Unit,
         onClearInput: () -> Unit,
         onClearAttachments: () -> Unit,
         onStatusChange: (String) -> Unit
@@ -144,10 +146,10 @@ object IpcHandler {
         val msgId = "msg-${System.currentTimeMillis()}"
         val attachList = attachments.takeIf { it.isNotEmpty() }
         val userMsg = Message(msgId, "User", text, true, MessageType.TEXT, attachList)
-        messages.add(userMsg)
         onStatusChange("THINKING")
         onClearInput()
         onClearAttachments()
+        onMessageAdded(userMsg)
 
         scope.launch {
             try {
@@ -158,12 +160,12 @@ object IpcHandler {
                     ConnectionMode.UNIX_SOCKET -> unixSocketExecutor.sendCommand(IpcCommand.SendMessage(payload))
                     ConnectionMode.CLI -> {
                         val result = cliExecutor.executeCommand(text)
-                        messages.add(Message("cli-${System.currentTimeMillis()}", "Agent", result, false, MessageType.TEXT))
+                        onMessageAdded(Message("cli-${System.currentTimeMillis()}", "Agent", result, false, MessageType.TEXT))
                         onStatusChange("IDLE")
                     }
                 }
             } catch (e: Exception) {
-                messages.add(Message("err-${System.currentTimeMillis()}", "System", "Error: ${e.message}", false, MessageType.SYSTEM))
+                onMessageAdded(Message("err-${System.currentTimeMillis()}", "System", "Error: ${e.message}", false, MessageType.SYSTEM))
                 onStatusChange("IDLE")
             }
         }

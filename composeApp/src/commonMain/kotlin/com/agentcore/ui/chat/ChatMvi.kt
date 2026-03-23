@@ -12,7 +12,7 @@ data class ChatUiState(
     val availableBackends: List<BackendInfo> = emptyList(),
     val currentSessionId: String? = null,
     val statusState: String = "IDLE",
-    val currentBackend: String = "ollama",
+    val currentBackend: String = "lmstudio",
     val currentRole: String = "base",
     val showSettings: Boolean = false,
     val sessionStats: JsonObject? = null,
@@ -29,10 +29,17 @@ data class ChatUiState(
     val activeFilters: List<String> = emptyList(),
     val currentSystemPrompt: String = "",
     val isSummarizing: Boolean = false,
-    val uiSettings: UiSettings = UiSettings()
+    val uiSettings: UiSettings = UiSettings(),
+    val ipcLogs: List<String> = emptyList(),
+    val ipcLogExpanded: Boolean = false,
+    val workingDir: String = System.getProperty("user.home") ?: "",
+    val showProviderDialog: Boolean = false,
+    val availableModels: Map<String, List<String>> = emptyMap(),
+    val approvalMode: Boolean = true,
 )
 
 sealed class ChatIntent {
+    data class FetchModels(val backend: String, val url: String? = null) : ChatIntent()
     data class SendMessage(val text: String) : ChatIntent()
     data class SelectSession(val id: String) : ChatIntent()
     object ToggleSettings : ChatIntent()
@@ -54,4 +61,19 @@ sealed class ChatIntent {
     data class UpdateConfig(val key: String, val value: JsonElement) : ChatIntent()
     data class ScheduleTask(val text: String, val at: String? = null, val cron: String? = null) : ChatIntent()
     data class UpdateUiSettings(val settings: UiSettings) : ChatIntent()
+    object ToggleIpcLog : ChatIntent()
+    data class SetWorkingDir(val path: String) : ChatIntent()
+    object NewSession : ChatIntent()
+    object DumpDebugLog : ChatIntent()
+    object ToggleProviderDialog : ChatIntent()
+    /** Activate a backend via set_backend IPC (no restart) */
+    data class ActivateProvider(val backend: String, val model: String) : ChatIntent()
+    /** Apply URL/API key changes and restart agent-core with new env vars */
+    data class ActivateProviderAndRestart(
+        val backend: String,
+        val envVars: Map<String, String>,
+        val updatedConfigs: Map<String, ProviderConfig>
+    ) : ChatIntent()
+    data class SaveProviderConfigs(val configs: Map<String, ProviderConfig>) : ChatIntent()
+    object RestartAgent : ChatIntent()
 }

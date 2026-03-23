@@ -7,6 +7,7 @@ import com.agentcore.model.Message
 import com.agentcore.model.MessageType
 import com.agentcore.shared.*
 import com.agentcore.ui.components.HumanInputDialog
+import com.agentcore.ui.components.ProviderDialog
 import com.agentcore.ui.components.SettingsDialog
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -81,7 +82,16 @@ fun ChatMainScreen(mode: ConnectionMode) {
             }
         },
         uiSettings = state.uiSettings,
-        onUpdateUiSettings = { viewModel.onIntent(ChatIntent.UpdateUiSettings(it), scope, mode) }
+        onUpdateUiSettings = { viewModel.onIntent(ChatIntent.UpdateUiSettings(it), scope, mode) },
+        workingDir = state.workingDir,
+        onSetWorkingDir = { viewModel.onIntent(ChatIntent.SetWorkingDir(it), scope, mode) },
+        ipcLogs = state.ipcLogs,
+        ipcLogExpanded = state.ipcLogExpanded,
+        onToggleIpcLog = { viewModel.onIntent(ChatIntent.ToggleIpcLog, scope, mode) },
+        onNewSession = { viewModel.onIntent(ChatIntent.NewSession, scope, mode) },
+        onDumpDebugLog = { viewModel.onIntent(ChatIntent.DumpDebugLog, scope, mode) },
+        onToggleProviderDialog = { viewModel.onIntent(ChatIntent.ToggleProviderDialog, scope, mode) },
+        onRestartAgent = { viewModel.onIntent(ChatIntent.RestartAgent, scope, mode) }
     )
 
     if (state.showSettings) {
@@ -96,6 +106,30 @@ fun ChatMainScreen(mode: ConnectionMode) {
                 if (p != state.currentSystemPrompt) {
                     viewModel.onIntent(ChatIntent.SetSystemPrompt(p), scope, mode)
                 }
+            }
+        )
+    }
+
+    if (state.showProviderDialog) {
+        ProviderDialog(
+            activeBackend = state.currentBackend,
+            providerConfigs = state.uiSettings.providerConfigs,
+            availableModels = state.availableModels,
+            onDismiss = { viewModel.onIntent(ChatIntent.ToggleProviderDialog, scope, mode) },
+            onActivate = { backend, model ->
+                viewModel.onIntent(ChatIntent.ActivateProvider(backend, model), scope, mode)
+            },
+            onActivateAndRestart = { backend, envVars, updatedConfigs ->
+                viewModel.onIntent(
+                    ChatIntent.ActivateProviderAndRestart(backend, envVars, updatedConfigs),
+                    scope, mode
+                )
+            },
+            onSaveConfigs = { configs ->
+                viewModel.onIntent(ChatIntent.SaveProviderConfigs(configs), scope, mode)
+            },
+            onFetchModels = { backend, url ->
+                viewModel.onIntent(ChatIntent.FetchModels(backend, url), scope, mode)
             }
         )
     }

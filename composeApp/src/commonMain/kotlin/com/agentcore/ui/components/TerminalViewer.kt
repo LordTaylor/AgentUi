@@ -1,11 +1,13 @@
 package com.agentcore.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -17,6 +19,13 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agentcore.api.TerminalTrafficPayload
+import java.awt.datatransfer.StringSelection
+import java.awt.Toolkit
+
+private fun copyText(text: String) {
+    val clipboard = Toolkit.getDefaultToolkit().systemClipboard
+    clipboard.setContents(StringSelection(text), null)
+}
 
 @Composable
 fun TerminalViewer(
@@ -44,6 +53,18 @@ fun TerminalViewer(
         ) {
             Text("TERMINAL TRAFFIC", style = MaterialTheme.typography.labelLarge, color = Color.Gray)
             Spacer(Modifier.weight(1f))
+            // Copy all button
+            AppTooltip("Kopiuj wszystko") {
+                IconButton(onClick = {
+                    val all = traffic.joinToString("\n") { item ->
+                        val prefix = if (item.direction == "IN") "<<<" else ">>>"
+                        "[${item.timestamp}] $prefix ${item.data}"
+                    }
+                    copyText(all)
+                }) {
+                    Icon(Icons.Default.ContentCopy, contentDescription = "Kopiuj wszystko", tint = Color.Gray, modifier = Modifier.size(16.dp))
+                }
+            }
             IconButton(onClick = onClear) {
                 Icon(Icons.Default.Delete, contentDescription = "Clear", tint = Color.Gray, modifier = Modifier.size(18.dp))
             }
@@ -54,18 +75,22 @@ fun TerminalViewer(
             modifier = Modifier.weight(1f).fillMaxWidth()
         ) {
             items(traffic) { item ->
-                TrafficItem(item)
+                TrafficItem(item, onCopy = { copyText("${item.data}") })
             }
         }
     }
 }
 
 @Composable
-fun TrafficItem(item: TerminalTrafficPayload) {
+fun TrafficItem(item: TerminalTrafficPayload, onCopy: () -> Unit = {}) {
     val color = if (item.direction == "IN") Color(0xFF4CAF50) else Color(0xFF2196F3)
     val prefix = if (item.direction == "IN") "<<<" else ">>>"
-    
-    Column(modifier = Modifier.padding(vertical = 2.dp)) {
+
+    Column(
+        modifier = Modifier
+            .padding(vertical = 2.dp)
+            .clickable { onCopy() }
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = "[${item.timestamp}]",

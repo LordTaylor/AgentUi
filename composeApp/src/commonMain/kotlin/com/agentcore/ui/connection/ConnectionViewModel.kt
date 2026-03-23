@@ -13,7 +13,15 @@ class ConnectionViewModel {
             is ConnectionIntent.SelectMode -> {
                 _uiState.value = _uiState.value.copy(
                     selectedMode = intent.mode,
-                    isSetupConfirmed = false
+                    isSetupConfirmed = false,
+                    isAutoConnected = false
+                )
+            }
+            is ConnectionIntent.AutoConnect -> {
+                _uiState.value = _uiState.value.copy(
+                    selectedMode = intent.mode,
+                    isSetupConfirmed = false,
+                    isAutoConnected = true
                 )
             }
             ConnectionIntent.ConfirmSetup -> {
@@ -22,7 +30,8 @@ class ConnectionViewModel {
             ConnectionIntent.GoBack -> {
                 _uiState.value = _uiState.value.copy(
                     selectedMode = null,
-                    isSetupConfirmed = false
+                    isSetupConfirmed = false,
+                    isAutoConnected = false
                 )
             }
         }
