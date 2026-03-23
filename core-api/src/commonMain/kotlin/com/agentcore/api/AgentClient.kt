@@ -277,6 +277,14 @@ class AgentClient(private val serverUrl: String = "http://localhost:7700") {
         return sendCommand(IpcCommand.TestTool(TestToolPayload(toolName))) != null
     }
 
+    suspend fun createTool(name: String, template: String = "python"): Boolean {
+        return sendCommand(IpcCommand.CreateTool(CreateToolPayload(name, template))) != null
+    }
+
+    suspend fun deleteTool(toolName: String): Boolean {
+        return sendCommand(IpcCommand.DeleteTool(DeleteToolPayload(toolName))) != null
+    }
+
     suspend fun spawnSubAgent(task: String, role: String = "base", backend: String? = null): String? {
         return try {
             val response: HttpResponse = client.post(commandUrl) {
@@ -375,9 +383,9 @@ class AgentClient(private val serverUrl: String = "http://localhost:7700") {
         while (attempt <= maxAttempts) {
             if (attempt > 0) {
                 val waitMs = backoffDelays.getOrElse(attempt - 1) { 8_000L }
-                emit(IpcEvent.Status(StatusPayload("RECONNECTING")))
+                emit(IpcEvent.Status(payload = StatusPayload("RECONNECTING")))
                 delay(waitMs)
-                emit(IpcEvent.Status(StatusPayload("CONNECTING")))
+                emit(IpcEvent.Status(payload = StatusPayload("CONNECTING")))
             }
 
             try {

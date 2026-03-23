@@ -49,7 +49,7 @@
 - [x] **Layout Flexibility**: Draggable split-panes and resizable tool windows.
 - [x] **Advanced Chat UI**: Message grouping, relative timestamps, and enhanced code blocks.
 - [x] **Keyboard Shortcuts**: Global shortcuts (Ctrl+K new session, Ctrl+L clear, Ctrl+, settings).
-- [ ] **Theme Switcher**: Light / Dark / System-default toggle saved to preferences.
+- [x] **Theme Switcher**: Light / Dark / System-default toggle saved to preferences.
 - [ ] **Font Size Controls**: Configurable chat font size (12–20sp) stored in local settings.
 - [x] **Empty States**: Informative placeholder views when no messages / no sessions / no tools.
 - [x] **Connection Status Banner**: Persistent top-bar indicator when backend is unreachable.
@@ -154,3 +154,11 @@
 - [ ] **First-Run Setup Wizard**: Detect missing backend; guide user through `cargo install agent-core`.
 - [ ] **Bundled JRE**: Include custom JRE via `jlink` to eliminate "Java not found" on end-user machines.
 - [ ] **Release Automation**: GitHub Actions workflow to build all platforms and publish GitHub Release.
+- [ ] **Direct File-system Editing**: Allow agent to open files in user's default editor (VSCode/JetBrains) via a specific tool.
+- [ ] **Voice Waveform Visualization**: Visual feedback during agent speaking / user listening.
+- [ ] **Multi-Agent Heatmap**: Visual representation of token usage and contribution per agent in a debate.
+- [ ] **Session Branching UI**: Visual tree explorer for session forks and checkpoints.
+- [ ] **Pinned Context Panel**: Persistent panel for files that should stay in the context indefinitely.
+- [ ] **Export to PDF/HTML**: High-fidelity export of conversation history with code formatting.
+- [ ] **Local Model Manager**: UI for downloading and status monitoring of Ollama/LM Studio models.
+- [ ] **Advanced Prompt Library**: Pre-defined, community-driven system prompts for specific tasks (Coding, Analysis, Creative).

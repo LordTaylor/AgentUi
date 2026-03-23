@@ -228,6 +228,22 @@ sealed class IpcCommand {
     @Serializable
     @SerialName("list_models")
     data class ListModels(val payload: ListModelsPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("update_memory")
+    data class UpdateMemory(val payload: UpdateMemoryPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("restart_provider")
+    data class RestartProvider(val payload: RestartProviderPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("create_tool")
+    data class CreateTool(val payload: CreateToolPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("delete_tool")
+    data class DeleteTool(val payload: DeleteToolPayload) : IpcCommand()
 }
 
 @Serializable
@@ -330,6 +346,12 @@ data class ListCheckpointsPayload(val session_id: String)
 @Serializable
 data class RestoreCheckpointPayload(val session_id: String, val checkpoint_n: Int)
 
+@Serializable
+data class CreateToolPayload(val name: String, val template: String = "python")
+
+@Serializable
+data class DeleteToolPayload(val tool_name: String)
+
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
 @JsonClassDiscriminator("event")
@@ -343,6 +365,7 @@ sealed class IpcEvent {
     @Serializable
     @SerialName("text_delta")
     data class TextDelta(
+        @SerialName("agent_id") val agentId: String? = null,
         val payload: TextDeltaPayload
     ) : IpcEvent()
 
@@ -357,28 +380,35 @@ sealed class IpcEvent {
     @Serializable
     @SerialName("status")
     data class Status(
+        @SerialName("agent_id") val agentId: String? = null,
         val payload: StatusPayload
     ) : IpcEvent()
 
     @Serializable
     @SerialName("approval_request")
-    data class ApprovalRequest(val payload: ApprovalRequestPayload) : IpcEvent()
+    data class ApprovalRequest(
+        @SerialName("agent_id") val agentId: String? = null,
+        val payload: ApprovalRequestPayload
+    ) : IpcEvent()
 
     @Serializable
     @SerialName("error")
     data class Error(
+        @SerialName("agent_id") val agentId: String? = null,
         val payload: ErrorPayload
     ) : IpcEvent()
 
     @Serializable
     @SerialName("tool_call")
     data class ToolCall(
+        @SerialName("agent_id") val agentId: String? = null,
         val payload: ToolCallPayload
     ) : IpcEvent()
 
     @Serializable
     @SerialName("tool_result")
     data class ToolResult(
+        @SerialName("agent_id") val agentId: String? = null,
         val payload: ToolResultPayload
     ) : IpcEvent()
 
@@ -440,23 +470,38 @@ sealed class IpcEvent {
 
     @Serializable
     @SerialName("thought")
-    data class Thought(val payload: ThoughtPayload) : IpcEvent()
+    data class Thought(
+        @SerialName("agent_id") val agentId: String? = null,
+        val payload: ThoughtPayload
+    ) : IpcEvent()
 
     @Serializable
     @SerialName("tool_progress")
-    data class ToolProgress(val payload: ToolProgressPayload) : IpcEvent()
+    data class ToolProgress(
+        @SerialName("agent_id") val agentId: String? = null,
+        val payload: ToolProgressPayload
+    ) : IpcEvent()
 
     @Serializable
     @SerialName("tool_created")
-    data class ToolCreated(val payload: ToolCreatedPayload) : IpcEvent()
+    data class ToolCreated(
+        @SerialName("agent_id") val agentId: String? = null,
+        val payload: ToolCreatedPayload
+    ) : IpcEvent()
 
     @Serializable
     @SerialName("human_input_request")
-    data class HumanInputRequest(val payload: HumanInputPayload) : IpcEvent()
+    data class HumanInputRequest(
+        @SerialName("agent_id") val agentId: String? = null,
+        val payload: HumanInputPayload
+    ) : IpcEvent()
 
     @Serializable
     @SerialName("ping_result")
-    data class PingResult(val payload: PingResultPayload) : IpcEvent()
+    data class PingResult(
+        @SerialName("agent_id") val agentId: String? = null,
+        val payload: PingResultPayload
+    ) : IpcEvent()
 
     @Serializable
     @SerialName("backends_list")
@@ -480,7 +525,10 @@ sealed class IpcEvent {
 
     @Serializable
     @SerialName("ready")
-    class Ready : IpcEvent()
+    data class Ready(
+        @SerialName("protocol_version") val protocolVersion: String,
+        val transport: String
+    ) : IpcEvent()
 
     @Serializable
     @SerialName("models_list")
@@ -489,7 +537,14 @@ sealed class IpcEvent {
     /** B02: I01 streaming subprocess output — one line per event while tool runs. */
     @Serializable
     @SerialName("tool_output_delta")
-    data class ToolOutputDelta(val payload: ToolOutputDeltaPayload) : IpcEvent()
+    data class ToolOutputDelta(
+        @SerialName("agent_id") val agentId: String? = null,
+        val payload: ToolOutputDeltaPayload
+    ) : IpcEvent()
+
+    @Serializable
+    @SerialName("sub_agent_done")
+    data class SubAgentDone(val payload: SubAgentDonePayload) : IpcEvent()
 }
 
 @Serializable
@@ -753,3 +808,24 @@ data class ScheduledTasksListPayload(val count: Int, val tasks: List<ScheduledTa
 
 @Serializable
 data class SessionForkedPayload(val original_session_id: String, val new_session_id: String)
+
+@Serializable
+data class SubAgentDonePayload(
+    val agent_id: String,
+    val session_id: String,
+    val summary: String,
+    val success: Boolean
+)
+
+@Serializable
+data class UpdateMemoryPayload(
+    val session_id: String,
+    val key: String,
+    val value: String
+)
+
+@Serializable
+data class RestartProviderPayload(
+    val provider: String,
+    val model: String? = null
+)

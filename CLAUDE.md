@@ -7,7 +7,7 @@ Dokumentacja serwera Rust (`agent-core`) znajduje się tutaj:
 ```
 /Users/jaroslawkrawczyk/AgentCl2.0/CoreApp/docs/
 ├── communication.md   — protokół IPC: komendy, eventy, tryby transportu, formaty JSON
-├── ipc-schema.json    — pełny JSON Schema v1.5 wszystkich komend i eventów
+├── ipc-schema.json    — pełny JSON Schema v1.6 wszystkich komend i eventów
 └── APP_MAP.md         — mapa modułów Rust, typy, przepływy danych
 ```
 
@@ -71,13 +71,10 @@ Każdy nowy `IpcEvent` w `IpcModels.kt` musi mieć odpowiedni `when` branch w `I
 Sprawdź tabelę w `docs/COMMUNICATION.md` sekcja "Eventy".
 Nowe eventy NIE mogą trafiać do `else -> {}` bez uzasadnienia w komentarzu.
 
-### REGUŁA 5 — Komendy NOT_IMPLEMENTED na backendzie
+### REGUŁA 5 — Komendy w pełni zaimplementowane
 
-Poniższe komendy są zdefiniowane w protokole, ale backend zwraca `error: NOT_IMPLEMENTED`:
-- `cancel` — UI wysyła, ale backend ignoruje (ustawia tylko lokalnie `statusState = "IDLE"`)
-- `update_config` — nie używamy
-
-Nie polegaj na nich do działania aplikacji. Obsługuj odpowiedź `IpcEvent.Error` z kodem `NOT_IMPLEMENTED`.
+- `cancel` — działa we wszystkich trybach (IPC, STDIO, UNIX_SOCKET). Backend używa `AtomicBool` cancel token.
+- `update_config` — używamy do synchronizacji `approval_mode` po evencie `Ready` (`syncApprovalMode()` w ChatViewModel).
 
 ### REGUŁA 6 — Walidacja `StatusPayload.state`
 
@@ -87,17 +84,29 @@ Nasz UI normalnie uppercase (`IDLE`, `THINKING`). Konwersja odbywa się w jednym
 `IpcHandler` → `onStatusChange(...)` → `statusState`
 Wszystkie porównania w UI używają `.uppercase()`. **Nie dodawaj** hardkodowanych literałów lowercase w UI.
 
-### REGUŁA 5 — Status komendy `cancel`
+### REGUŁA 7 — Wersja protokołu
 
-Komenda `cancel` **jest w pełni zaimplementowana w backendzie** (cancel token `AtomicBool`).
-UI wysyła ją we wszystkich trybach: IPC, STDIO, UNIX_SOCKET.
-Wcześniejsza notatka "backend ignoruje" była błędna — naprawiono w Sprint 6 (B03).
-
-### REGUŁA 7 — Versja protokołu
-
-Aktualnie obsługiwana wersja: **v1.5**
+Aktualnie obsługiwana wersja: **v1.6**
 Pole `protocol_version` przychodzi w evencie `message_start`.
-Przy zmianie na v1.6+ sprawdź diff w `ipc-schema.json` i zaktualizuj `IpcModels.kt`.
+Zmiany v1.6 względem v1.5:
+- Pole `agent_id: String?` na większości eventów (identyfikuje sub-agenty)
+- Event `sub_agent_done` z polem `summary`, `success`
+- Event `ready` z `protocol_version: "1.6"`
+- `spawn_sub_agent` z polem `role`
+
+### REGUŁA 8 — Zarządzanie `session_id` (B07 fix)
+
+`session_id` jest **emitowany przez backend** w `MessageStart` — NIE generuj go w UI.
+
+**Poprawny flow:**
+```
+IpcHandler: MessageStart → onSessionStart(event.payload.session_id)
+ChatViewModel: currentSessionId = sessionId  (przechowuje w ChatUiState)
+Następna komenda: SendMessagePayload(session_id = currentSessionId, ...)
+```
+
+Jeśli `currentSessionId == null`, `SendMessagePayload` NIE wysyła `session_id` → backend tworzy nową sesję → **model nie pamięta historii**.
+Nie resetuj `currentSessionId` między wiadomościami.
 
 ### REGUŁA 9 — Aktualizacja ROADMAP.md
 
@@ -112,3 +121,51 @@ Po wykonaniu każdego zadania zdefiniowanego w `docs/ROADMAP.md`, **obowiązkowo
 - `core-api` nie importuje niczego z `composeApp` — zależność jest jednostronna.
 - Nowe komponenty UI → `composeApp/src/commonMain/kotlin/com/agentcore/ui/components/`
 - Nowe modele → `composeApp/src/commonMain/kotlin/com/agentcore/model/`
+
+---
+
+## REGUŁA 10 — Rozmiar plików (czytelność dla AI i ludzi)
+
+**Maksymalny rozmiar pliku: ~150 linii kodu.**
+Jeśli plik przekracza ten limit, podziel go na mniejsze moduły.
+
+### Jak dzielić
+
+| Typ pliku | Strategia podziału |
+|-----------|-------------------|
+| ViewModel (>150 linii) | Wydziel `*Handlers.kt` (logika obsługi intencji) |
+| Screen (>150 linii) | Wydziel sekcje do `*Section.kt` lub `*Panel.kt` |
+| IpcHandler (>150 linii) | Wydziel `*EventRouter.kt` per kategoria eventów |
+| IpcModels (>150 linii) | Podziel na `*Commands.kt` i `*Events.kt` |
+
+### Dlaczego
+
+Agent AI czyta pliki w całości. Plik >200 linii oznacza:
+- Wyższy koszt (więcej tokenów)
+- Większe ryzyko pominięcia zależności
+- Trudniejsze testy jednostkowe
+
+### Nazewnictwo po podziale
+
+```
+ChatViewModel.kt           → logika stanu + publiczne intencje
+ChatIntentHandlers.kt      → `fun handle*(intent)` helpers
+ChatSessionHandlers.kt     → logika sesji + backend switching
+```
+
+---
+
+## REGUŁA 11 — Czytelność dla agenta AI
+
+Każdy plik **musi zaczynać się od komentarza** opisującego jego odpowiedzialność w 1-3 zdaniach:
+
+```kotlin
+// Dispatches IPC events from the Rust backend to ViewModel callbacks.
+// One function per event category; each branch is max ~10 lines.
+// See: CoreApp/docs/communication.md for event protocol.
+```
+
+**Zakazy:**
+- Nie mieszaj warstw w jednym pliku (np. UI + logika biznesowa)
+- Nie umieszczaj stałych konfiguracyjnych rozsianych po różnych plikach — zbierz je w `AppConstants.kt`
+- Nie twórz funkcji dłuższych niż ~30 linii — wydziel pomocnicze funkcje prywatne

@@ -19,6 +19,26 @@ val SurfaceColor = Color(0xFF121214)      // Deep Surface
 val SurfaceVariantColor = Color(0x991C1C1E) // Semi-Transparent for Glassmorphism
 val GlassBorderColor = Color(0x33FFFFFF)   // Subtle Light Border for Glass
 
+enum class ThemeMode {
+    LIGHT, DARK, SYSTEM
+}
+
+val LightColorScheme = androidx.compose.material3.lightColorScheme(
+    primary = PrimaryColor,
+    secondary = SecondaryColor,
+    tertiary = AccentColor,
+    background = Color(0xFFF2F2F7),
+    surface = Color.White,
+    surfaceVariant = Color(0xFFE5E5EA),
+    outline = Color(0x33000000),
+    error = ErrorColor,
+    onPrimary = Color.White,
+    onSecondary = Color.White,
+    onBackground = Color.Black,
+    onSurface = Color.Black,
+    onSurfaceVariant = Color.DarkGray
+)
+
 val AgentColorScheme = darkColorScheme(
     primary = PrimaryColor,
     secondary = SecondaryColor,
@@ -34,6 +54,26 @@ val AgentColorScheme = darkColorScheme(
     onSurface = Color(0xFFF2F2F7),
     onSurfaceVariant = Color.White
 )
+
+@androidx.compose.runtime.Composable
+fun AgentTheme(
+    themeMode: ThemeMode = ThemeMode.DARK,
+    content: @androidx.compose.runtime.Composable () -> Unit
+) {
+    val darkTheme = when (themeMode) {
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+        ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
+    }
+
+    val colorScheme = if (darkTheme) AgentColorScheme else LightColorScheme
+
+    androidx.compose.material3.MaterialTheme(
+        colorScheme = colorScheme,
+        typography = AgentTypography,
+        content = content
+    )
+}
 
 val AgentTypography = Typography(
     headlineLarge = TextStyle(

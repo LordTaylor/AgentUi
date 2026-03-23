@@ -13,7 +13,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.runtime.*
 import kotlinx.serialization.json.*
 
 @Composable
@@ -53,7 +56,14 @@ private fun StatRow(label: String, value: String) {
 
 
 @Composable
-fun ToolExplorer(tools: List<JsonObject>, onReloadTools: () -> Unit) {
+fun ToolExplorer(
+    tools: List<JsonObject>,
+    onReloadTools: () -> Unit,
+    onCreateTool: () -> Unit = {},
+    onDeleteTool: (String) -> Unit = {}
+) {
+    var toolToDelete by remember { mutableStateOf<String?>(null) }
+
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -61,8 +71,13 @@ fun ToolExplorer(tools: List<JsonObject>, onReloadTools: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("Available Tools", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            IconButton(onClick = onReloadTools) {
-                Icon(Icons.Default.Refresh, contentDescription = "Reload Tools")
+            Row {
+                IconButton(onClick = onCreateTool) {
+                    Icon(Icons.Default.Add, contentDescription = "Create Tool")
+                }
+                IconButton(onClick = onReloadTools) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Reload Tools")
+                }
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
@@ -88,11 +103,39 @@ fun ToolExplorer(tools: List<JsonObject>, onReloadTools: () -> Unit) {
                                     Text("PAUSE", fontSize = 9.sp)
                                 }
                             }
+                            Spacer(modifier = Modifier.weight(1f))
+                            IconButton(onClick = { toolToDelete = name }, modifier = Modifier.size(24.dp)) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp), tint = Color.Gray)
+                            }
                         }
                         Text(desc, fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(top = 4.dp))
                     }
                 }
             }
         }
+    }
+
+    if (toolToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { toolToDelete = null },
+            title = { Text("Delete Tool?") },
+            text = { Text("Are you sure you want to delete tool '${toolToDelete}'? This action cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDeleteTool(toolToDelete!!)
+                        toolToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { toolToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }

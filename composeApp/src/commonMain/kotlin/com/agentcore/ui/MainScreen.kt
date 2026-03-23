@@ -1,5 +1,16 @@
 package com.agentcore.ui
 
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.*
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -10,26 +21,22 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.key.*
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.agentcore.api.*
 import com.agentcore.model.Message
 import com.agentcore.model.MessageType
 import com.agentcore.shared.ConnectionMode
+import com.agentcore.ui.chat.ChatIntent
 import com.agentcore.ui.components.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.draw.clip
+import coil3.compose.AsyncImage
 import kotlinx.serialization.json.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     scope: CoroutineScope,
@@ -38,6 +45,10 @@ fun MainScreen(
     sessions: List<SessionInfo>,
     currentSessionId: String?,
     onSessionSelect: (String) -> Unit,
+    onSendMessage: (String, List<String>) -> Unit,
+    onReloadTools: () -> Unit,
+    onCreateTool: (String, String) -> Unit,
+    onDeleteTool: (String) -> Unit,
     availableTools: List<JsonObject>,
     messages: List<Message>,
     statusState: String,
@@ -55,12 +66,10 @@ fun MainScreen(
     contextSuggestions: List<ContextItem>,
     pendingApproval: ApprovalRequestPayload?,
     onResolveApproval: (Boolean) -> Unit,
-    onSendMessage: (String) -> Unit,
     showSettings: Boolean,
     onToggleSettings: () -> Unit,
     onSessionDelete: (String) -> Unit,
     onSessionPrune: (String) -> Unit,
-    onReloadTools: () -> Unit,
     activeFilters: List<String> = emptyList(),
     onToggleFilter: (String) -> Unit = {},
     onSessionTag: (String, List<String>) -> Unit = { _, _ -> },
@@ -79,7 +88,10 @@ fun MainScreen(
     onNewSession: () -> Unit = {},
     onDumpDebugLog: () -> Unit = {},
     onToggleProviderDialog: () -> Unit = {},
-    onRestartAgent: () -> Unit = {}
+    onRestartAgent: () -> Unit = {},
+    onActivateProvider: (String, String) -> Unit = { _, _ -> },
+    currentModelName: String = "",
+    cauldronState: CauldronState = CauldronState.IDLE
 ) {
     val sidebarVisible = uiSettings.sidebarVisible
     val sidePanelWidth = uiSettings.sidePanelWidth.dp
@@ -98,415 +110,353 @@ fun MainScreen(
     val listState = rememberLazyListState()
     var inputText by remember { mutableStateOf("") }
     var selectedFilePath by remember { mutableStateOf<String?>(null) }
+    var selectedImages = remember { mutableStateListOf<String>() }
+    var showCreateToolDialog by remember { mutableStateOf(false) }
+    var newToolName by remember { mutableStateOf("") }
 
     val isDisconnected = statusState.uppercase() in listOf("ERROR", "DISCONNECTED", "CONNECTION_FAILED", "CRASHED")
 
     val shortcuts = AppShortcuts(
-        onNewSession = { /* TODO: new session */ },
+        onNewSession = onNewSession,
         onClearChat = onClearChat,
         onToggleSettings = onToggleSettings,
         onToggleSidebar = { onUpdateUiSettings(uiSettings.copy(sidebarVisible = !uiSettings.sidebarVisible)) },
         onFocusInput = { /* TODO: focus input field */ }
     )
 
+    var activeTab by remember { mutableStateOf("Chat") }
+
     Surface(
         modifier = Modifier.fillMaxSize()
             .onPreviewKeyEvent { event -> handleKeyboardShortcut(event, shortcuts) },
         color = MaterialTheme.colorScheme.background
     ) {
-        Row(modifier = Modifier.fillMaxSize().animateContentSize()) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            // ── Fixed Narrow Sidebar ─────────────────────────────────────────
+            NarrowSidebar(
+                activeTab = activeTab,
+                onTabSelect = { activeTab = it },
+                onNewSession = onNewSession
+            )
 
-            // ── Left sidebar (sessions + file tree) ──────────────────────────
-            AnimatedVisibility(
-                visible = sidebarVisible,
-                enter = slideInHorizontally() + fadeIn(),
-                exit = slideOutHorizontally() + fadeOut()
-            ) {
-                Row {
-                    Sidebar(
-                        sessions = sessions,
-                        activeFilters = activeFilters,
-                        onSessionSelect = onSessionSelect,
-                        onSessionDelete = onSessionDelete,
-                        onSessionPrune = onSessionPrune,
-                        onToggleFilter = onToggleFilter,
-                        onSessionTag = onSessionTag,
-                        workingDir = workingDir,
-                        onFileSelected = { path -> selectedFilePath = path },
-                        selectedFilePath = selectedFilePath,
-                        onCollapse = { onUpdateUiSettings(uiSettings.copy(sidebarVisible = false)) },
-                        onNewSession = onNewSession,
-                        modifier = Modifier
-                            .width(280.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                    )
-                    VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                }
-            }
-
-            // Expand button shown when sidebar is collapsed
-            if (!sidebarVisible) {
-                AppTooltip("Rozwiń panel boczny") {
-                    IconButton(
-                        onClick = { onUpdateUiSettings(uiSettings.copy(sidebarVisible = true)) },
-                        modifier = Modifier.width(24.dp).fillMaxHeight()
-                    ) {
-                        Icon(
-                            Icons.Default.KeyboardArrowRight,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = Color.Gray
-                        )
-                    }
-                }
-            }
-
-            // ── File preview panel ────────────────────────────────────────────
-            AnimatedVisibility(
-                visible = selectedFilePath != null,
-                enter = slideInHorizontally() + fadeIn(),
-                exit = slideOutHorizontally() + fadeOut()
-            ) {
-                Row {
-                    selectedFilePath?.let { path ->
-                        FilePreviewPanel(
-                            filePath = path,
-                            onClose = { selectedFilePath = null },
-                            modifier = Modifier.width(360.dp)
-                        )
-                    }
-                    VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                }
-            }
+            VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
 
             Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                // Header
-                Row(
-                    modifier = Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        AppTooltip(if (sidebarVisible) "Zwiń panel boczny" else "Rozwiń panel boczny") {
-                            IconButton(onClick = {
-                                onUpdateUiSettings(uiSettings.copy(sidebarVisible = !uiSettings.sidebarVisible))
-                            }) {
-                                Icon(Icons.Default.Menu, contentDescription = null, tint = if (sidebarVisible) MaterialTheme.colorScheme.primary else Color.Gray)
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Box(modifier = Modifier.size(8.dp).background(if (statusState == "IDLE") Color.Green else Color.Yellow, RoundedCornerShape(4.dp)))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("${mode.name} MODE - ${statusState.uppercase()}", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                        if (currentSessionId != null) {
-                            Text(" | ${currentSessionId.take(8)}", fontSize = 10.sp, color = Color.Gray)
-                        }
-
-                        Spacer(modifier = Modifier.width(24.dp))
-                        
-                        // Auto-Accept Toggle
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("AUTO-AKCEPTACJA", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (uiSettings.autoAccept) MaterialTheme.colorScheme.primary else Color.Gray)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Switch(
-                                checked = uiSettings.autoAccept,
-                                onCheckedChange = { checked ->
-                                    val newSettings = uiSettings.copy(autoAccept = checked)
-                                    onUpdateUiSettings(newSettings)
-                                    // UpdateConfig intent handled in ViewModel will sync to backend
-                                },
-                                modifier = Modifier.scale(0.7f)
-                            )
-                        }
-                    }
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        TokenTracker(sessionStats, isSummarizing, onSummarize)
-                        Spacer(modifier = Modifier.width(16.dp))
-                        AppTooltip(if (showStats) "Ukryj statystyki" else "Pokaż statystyki") {
-                            IconButton(onClick = {
-                                onStatsRefresh()
-                                onUpdateUiSettings(uiSettings.copy(showStats = !showStats))
-                            }) { Icon(Icons.Default.Info, contentDescription = null, tint = if (showStats) MaterialTheme.colorScheme.primary else Color.Gray) }
-                        }
-                        AppTooltip(if (showTools) "Ukryj narzędzia" else "Pokaż narzędzia") {
-                            IconButton(onClick = {
-                                onUpdateUiSettings(uiSettings.copy(showTools = !uiSettings.showTools))
-                            }) {
-                                Icon(Icons.Default.List, contentDescription = null, tint = if (showTools) MaterialTheme.colorScheme.primary else Color.Gray)
-                            }
-                        }
-
-                        // Cancel button — shown only when THINKING
-                        AnimatedVisibility(
-                            visible = statusState.uppercase() == "THINKING",
-                            enter = fadeIn(),
-                            exit = fadeOut()
-                        ) {
-                            AppTooltip("Anuluj działanie agenta") {
-                                IconButton(onClick = onCancel) {
-                                    Icon(Icons.Default.Close, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                                }
-                            }
-                        }
-                        AppTooltip("Wybierz provider / konfiguruj adresy i klucze API") {
-                            IconButton(onClick = onToggleProviderDialog) {
-                                Icon(Icons.Default.Cloud, contentDescription = null, tint = Color.Gray)
-                            }
-                        }
-                        AppTooltip("Zbierz logi do katalogu DebugLog") {
-                            IconButton(onClick = onDumpDebugLog) {
-                                Icon(Icons.Default.BugReport, contentDescription = null, tint = Color.Gray)
-                            }
-                        }
-                        AppTooltip("Ustawienia (backend, rola, system prompt)") {
-                            IconButton(onClick = onToggleSettings) {
-                                Icon(Icons.Default.Settings, contentDescription = null, tint = if (showSettings) MaterialTheme.colorScheme.primary else Color.Gray)
-                            }
-                        }
-                    }
+                // ── Top Bar ──────────────────────────────────────────────────
+                MainTopBar(
+                    projectName = "DigitalArchitect",
+                    onSearch = { /* TODO */ },
+                    onToggleLeftSidebar = { onUpdateUiSettings(uiSettings.copy(sidebarVisible = !uiSettings.sidebarVisible)) },
+                    onToggleRightSidebar = { onUpdateUiSettings(uiSettings.copy(showFiles = !uiSettings.showFiles)) },
+                    isLeftSidebarVisible = sidebarVisible,
+                    isRightSidebarVisible = uiSettings.showFiles,
+                    isToolsVisible = uiSettings.showTools,
+            onToggleTools = { onUpdateUiSettings(uiSettings.copy(showTools = !uiSettings.showTools)) },
+            autoAccept = uiSettings.autoAccept,
+            onToggleAutoAccept = { onUpdateUiSettings(uiSettings.copy(autoAccept = !uiSettings.autoAccept)) },
+            onQuickConnect = { backend ->
+                // Basic model mapping for quick connect
+                val model = when(backend) {
+                    "ollama" -> "llama3"
+                    "lmstudio" -> "" // default
+                    else -> ""
                 }
+                onActivateProvider(backend, model)
+            },
+            cauldronState = cauldronState,
+            themeMode = uiSettings.themeMode,
+                    onToggleTheme = { 
+                        val newMode = if (uiSettings.themeMode == "LIGHT") "DARK" else "LIGHT"
+                        onUpdateUiSettings(uiSettings.copy(themeMode = newMode))
+                    }
+                )
 
-                HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
 
-                // Connection Status Banner
-                AnimatedVisibility(
-                    visible = isDisconnected,
-                    enter = expandVertically() + fadeIn(),
-                    exit = shrinkVertically() + fadeOut()
-                ) {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth().height(40.dp),
-                        color = Color(0xFFB71C1C)
+                Row(modifier = Modifier.weight(1f).fillMaxWidth().animateContentSize()) {
+
+                    // ── Collapsible Sessions Sidebar (Middle-Left) ───────────────
+                    AnimatedVisibility(
+                        visible = sidebarVisible,
+                        enter = slideInHorizontally() + fadeIn(),
+                        exit = slideOutHorizontally() + fadeOut()
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
+                        Row {
+                            Sidebar(
+                                sessions = sessions,
+                                activeFilters = activeFilters,
+                                onSessionSelect = onSessionSelect,
+                                onSessionDelete = onSessionDelete,
+                                onSessionPrune = onSessionPrune,
+                                onToggleFilter = onToggleFilter,
+                                onSessionTag = onSessionTag,
+                                workingDir = workingDir,
+                                onFileSelected = { path -> selectedFilePath = path },
+                                selectedFilePath = selectedFilePath,
+                                onCollapse = { onUpdateUiSettings(uiSettings.copy(sidebarVisible = false)) },
+                                onNewSession = onNewSession,
+                                modifier = Modifier
+                                    .width(260.dp)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                            )
+                            VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                        }
+                    }
+
+                    // ── Main Content Area (Center) ──────────────────────────────
+                    Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                        // Connection Status Banner
+                        AnimatedVisibility(
+                            visible = isDisconnected,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Warning,
-                                contentDescription = "Warning",
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (statusState == "CRASHED") "Agent uległ awarii (OOM / SIGKILL)" else "Backend niedostępny — sprawdź połączenie",
-                                color = Color.White,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                            if (statusState == "CRASHED" || isDisconnected) {
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Button(
-                                    onClick = onRestartAgent,
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFFB71C1C)),
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                                    modifier = Modifier.height(28.dp),
-                                    shape = RoundedCornerShape(4.dp)
+                            Surface(
+                                modifier = Modifier.fillMaxWidth().height(40.dp),
+                                color = Color(0xFFB71C1C)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
                                 ) {
-                                    Text("Uruchom ponownie", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    Icon(imageVector = Icons.Default.Warning, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = if (statusState == "CRASHED") "Agent uległ awarii (OOM / SIGKILL)" else "Backend niedostępny — sprawdź połączenie",
+                                        color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium
+                                    )
+                                    if (statusState == "CRASHED" || isDisconnected) {
+                                        Spacer(modifier = Modifier.width(16.dp))
+                                        Button(
+                                            onClick = onRestartAgent,
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFFB71C1C)),
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                                            modifier = Modifier.height(28.dp),
+                                            shape = RoundedCornerShape(4.dp)
+                                        ) {
+                                            Text("Uruchom ponownie", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
                                 }
                             }
                         }
-                    }
-                }
 
-                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    Row(modifier = Modifier.fillMaxSize()) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            // Chat Area
-                            LazyColumn(
-                                state = listState,
-                                modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp),
-                                contentPadding = PaddingValues(vertical = 16.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                if (messages.isEmpty()) {
-                                    item {
-                                        Box(
-                                            modifier = Modifier.fillParentMaxSize(),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                Icon(
-                                                    imageVector = Icons.Default.MailOutline,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(64.dp),
-                                                    tint = Color.Gray.copy(alpha = 0.3f)
-                                                )
-                                                Spacer(modifier = Modifier.height(8.dp))
-                                                Text(
-                                                    text = "Brak wiadomości",
-                                                    style = MaterialTheme.typography.bodyLarge,
-                                                    color = Color.Gray.copy(alpha = 0.5f)
-                                                )
-                                                Text(
-                                                    text = "Napisz coś żeby zacząć",
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = Color.Gray.copy(alpha = 0.3f)
-                                                )
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    itemsIndexed(messages, key = { _, msg -> msg.id }) { index, msg ->
-                                        val isGrouped = index > 0 &&
-                                            messages[index - 1].sender == msg.sender &&
-                                            messages[index - 1].isFromUser == msg.isFromUser &&
-                                            msg.type != MessageType.SYSTEM
-
-                                        ChatBubble(msg, isGrouped, onFork = { onFork(index) })
-                                    }
-
-                                    if (statusState == "THINKING") {
-                                        item {
-                                            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
-                                                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                                            }
-                                        }
-                                    }
+                        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                            val showScrollButton by remember {
+                                derivedStateOf {
+                                    val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                                    lastVisible < messages.size - 1
                                 }
                             }
 
-                            LaunchedEffect(messages.size) {
-                                if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1)
-                            }
-
-                            // Input Area
-                            Column(modifier = Modifier.fillMaxWidth().animateContentSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
-                                // Working directory row
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                // Chat Area
+                                LazyColumn(
+                                    state = listState,
+                                    modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp),
+                                    contentPadding = PaddingValues(vertical = 16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    Icon(
-                                        Icons.Default.Folder,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(13.dp),
-                                        tint = Color(0xFFFFB74D)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    AppTooltip(
-                                        if (workingDir.isEmpty()) "Kliknij, aby wybrać folder roboczy agenta"
-                                        else "Folder roboczy: $workingDir\nKliknij, aby zmienić"
-                                    ) {
-                                        TextButton(
-                                            onClick = {
-                                                scope.launch(Dispatchers.IO) {
-                                                    val picked = pickFolderDialog(workingDir)
-                                                    picked?.let { withContext(Dispatchers.Main) { onSetWorkingDir(it) } }
+                                    if (messages.isEmpty()) {
+                                        item {
+                                            Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+                                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                    Icon(Icons.Default.MailOutline, null, Modifier.size(64.dp), Color.Gray.copy(alpha = 0.3f))
+                                                    Spacer(modifier = Modifier.height(8.dp))
+                                                    Text("Brak wiadomości", style = MaterialTheme.typography.bodyLarge, color = Color.Gray.copy(alpha = 0.5f))
                                                 }
-                                            },
-                                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
-                                            modifier = Modifier.height(22.dp)
-                                        ) {
-                                            Text(
-                                                text = if (workingDir.isEmpty()) "Ustaw folder roboczy…"
-                                                       else shortenDisplayPath(workingDir),
-                                                fontSize = 10.sp,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
+                                            }
+                                        }
+                                    } else {
+                                        itemsIndexed(messages, key = { _, msg -> msg.id }) { index, msg ->
+                                            val isGrouped = index > 0 &&
+                                                messages[index - 1].sender == msg.sender &&
+                                                messages[index - 1].isFromUser == msg.isFromUser &&
+                                                msg.type != MessageType.SYSTEM
+                                            ChatBubble(
+                                                msg = msg,
+                                                isGrouped = isGrouped,
+                                                fontSize = uiSettings.chatFontSize,
+                                                codeFontSize = uiSettings.codeFontSize,
+                                                onFork = { onFork(index) }
                                             )
                                         }
-                                    }
-                                }
-
-                                if (contextSuggestions.isNotEmpty()) {
-                                    PredictiveContext(
-                                        suggestions = contextSuggestions,
-                                        onAttach = { path -> inputText += " [Context: $path]" }
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                }
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-                                    verticalAlignment = Alignment.Bottom
-                                ) {
-                                    TextField(
-                                        value = inputText,
-                                        onValueChange = { inputText = it },
-                                        modifier = Modifier.weight(1f)
-                                            .onPreviewKeyEvent { event ->
-                                                if (event.type == KeyEventType.KeyDown) {
-                                                    if (event.key == Key.Enter && !event.isShiftPressed) {
-                                                        if (inputText.isNotBlank()) {
-                                                            onSendMessage(inputText)
-                                                            inputText = ""
-                                                        }
-                                                        true
-                                                    } else if (event.key == Key.DirectionUp && inputText.isEmpty()) {
-                                                        val lastMsg = messages.lastOrNull { it.isFromUser }
-                                                        if (lastMsg != null) {
-                                                            inputText = lastMsg.text
-                                                            true
-                                                        } else false
-                                                    } else false
-                                                } else false
-                                            },
-                                        placeholder = { Text("Type a message...") },
-                                        maxLines = 10
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    
-                                    // Retry Button
-                                    AppTooltip("Przywróć ostatnią wiadomość (Strzałka w górę)") {
-                                        IconButton(
-                                            onClick = {
-                                                messages.lastOrNull { it.isFromUser }?.let { inputText = it.text }
-                                            },
-                                            modifier = Modifier.padding(bottom = 8.dp)
-                                        ) {
-                                            Icon(Icons.Default.History, contentDescription = "Retry last", tint = Color.Gray)
+                                        if (statusState == "THINKING") {
+                                            item {
+                                                Box(modifier = Modifier.fillMaxWidth().padding(start = 24.dp), contentAlignment = Alignment.CenterStart) {
+                                                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                                }
+                                            }
                                         }
                                     }
+                                }
 
-                                    Button(
-                                        onClick = {
-                                            if (inputText.isNotBlank()) {
-                                                onSendMessage(inputText)
-                                                inputText = ""
+                                LaunchedEffect(messages.size) {
+                                    if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1)
+                                }
+
+                                // Input Area
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        if (selectedImages.isNotEmpty()) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                selectedImages.forEach { imagePath ->
+                                                    Box(modifier = Modifier.size(60.dp)) {
+                                                        AsyncImage(
+                                                            model = imagePath,
+                                                            contentDescription = null,
+                                                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)),
+                                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                                        )
+                                                        IconButton(
+                                                            onClick = { selectedImages.remove(imagePath) },
+                                                            modifier = Modifier.align(Alignment.TopEnd).size(20.dp).offset(x = 6.dp, y = (-6).dp)
+                                                        ) {
+                                                            Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.error) {
+                                                                Icon(Icons.Default.Close, null, Modifier.size(12.dp), Color.White)
+                                                            }
+                                                        }
+                                                    }
+                                                }
                                             }
-                                        },
-                                        modifier = Modifier.padding(bottom = 8.dp)
-                                    ) {
-                                        Text("Send")
+                                        }
+
+                                        Box(modifier = Modifier.weight(1f, fill = false)) {
+                                            BasicTextField(
+                                                value = inputText,
+                                                onValueChange = { inputText = it },
+                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp).fillMaxWidth()
+                                                    .onPreviewKeyEvent { event ->
+                                                        if (event.type == KeyEventType.KeyDown && event.key == Key.Enter && !event.isShiftPressed) {
+                                                        if (inputText.isNotBlank() || selectedImages.isNotEmpty()) {
+                                                            onSendMessage(inputText, selectedImages.toList())
+                                                            inputText = ""
+                                                            selectedImages.clear()
+                                                        }
+                                                            true
+                                                        } else false
+                                                    },
+                                                textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
+                                                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                                decorationBox = { innerTextField ->
+                                                    if (inputText.isEmpty() && selectedImages.isEmpty()) {
+                                                        Text("Wpisz wiadomość...", color = Color.Gray, fontSize = 14.sp)
+                                                    }
+                                                    innerTextField()
+                                                }
+                                            )
+                                        }
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                IconButton(onClick = { 
+                                                    scope.launch(Dispatchers.IO) {
+                                                        pickImageDialog()?.let { selectedImages.add(it) }
+                                                    }
+                                                }) {
+                                                    Icon(Icons.Default.Image, "Attach Image", modifier = Modifier.size(20.dp), tint = Color.Gray)
+                                                }
+                                                IconButton(onClick = {
+                                                    messages.lastOrNull { it.isFromUser }?.let { inputText = it.text }
+                                                }) {
+                                                    Icon(Icons.Default.History, "History", modifier = Modifier.size(20.dp), tint = Color.Gray)
+                                                }
+                                            }
+                                            IconButton(
+                                                onClick = {
+                                                     if (inputText.isNotBlank() || selectedImages.isNotEmpty()) {
+                                                         onSendMessage(inputText, selectedImages.toList())
+                                                         inputText = ""
+                                                         selectedImages.clear()
+                                                     }
+                                                },
+                                                enabled = inputText.isNotBlank() || selectedImages.isNotEmpty(),
+                                                modifier = Modifier.size(32.dp).background(
+                                                    if (inputText.isNotBlank() || selectedImages.isNotEmpty()) MaterialTheme.colorScheme.primary else Color.Gray.copy(alpha = 0.2f),
+                                                    RoundedCornerShape(8.dp)
+                                                )
+                                            ) {
+                                                Icon(Icons.Default.Send, null, Modifier.size(16.dp), Color.White)
+                                            }
+                                        }
                                     }
                                 }
+
+                                IpcLogPanel(logs = ipcLogs, expanded = ipcLogExpanded, onToggle = onToggleIpcLog)
                             }
 
-                            // IPC Log Panel (collapsible, pinned to bottom)
-                            IpcLogPanel(
-                                logs = ipcLogs,
-                                expanded = ipcLogExpanded,
-                                onToggle = onToggleIpcLog
-                            )
-                        }
-
-                        // Right Side Panel
-                        val isAnyPanelVisible = showStats || showTools || showLogs || showScratchpad || showTerminal || showPluginManager || showWorkflowBuilder || showCanvas || showHelp || showOrchestrator
-
-                        AnimatedVisibility(
-                            visible = isAnyPanelVisible,
-                            enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
-                            exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
-                        ) {
-                            Row(modifier = Modifier.fillMaxHeight()) {
-                                DraggableDivider { delta ->
-                                    val newWidth = (uiSettings.sidePanelWidth - delta).coerceIn(300f, 800f)
-                                    onUpdateUiSettings(uiSettings.copy(sidePanelWidth = newWidth))
-                                }
-
-                               Box(modifier = Modifier
-                                    .width(sidePanelWidth)
-                                    .fillMaxHeight()
-                                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                                    .padding(start = 1.dp)
+                            // Floating Scroll Button
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = showScrollButton,
+                                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 120.dp)
+                            ) {
+                                SmallFloatingActionButton(
+                                    onClick = { scope.launch { if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1) } },
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    shape = RoundedCornerShape(20.dp)
                                 ) {
+                                    Icon(Icons.Default.KeyboardArrowDown, null, Modifier.size(16.dp))
+                                }
+                            }
+                        }
+                    }
+
+                    // ── Right Side Panel (Working Directory / Tools) ──────────────
+                    val isAnyPanelVisible = uiSettings.showFiles || uiSettings.showTools || showStats || showLogs || showScratchpad || showTerminal || showPluginManager || showWorkflowBuilder || showCanvas || showHelp || showOrchestrator
+
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = isAnyPanelVisible,
+                        enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
+                        exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
+                    ) {
+                        Row(modifier = Modifier.fillMaxHeight()) {
+                            VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                            Column(modifier = Modifier.width(sidePanelWidth).background(MaterialTheme.colorScheme.surface)) {
+                                // Panel Selector / Working Directory Header
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("WORKING DIRECTORY", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                                    IconButton(onClick = onStatsRefresh, modifier = Modifier.size(20.dp)) {
+                                        Icon(Icons.Default.Refresh, null, Modifier.size(14.dp), Color.Gray)
+                                    }
+                                }
+                                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                                    // Always show FileTree in Working Directory if tools aren't explicitly overriding
+                                    if (uiSettings.showFiles) {
+                                        FileTree(
+                                            rootPath = workingDir.ifEmpty { System.getProperty("user.home") ?: "" },
+                                            selectedFilePath = selectedFilePath,
+                                            onFileSelected = { selectedFilePath = it }
+                                        )
+                                    }
+                                    if (uiSettings.showTools) {
+                                        ToolExplorer(
+                                            tools = availableTools,
+                                            onReloadTools = onReloadTools,
+                                            onCreateTool = { showCreateToolDialog = true },
+                                            onDeleteTool = onDeleteTool
+                                        )
+                                    }
+                                    // Overlays for other panels
                                     if (showStats) StatsPanel(sessionStats) { onUpdateUiSettings(uiSettings.copy(showStats = false)) }
-                                    if (showTools) ToolsPanel(availableTools = availableTools, onReloadTools = onReloadTools, onDismiss = { onUpdateUiSettings(uiSettings.copy(showTools = false)) })
                                     if (showLogs) LogsPanel(logs) { onUpdateUiSettings(uiSettings.copy(showLogs = false)) }
                                     if (showScratchpad) ScratchpadPanel(scratchpadContent, onScratchpadUpdate, { onScratchpadUpdate(it) }) { onUpdateUiSettings(uiSettings.copy(showScratchpad = false)) }
                                     if (showTerminal) TerminalPanel(terminalTraffic) { onUpdateUiSettings(uiSettings.copy(showTerminal = false)) }
@@ -516,80 +466,118 @@ fun MainScreen(
                                     if (showHelp) HelpPanel { onUpdateUiSettings(uiSettings.copy(showHelp = false)) }
                                     if (showOrchestrator) OrchestratorPanel(agentGroup) { onUpdateUiSettings(uiSettings.copy(showOrchestrator = false)) }
                                 }
+
+                                // Cauldron Engine Placeholder (Mockup style)
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(150.dp)
+                                        .padding(16.dp)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(8.dp)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(Icons.Default.Science, null, Modifier.size(32.dp), Color.Gray.copy(alpha = 0.5f))
+                                        Text("CAULDRON ENGINE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray.copy(alpha = 0.5f))
+                                        Text("Procedural Animation Placeholder", fontSize = 8.sp, color = Color.Gray.copy(alpha = 0.3f))
+                                    }
+                                }
                             }
                         }
                     }
-
-                    // Approval Overlay
-                    if (pendingApproval != null) {
-                        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)), contentAlignment = Alignment.Center) {
-                            ApprovalDialog(
-                                request = pendingApproval,
-                                onRespond = onResolveApproval
-                            )
-                        }
-                    }
-
-                    BottomStatusBar(sessionStats)
                 }
+
+                // ── Status Bar ───────────────────────────────────────────────
+                BottomStatusBar(sessionStats, ipcLogs.lastOrNull() ?: "CONNECTED", currentModelName)
             }
         }
+    }
+
+    if (showCreateToolDialog) {
+        AlertDialog(
+            onDismissRequest = { showCreateToolDialog = false },
+            title = { Text("Create New Tool") },
+            text = {
+                Column {
+                    Text("Tool Name", style = MaterialTheme.typography.labelMedium)
+                    OutlinedTextField(
+                        value = newToolName,
+                        onValueChange = { newToolName = it },
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        placeholder = { Text("e.g. calculator") }
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Select Template", style = MaterialTheme.typography.labelMedium)
+                    Row(modifier = Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(selected = true, onClick = {}, label = { Text("Python") })
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newToolName.isNotBlank()) {
+                            onCreateTool(newToolName, "python")
+                            newToolName = ""
+                            showCreateToolDialog = false
+                        }
+                    }
+                ) {
+                    Text("Create")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCreateToolDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
 @Composable
-fun BottomStatusBar(stats: JsonObject?) {
-    val inTokens = stats?.get("input_tokens")?.toString()?.replace("\"", "") ?: "0"
-    val outTokens = stats?.get("output_tokens")?.toString()?.replace("\"", "") ?: "0"
-    val ctxTokens = stats?.get("context_window_tokens")?.toString()?.replace("\"", "") ?: "0"
-    val backend = stats?.get("backend")?.toString()?.replace("\"", "") ?: "N/A"
-
+fun BottomStatusBar(stats: JsonObject?, lastIpc: String, currentModel: String) {
+    val inTokens = stats?.get("input_tokens")?.let { it.toString().removeSurrounding("\"") } ?: "0"
+    val outTokens = stats?.get("output_tokens")?.let { it.toString().removeSurrounding("\"") } ?: "0"
+    val context = stats?.get("context_window_tokens")?.let { it.toString().removeSurrounding("\"") } ?: "0"
+    
     Surface(
-        color = Color(0xFF121212),
-        modifier = Modifier.fillMaxWidth().height(26.dp)
+        color = MaterialTheme.colorScheme.surface,
+        modifier = Modifier.fillMaxWidth().height(28.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
     ) {
         Row(
             modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "BACKEND: ${backend.uppercase()}",
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Gray
-            )
+            // Left: Model and Tokens
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(6.dp).background(Color.Cyan, RoundedCornerShape(3.dp)))
+                Spacer(Modifier.width(8.dp))
+                Text("MODEL: ${currentModel.uppercase().ifEmpty { "UNKNOWN" }}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            }
+            
+            Text("TOKENS: $inTokens ↑ $outTokens ↓", fontSize = 9.sp, color = Color.Gray)
+            Text("CONTEXT: $context", fontSize = 9.sp, color = Color.Gray)
 
             Spacer(modifier = Modifier.weight(1f))
 
-            StatusBarItem("IN", inTokens)
-            StatusBarItem("OUT", outTokens)
-            StatusBarItem("CONTEXT", ctxTokens)
+            Text("IPC: ${lastIpc.take(30)}", fontSize = 9.sp, color = Color.Gray.copy(alpha = 0.7f))
             
-            Spacer(modifier = Modifier.width(4.dp))
+            VerticalDivider(modifier = Modifier.height(12.dp), color = Color.Gray.copy(alpha = 0.2f))
+            
+            Text("THREAD: 0x${(stats?.hashCode() ?: 0).toString(16).uppercase().take(4)}", fontSize = 9.sp, color = Color.Gray)
         }
     }
 }
 
-@Composable
-fun StatusBarItem(label: String, value: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = "$label: ",
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Gray
-        )
-        Text(
-            text = value,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color(0xFF64B5F6) // Hardcoded light blue
-        )
-    }
-}
-
 // ── Utilities ─────────────────────────────────────────────────────────────────
+
+private fun shortenPath(path: String): String {
+    val items = path.split("/")
+    return if (items.size > 2) ".../${items.takeLast(2).joinToString("/")}" else path
+}
 
 private fun shortenDisplayPath(path: String): String {
     val home = System.getProperty("user.home") ?: ""
@@ -616,11 +604,31 @@ private fun pickFolderDialog(currentPath: String): String? {
     } catch (_: Exception) { null }
 }
 
+/** Blocking image picker dialog — call only from Dispatchers.IO. */
+private fun pickImageDialog(): String? {
+    return try {
+        var result: String? = null
+        val latch = java.util.concurrent.CountDownLatch(1)
+        javax.swing.SwingUtilities.invokeLater {
+            val chooser = javax.swing.JFileChooser().apply {
+                fileFilter = javax.swing.filechooser.FileNameExtensionFilter("Images", "jpg", "jpeg", "png", "webp", "gif")
+                dialogTitle = "Wybierz obraz"
+            }
+            if (chooser.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) {
+                result = chooser.selectedFile.absolutePath
+            }
+            latch.countDown()
+        }
+        latch.await(60, java.util.concurrent.TimeUnit.SECONDS)
+        result
+    } catch (_: Exception) { null }
+}
+
 // Panel Wrappers (should be in separate files eventually)
 
 @Composable
 fun StatsPanel(stats: JsonObject?, onDismiss: () -> Unit) {
-    Column {
+    Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         Row(modifier = Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.End) {
             IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, contentDescription = "Close") }
         }
@@ -630,7 +638,7 @@ fun StatsPanel(stats: JsonObject?, onDismiss: () -> Unit) {
 
 @Composable
 fun ToolsPanel(availableTools: List<JsonObject>, onReloadTools: () -> Unit, onDismiss: () -> Unit) {
-    Column {
+    Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         Row(modifier = Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.End) {
             IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, contentDescription = "Close") }
         }
@@ -640,49 +648,62 @@ fun ToolsPanel(availableTools: List<JsonObject>, onReloadTools: () -> Unit, onDi
 
 @Composable
 fun LogsPanel(logs: List<LogPayload>, onDismiss: () -> Unit) {
-    LogViewer(logs = logs, onClear = { /* logic */ })
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+        LogViewer(logs = logs, onClear = { /* logic */ })
+        IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
+            Icon(Icons.Default.Close, null)
+        }
+    }
 }
 
 @Composable
 fun ScratchpadPanel(content: String, onUpdate: (String) -> Unit, onSaveRequest: (String) -> Unit, onDismiss: () -> Unit) {
-    Scratchpad(
-        content = content,
-        onSave = { onSaveRequest(it) },
-        onRefresh = { /* logic */ }
-    )
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+        Scratchpad(content = content, onSave = { onSaveRequest(it) }, onRefresh = { /* logic */ })
+        IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
+            Icon(Icons.Default.Close, null)
+        }
+    }
 }
 
 @Composable
 fun TerminalPanel(traffic: List<TerminalTrafficPayload>, onDismiss: () -> Unit) {
-    TerminalViewer(traffic = traffic, onClear = { /* logic */ })
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+        TerminalViewer(traffic = traffic, onClear = { /* logic */ })
+        IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
+            Icon(Icons.Default.Close, null)
+        }
+    }
 }
 
 @Composable
 fun PluginManagerPanel(plugins: List<PluginMetadataPayload>, onDismiss: () -> Unit) {
-    PluginManager(
-        plugins = plugins,
-        onTogglePlugin = { _, _ -> },
-        onRefresh = { }
-    )
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+        PluginManager(plugins = plugins, onTogglePlugin = { _, _ -> }, onRefresh = { })
+        IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
+            Icon(Icons.Default.Close, null)
+        }
+    }
 }
 
 @Composable
 fun WorkflowBuilderPanel(workflows: List<WorkflowStatusPayload>, onDismiss: () -> Unit) {
-    WorkflowBuilder(
-        workflows = workflows,
-        onStartWorkflow = { },
-        onStopWorkflow = { },
-        onRefresh = { }
-    )
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+        WorkflowBuilder(workflows = workflows, onStartWorkflow = { }, onStopWorkflow = { }, onRefresh = { })
+        IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
+            Icon(Icons.Default.Close, null)
+        }
+    }
 }
 
 @Composable
 fun CanvasPanel(elements: List<CanvasElement>, onDismiss: () -> Unit) {
-    InteractiveCanvas(
-        elements = elements,
-        onClear = { },
-        onRefresh = { }
-    )
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+        InteractiveCanvas(elements = elements, onClear = { }, onRefresh = { })
+        IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
+            Icon(Icons.Default.Close, null)
+        }
+    }
 }
 
 @Composable

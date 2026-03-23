@@ -20,6 +20,7 @@ data class UiSettings(
     val sidebarVisible: Boolean = true,
     val sidePanelWidth: Float = 400f,
     val showStats: Boolean = false,
+    val showFiles: Boolean = true,
     val showTools: Boolean = false,
     val showLogs: Boolean = false,
     val showScratchpad: Boolean = false,
@@ -31,6 +32,9 @@ data class UiSettings(
     val showOrchestrator: Boolean = false,
     val workingDir: String = "",
     val autoAccept: Boolean = false,
+    val themeMode: String = "DARK", // "LIGHT", "DARK", "SYSTEM"
+    val chatFontSize: Float = 14f,
+    val codeFontSize: Float = 13f,
     /** Per-provider configs keyed by backend name (lmstudio, ollama, claude, openai, google, huggingface) */
     val providerConfigs: Map<String, ProviderConfig> = emptyMap()
 )

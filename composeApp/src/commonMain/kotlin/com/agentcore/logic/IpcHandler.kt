@@ -35,7 +35,14 @@ object IpcHandler {
         onScheduledTasksList: (ScheduledTasksListPayload) -> Unit = {},
         onModelsList: (String, List<String>) -> Unit = { _, _ -> },
         // B02: streaming subprocess tool output (I01)
-        onToolOutputDelta: (ToolOutputDeltaPayload) -> Unit = {}
+        onToolOutputDelta: (ToolOutputDeltaPayload) -> Unit = {},
+        onSubAgentDone: (SubAgentDonePayload) -> Unit = {},
+        // FIX: capture session_id from message_start so conversation is remembered
+        onSessionStart: (String) -> Unit = {},
+        // FIX: notify caller when backend is ready (after process start)
+        onBackendReady: () -> Unit = {},
+        // FIX: route sub-agent events to console log
+        onSubAgentLog: (agentId: String, type: String, text: String) -> Unit = { _, _, _ -> }
     ) {
         when (event) {
             is IpcEvent.Status -> {
@@ -43,10 +50,26 @@ object IpcHandler {
                 // The full set of backend states: idle | thinking | executing |
                 // waiting_approval | backtracking
                 val state = event.payload.state.uppercase()
+                // Sub-agent status changes go to log only, not main spinner
+                val agentId = event.agentId
+                if (agentId != null) {
+                    onSubAgentLog(agentId, "status", state)
+                    return
+                }
                 onStatusChange(if (state == "BACKTRACKING") "THINKING" else state)
             }
-            is IpcEvent.MessageStart -> onStatusChange("THINKING")
+            is IpcEvent.MessageStart -> {
+                // FIX: capture session_id so subsequent messages continue the same session
+                onStatusChange("THINKING")
+                onSessionStart(event.payload.session_id)
+            }
             is IpcEvent.TextDelta -> {
+                val agentId = event.agentId
+                if (agentId != null) {
+                    // Sub-agent text goes to console log only (not main conversation)
+                    onSubAgentLog(agentId, "text", event.payload.text.take(80))
+                    return
+                }
                 val lastMsg = currentMessages.lastOrNull()
                 if (lastMsg != null && !lastMsg.isFromUser && lastMsg.type == MessageType.TEXT) {
                     onLastMessageUpdated(lastMsg.copy(text = lastMsg.text + event.payload.text))
@@ -71,13 +94,20 @@ object IpcHandler {
                         sender = "System",
                         text = "❌ [${event.payload.code}] ${event.payload.message}",
                         isFromUser = false,
-                        type = MessageType.SYSTEM
+                        type = MessageType.SYSTEM,
+                        agentId = event.agentId
                     )
                 )
                 onError(event.payload)
                 onStatusChange("IDLE")
             }
             is IpcEvent.ToolCall -> {
+                val agentId = event.agentId
+                if (agentId != null) {
+                    // Sub-agent tool call: goes to console log with full details
+                    onSubAgentLog(agentId, "tool_call", "⚙️ ${event.payload.tool}(${event.payload.args})")
+                    return
+                }
                 onMessageAdded(
                     Message(
                         id = "tool-${event.payload.id}",
@@ -101,7 +131,8 @@ object IpcHandler {
                             sender = "Tool",
                             text = event.payload.line,
                             isFromUser = false,
-                            type = MessageType.ACTION
+                            type = MessageType.ACTION,
+                            agentId = event.agentId
                         )
                     )
                 }
@@ -112,6 +143,12 @@ object IpcHandler {
                     "❌ ${event.payload.error}"
                 else
                     "✅ ${event.payload.result.take(300)}${if (event.payload.result.length > 300) "…" else ""}"
+                val agentId = event.agentId
+                if (agentId != null) {
+                    // Sub-agent result: goes to console log
+                    onSubAgentLog(agentId, "tool_result", body)
+                    return
+                }
                 onMessageAdded(
                     Message(
                         id = "result-${event.payload.id}",
@@ -126,10 +163,11 @@ object IpcHandler {
                 onMessageAdded(
                     Message(
                         id = "thought-${System.currentTimeMillis()}",
-                        sender = "Thought",
+                        sender = if (event.agentId != null) "Sub-Agent Thought" else "Thought",
                         text = "💭 ${event.payload.text}",
                         isFromUser = false,
-                        type = MessageType.SYSTEM
+                        type = MessageType.SYSTEM,
+                        agentId = event.agentId
                     )
                 )
             }
@@ -150,7 +188,18 @@ object IpcHandler {
             is IpcEvent.TaskScheduled -> onTaskScheduled(event.payload)
             is IpcEvent.ScheduledTasksList -> onScheduledTasksList(event.payload)
             is IpcEvent.ModelsList -> onModelsList(event.payload.backend, event.payload.models)
-            is IpcEvent.Ready -> onStatusChange("IDLE")
+            is IpcEvent.SubAgentDone -> {
+                onSubAgentDone(event.payload)
+                onSubAgentLog(
+                    event.payload.agent_id,
+                    "done",
+                    "${if (event.payload.success) "✅" else "❌"} ${event.payload.summary.take(120)}"
+                )
+            }
+            is IpcEvent.Ready -> {
+                onStatusChange("IDLE")
+                onBackendReady()
+            }
             else -> {}
         }
     }
@@ -186,6 +235,7 @@ object IpcHandler {
                     session_id = sessionId,
                     text = text,
                     attachments = attachList,
+                    include_stats = true,
                     working_dir = workingDir?.takeIf { it.isNotBlank() }
                 )
                 when (mode) {

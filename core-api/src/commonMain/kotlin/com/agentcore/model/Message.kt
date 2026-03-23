@@ -17,4 +17,5 @@ data class Message(
     val attachments: List<String>? = null,
     val extraContent: String? = null,
     val timestamp: Long = System.currentTimeMillis(),
+    val agentId: String? = null,
 )

@@ -36,11 +36,12 @@ data class ChatUiState(
     val showProviderDialog: Boolean = false,
     val availableModels: Map<String, List<String>> = emptyMap(),
     val approvalMode: Boolean = true,
+    val currentModelName: String = "",
 )
 
 sealed class ChatIntent {
     data class FetchModels(val backend: String, val url: String? = null) : ChatIntent()
-    data class SendMessage(val text: String) : ChatIntent()
+    data class SendMessage(val text: String, val images: List<String> = emptyList()) : ChatIntent()
     data class SelectSession(val id: String) : ChatIntent()
     object ToggleSettings : ChatIntent()
     object RefreshStats : ChatIntent()
@@ -76,4 +77,7 @@ sealed class ChatIntent {
     ) : ChatIntent()
     data class SaveProviderConfigs(val configs: Map<String, ProviderConfig>) : ChatIntent()
     object RestartAgent : ChatIntent()
+    data class RestartProvider(val provider: String) : ChatIntent()
+    data class CreateTool(val name: String, val template: String) : ChatIntent()
+    data class DeleteTool(val name: String) : ChatIntent()
 }

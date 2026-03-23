@@ -97,7 +97,7 @@ class StdioExecutor(private val workingDir: String = "/Users/jaroslawkrawczyk/Ag
                 }
                 // Process exited — notify collectors so UI can show disconnection
                 val exitCode = try { capturedProcess.waitFor() } catch (_: Exception) { -1 }
-                _events.emit(IpcEvent.Error(com.agentcore.api.ErrorPayload(
+                _events.emit(IpcEvent.Error(payload = com.agentcore.api.ErrorPayload(
                     "STDIO_EXITED",
                     "agent-core process exited (code $exitCode)"
                 )))
@@ -116,7 +116,7 @@ class StdioExecutor(private val workingDir: String = "/Users/jaroslawkrawczyk/Ag
             }
         } catch (e: Exception) {
             scope.launch {
-                _events.emit(IpcEvent.Error(com.agentcore.api.ErrorPayload("STDIO_ERROR", e.message ?: "Unknown error")))
+                _events.emit(IpcEvent.Error(payload = com.agentcore.api.ErrorPayload("STDIO_ERROR", e.message ?: "Unknown error")))
             }
         }
     }

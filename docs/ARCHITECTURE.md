@@ -13,6 +13,8 @@ Decouples backend communication from the UI.
 
 ### 2. UI Registry (`composeApp`)
 Granular components for performance and maintainability.
+- **`NarrowSidebar`**: Compact left-hand navigation for main application sections.
+- **`MainTopBar`**: Modern header with project metadata, search, and panel controls.
 - **`ChatBubble`**: Rich Markdown rendering with custom **Syntax Highlighting**.
 - **`ApprovalDialog`**: Safe interactive tool execution flow.
 - **`ToolExplorer`**: Real-time agent capability inspection.
@@ -44,7 +46,7 @@ Follows the **MVI (Model-View-Intent)** pattern for predictable state management
 ### 5. Protocol (`core-api`)
 Unified IPC models shared between client and core.
 - **Current Version**: v1.5 (target: v1.6)
-- **Features**: Approval requests, streaming events, session persistence, scheduling, multi-modal images, tool management, backend plugins, context summarisation, human-in-the-loop.
+- **Features**: Approval requests, streaming events, session persistence, scheduling, multi-modal images, tool management, backend plugins, context summarisation, human-in-the-loop, **Dynamic Theme Switching**.
 
 ## Security & Safety
 Interactive Tool Approval ensures that critical tools (file deletion, shell execution) require explicit user consent before execution.

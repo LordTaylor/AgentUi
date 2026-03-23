@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.*
 import com.agentcore.model.Message
+import com.agentcore.model.MessageType
 
 class ChatViewModel(
     private val client: AgentClient,
@@ -76,6 +77,7 @@ class ChatViewModel(
         is IpcEvent.WorkflowStatus -> "workflow_status"
         is IpcEvent.ModelsList -> "models_list"
         is IpcEvent.ToolOutputDelta -> "tool_output_delta" // B02
+        is IpcEvent.SubAgentDone -> "sub_agent_done"
         else -> event::class.simpleName ?: "unknown"
     }
 
@@ -91,6 +93,7 @@ class ChatViewModel(
         is IpcEvent.SessionData -> "sid=${event.payload.session_id?.take(8)}"
         is IpcEvent.SessionForked -> "new=${event.payload.new_session_id.take(8)}"
         is IpcEvent.ModelsList -> "${event.payload.models.size} models"
+        is IpcEvent.SubAgentDone -> "agent=${event.payload.agent_id.take(8)} ${if (event.payload.success) "ok" else "FAIL"}"
         else -> ""
     }
 
@@ -179,13 +182,19 @@ class ChatViewModel(
             },
             onStatusChange = { state -> 
                 _uiState.value = _uiState.value.copy(statusState = state)
-                // If this status event came from handle_update_config
+                // If this status event came from handle_update_config or has backend/model info
                 if (event is IpcEvent.Status) {
                     val payload = event.payload
                     if (payload.updated_key == "approval_mode") {
                         val value = payload.value?.toString()?.toBoolean() ?: true
                         _uiState.value = _uiState.value.copy(approvalMode = value)
                     }
+                    val backend = payload.backend
+                    if (backend != null) {
+                        _uiState.value = _uiState.value.copy(currentBackend = backend)
+                    }
+                    // If the backend eventually sends 'model' in status, we'd capture it here.
+                    // For now we mostly rely on onActivateProvider.
                 }
             },
             onStatsUpdate = { _uiState.value = _uiState.value.copy(sessionStats = it) },
@@ -222,6 +231,12 @@ class ChatViewModel(
                             addIpcLog("→", "crash_loop_prevented", "Crash too frequent — stopping auto-restart")
                         }
                         _uiState.value = _uiState.value.copy(statusState = "CRASHED")
+                    }
+                } else if (error.code == "BACKEND_ERROR" || error.code == "CONNECTION_FAILED") {
+                    val backend = currentState.currentBackend
+                    if (backend == "ollama" || backend == "lmstudio") {
+                        addIpcLog("→", "recovery_suggested", "Backend $backend failed. Triggering auto-recovery...")
+                        onIntent(ChatIntent.RestartProvider(backend), viewModelScope!!, currentMode)
                     }
                 }
             },
@@ -265,8 +280,42 @@ class ChatViewModel(
                     msgs[idx] = msgs[idx].copy(text = msgs[idx].text + "\n" + delta.line)
                     _uiState.value = _uiState.value.copy(messages = msgs)
                 }
+            },
+            onSubAgentDone = { payload ->
+                addIpcLog("←", "sub_agent_done", "agent=${payload.agent_id.take(8)} success=${payload.success}")
+            },
+            // FIX 1: capture session_id from backend so conversation is remembered
+            onSessionStart = { sessionId ->
+                if (_uiState.value.currentSessionId != sessionId) {
+                    _uiState.value = _uiState.value.copy(currentSessionId = sessionId)
+                    addIpcLog("←", "session_bound", "sid=${sessionId.take(8)}")
+                }
+            },
+            // FIX 2: sync approval_mode AFTER backend is ready to avoid race condition
+            onBackendReady = {
+                syncApprovalMode()
+            },
+            // FIX 3: route sub-agent events to IPC console log
+            onSubAgentLog = { agentId, type, text ->
+                val short = agentId.take(6)
+                addIpcLog("←", "[sub:$short] $type", text.take(60))
             }
         )
+    }
+
+    /** Send approval_mode config to backend — called on Ready event to ensure process is up. */
+    private fun syncApprovalMode() {
+        val autoAccept = _uiState.value.uiSettings.autoAccept
+        addIpcLog("→", "sync_approval_mode", "autoAccept=$autoAccept → approval_mode=${!autoAccept}")
+        viewModelScope?.launch {
+            val cmd = IpcCommand.UpdateConfig(UpdateConfigPayload("approval_mode", kotlinx.serialization.json.JsonPrimitive(!autoAccept)))
+            when (currentMode) {
+                ConnectionMode.STDIO -> stdioExecutor.sendCommand(cmd)
+                ConnectionMode.UNIX_SOCKET -> unixSocketExecutor.sendCommand(cmd)
+                ConnectionMode.IPC -> client.sendCommand(cmd)
+                else -> {}
+            }
+        }
     }
 
     fun onIntent(intent: ChatIntent, scope: CoroutineScope, mode: ConnectionMode) {
@@ -284,10 +333,11 @@ class ChatViewModel(
                 }
             }
             is ChatIntent.SendMessage -> {
+                if (handleSlashCommand(intent.text, scope, mode)) return
                 addIpcLog("→", "send_message", "\"${intent.text.take(40)}${if (intent.text.length > 40) "…" else ""}\"")
                 IpcHandler.performSendMessage(
                     scope, client, stdioExecutor, unixSocketExecutor, cliExecutor, mode,
-                    intent.text, emptyList(), _uiState.value.currentSessionId,
+                    intent.text, intent.images, _uiState.value.currentSessionId,
                     onMessageAdded = { msg ->
                         _uiState.value = _uiState.value.copy(messages = _uiState.value.messages + msg)
                         saveSessionCache()
@@ -521,7 +571,10 @@ class ChatViewModel(
                         ConnectionMode.IPC -> client.sendCommand(cmd)
                         else -> {}
                     }
-                    _uiState.value = _uiState.value.copy(currentBackend = intent.backend)
+                    _uiState.value = _uiState.value.copy(
+                        currentBackend = intent.backend,
+                        currentModelName = intent.model
+                    )
                 }
             }
             is ChatIntent.ActivateProviderAndRestart -> {
@@ -543,7 +596,10 @@ class ChatViewModel(
                         ConnectionMode.STDIO -> stdioExecutor.sendCommand(cmd)
                         else -> {}
                     }
-                    _uiState.value = _uiState.value.copy(currentBackend = intent.backend)
+                    _uiState.value = _uiState.value.copy(
+                        currentBackend = intent.backend,
+                        currentModelName = model
+                    )
                 }
             }
             is ChatIntent.SaveProviderConfigs -> {
@@ -556,6 +612,39 @@ class ChatViewModel(
                 scope.launch(Dispatchers.IO) {
                     if (mode == ConnectionMode.STDIO) {
                         stdioExecutor.restart()
+                    }
+                }
+            }
+            is ChatIntent.RestartProvider -> {
+                addIpcLog("→", "restart_provider", intent.provider)
+                scope.launch {
+                    val model = _uiState.value.uiSettings.providerConfigs[intent.provider]?.model
+                    val cmd = IpcCommand.RestartProvider(RestartProviderPayload(intent.provider, model))
+                    when (mode) {
+                        ConnectionMode.IPC -> client.sendCommand(cmd)
+                        ConnectionMode.STDIO -> stdioExecutor.sendCommand(cmd)
+                        ConnectionMode.UNIX_SOCKET -> unixSocketExecutor.sendCommand(cmd)
+                        else -> {}
+                    }
+                }
+            }
+            is ChatIntent.CreateTool -> {
+                addIpcLog("→", "create_tool", intent.name)
+                scope.launch {
+                    if (mode == ConnectionMode.IPC) {
+                        client.createTool(intent.name, intent.template)
+                        val tools = client.listTools()
+                        _uiState.value = _uiState.value.copy(availableTools = tools)
+                    }
+                }
+            }
+            is ChatIntent.DeleteTool -> {
+                addIpcLog("→", "delete_tool", intent.name)
+                scope.launch {
+                    if (mode == ConnectionMode.IPC) {
+                        client.deleteTool(intent.name)
+                        val tools = client.listTools()
+                        _uiState.value = _uiState.value.copy(availableTools = tools)
                     }
                 }
             }
@@ -802,5 +891,41 @@ class ChatViewModel(
                 sessionCache.save(snapshot, SessionCache.serializer())
             } catch (_: Exception) {}
         }
+    }
+    private fun handleSlashCommand(text: String, scope: CoroutineScope, mode: ConnectionMode): Boolean {
+        if (!text.startsWith("/")) return false
+        val cmd = text.lowercase().substringBefore(" ")
+        when (cmd) {
+            "/clear" -> {
+                _uiState.value = _uiState.value.copy(messages = emptyList())
+                saveSessionCache()
+            }
+            "/reset" -> {
+                _uiState.value = _uiState.value.copy(messages = emptyList(), statusState = "IDLE")
+                saveSessionCache()
+            }
+            "/help" -> {
+                val helpText = """
+                    **Dostępne komendy:**
+                    - `/clear` - Wyczyść widok czatu locally
+                    - `/reset` - Wyczyść czat i zresetuj status
+                    - `/stats` - Odśwież statystyki tokenów
+                    - `/help` - Wyświetl tę pomoc
+                """.trimIndent()
+                val helpMsg = Message(
+                    id = "help-${System.currentTimeMillis()}",
+                    sender = "System",
+                    text = helpText,
+                    isFromUser = false,
+                    type = MessageType.SYSTEM
+                )
+                _uiState.value = _uiState.value.copy(messages = _uiState.value.messages + helpMsg)
+            }
+            "/stats" -> {
+                onIntent(ChatIntent.RefreshStats, scope, mode)
+            }
+            else -> return false
+        }
+        return true
     }
 }

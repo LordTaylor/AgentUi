@@ -17,12 +17,15 @@ fun SettingsDialog(
     currentRole: String,
     initialSystemPrompt: String = "",
     availableBackends: List<BackendInfo>,
+    uiSettings: com.agentcore.api.UiSettings,
+    onUpdateUiSettings: (com.agentcore.api.UiSettings) -> Unit,
     onDismiss: () -> Unit,
     onSave: (String, String, String) -> Unit
 ) {
     var backend by remember { mutableStateOf<String>(currentBackend) }
     var role by remember { mutableStateOf<String>(currentRole) }
     var systemPrompt by remember { mutableStateOf<String>(initialSystemPrompt) }
+    var chatFontSize by remember { mutableStateOf(uiSettings.chatFontSize) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -71,6 +74,23 @@ fun SettingsDialog(
                     modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
                     maxLines = 5
                 )
+
+                Divider(modifier = Modifier.padding(vertical = 8.dp), color = Color.Gray.copy(alpha = 0.1f))
+                
+                Text("Chat Appearance", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Font Size: ${chatFontSize.toInt()}sp", modifier = Modifier.width(100.dp))
+                    Slider(
+                        value = chatFontSize,
+                        onValueChange = { 
+                            chatFontSize = it
+                            onUpdateUiSettings(uiSettings.copy(chatFontSize = it))
+                        },
+                        valueRange = 10f..24f,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         },
         confirmButton = {

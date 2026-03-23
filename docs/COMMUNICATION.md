@@ -3,6 +3,7 @@
 > Wersja protokołu backendu: **v1.5**
 > Dokumentacja UI: **zaktualizowana do MVI** (2026-03-22)
 > Backend docs: `/Users/jaroslawkrawczyk/AgentCl2.0/CoreApp/docs/communication.md`
+> Backend directory: `/Users/jaroslawkrawczyk/AgentCl2.0/CoreApp/docs` (Źródło dokumentacji backendowej)
 
 ---
 
