@@ -254,7 +254,9 @@ data class SendMessagePayload(
     val text: String,
     val attachments: List<String>? = null,
     val include_stats: Boolean = false,
-    val images: List<String>? = null
+    val images: List<String>? = null,
+    /** B06: Working directory for tool execution. Null = use agent default. */
+    val working_dir: String? = null
 )
 
 @Serializable
@@ -483,10 +485,23 @@ sealed class IpcEvent {
     @Serializable
     @SerialName("models_list")
     data class ModelsList(val payload: ModelsListPayload) : IpcEvent()
+
+    /** B02: I01 streaming subprocess output — one line per event while tool runs. */
+    @Serializable
+    @SerialName("tool_output_delta")
+    data class ToolOutputDelta(val payload: ToolOutputDeltaPayload) : IpcEvent()
 }
 
 @Serializable
 data class ModelsListPayload(val backend: String, val models: List<String>)
+
+/** B02: Payload for I01 streaming tool output (one subprocess stdout line). */
+@Serializable
+data class ToolOutputDeltaPayload(
+    val id: String,   // tool call id (matches ToolCallPayload.id)
+    val tool: String, // tool name for display
+    val line: String  // one line of stdout from the subprocess
+)
 
 @Serializable
 data class MessageStartPayload(

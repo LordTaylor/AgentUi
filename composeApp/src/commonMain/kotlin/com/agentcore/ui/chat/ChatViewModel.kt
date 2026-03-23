@@ -75,6 +75,7 @@ class ChatViewModel(
         is IpcEvent.PluginMetadata -> "plugin_metadata"
         is IpcEvent.WorkflowStatus -> "workflow_status"
         is IpcEvent.ModelsList -> "models_list"
+        is IpcEvent.ToolOutputDelta -> "tool_output_delta" // B02
         else -> event::class.simpleName ?: "unknown"
     }
 
@@ -255,6 +256,15 @@ class ChatViewModel(
                 _uiState.value = _uiState.value.copy(
                     availableModels = _uiState.value.availableModels + (backend to models)
                 )
+            },
+            // B02: append streaming subprocess output lines to the matching tool bubble
+            onToolOutputDelta = { delta ->
+                val msgs = _uiState.value.messages.toMutableList()
+                val idx = msgs.indexOfLast { it.id == "tool-${delta.id}" }
+                if (idx >= 0) {
+                    msgs[idx] = msgs[idx].copy(text = msgs[idx].text + "\n" + delta.line)
+                    _uiState.value = _uiState.value.copy(messages = msgs)
+                }
             }
         )
     }
@@ -282,9 +292,10 @@ class ChatViewModel(
                         _uiState.value = _uiState.value.copy(messages = _uiState.value.messages + msg)
                         saveSessionCache()
                     },
-                    onClearInput = { }, 
-                    onClearAttachments = { }, 
-                    onStatusChange = { _uiState.value = _uiState.value.copy(statusState = it) }
+                    onClearInput = { },
+                    onClearAttachments = { },
+                    onStatusChange = { _uiState.value = _uiState.value.copy(statusState = it) },
+                    workingDir = _uiState.value.workingDir.takeIf { it.isNotBlank() } // B06
                 )
             }
             is ChatIntent.SelectSession -> {
@@ -303,17 +314,25 @@ class ChatViewModel(
             }
             ChatIntent.RefreshStats -> {
                 scope.launch {
+                    val cmd = IpcCommand.GetStats()
                     if (mode == ConnectionMode.IPC) {
                         val stats = client.getStats()
                         _uiState.value = _uiState.value.copy(sessionStats = stats)
+                    } else if (mode == ConnectionMode.STDIO) {
+                        stdioExecutor.sendCommand(cmd)
                     }
                 }
             }
             is ChatIntent.ResolveApproval -> {
                 scope.launch {
                     val pending = _uiState.value.pendingApproval
-                    if (mode == ConnectionMode.IPC && pending != null) {
-                        client.sendCommand(IpcCommand.ApprovalResponse(ApprovalResponsePayload(pending.id, intent.approved)))
+                    if (pending != null) {
+                        val cmd = IpcCommand.ApprovalResponse(ApprovalResponsePayload(pending.id, intent.approved))
+                        if (mode == ConnectionMode.IPC) {
+                            client.sendCommand(cmd)
+                        } else if (mode == ConnectionMode.STDIO) {
+                            stdioExecutor.sendCommand(cmd)
+                        }
                     }
                     _uiState.value = _uiState.value.copy(pendingApproval = null)
                 }
@@ -328,18 +347,26 @@ class ChatViewModel(
                         _uiState.value = _uiState.value.copy(messages = _uiState.value.messages + msg)
                         saveSessionCache()
                     },
-                    onClearInput = { }, 
-                    onClearAttachments = { }, 
-                    onStatusChange = { _uiState.value = _uiState.value.copy(statusState = it) }
+                    onClearInput = { },
+                    onClearAttachments = { },
+                    onStatusChange = { _uiState.value = _uiState.value.copy(statusState = it) },
+                    workingDir = _uiState.value.workingDir.takeIf { it.isNotBlank() } // B06
                 )
             }
             ChatIntent.CancelAction -> {
                 scope.launch {
                     val sid = _uiState.value.currentSessionId
-                    if (mode == ConnectionMode.IPC && sid != null) {
-                        client.sendCommand(IpcCommand.Cancel(CancelPayload(sid)))
+                    if (sid != null) {
+                        // B03: cancel in all transport modes (was IPC-only before)
+                        val cmd = IpcCommand.Cancel(CancelPayload(sid))
+                        when (mode) {
+                            ConnectionMode.IPC -> client.sendCommand(cmd)
+                            ConnectionMode.STDIO -> stdioExecutor.sendCommand(cmd)
+                            ConnectionMode.UNIX_SOCKET -> unixSocketExecutor.sendCommand(cmd)
+                            ConnectionMode.CLI -> {}
+                        }
                     }
-                    // Relying on backend message_end to set IDLE
+                    _uiState.value = _uiState.value.copy(statusState = "IDLE")
                 }
             }
             ChatIntent.ClearChat -> {
@@ -436,8 +463,11 @@ class ChatViewModel(
             }
             is ChatIntent.UpdateConfig -> {
                 scope.launch {
+                    val cmd = IpcCommand.UpdateConfig(UpdateConfigPayload(intent.key, intent.value))
                     if (mode == ConnectionMode.IPC) {
                         client.updateConfig(intent.key, intent.value)
+                    } else if (mode == ConnectionMode.STDIO) {
+                        stdioExecutor.sendCommand(cmd)
                     }
                 }
             }

@@ -33,10 +33,18 @@ object IpcHandler {
         onSessionForked: (SessionForkedPayload) -> Unit = {},
         onTaskScheduled: (TaskScheduledPayload) -> Unit = {},
         onScheduledTasksList: (ScheduledTasksListPayload) -> Unit = {},
-        onModelsList: (String, List<String>) -> Unit = { _, _ -> }
+        onModelsList: (String, List<String>) -> Unit = { _, _ -> },
+        // B02: streaming subprocess tool output (I01)
+        onToolOutputDelta: (ToolOutputDeltaPayload) -> Unit = {}
     ) {
         when (event) {
-            is IpcEvent.Status -> onStatusChange(event.payload.state.uppercase())
+            is IpcEvent.Status -> {
+                // B04: map "backtracking" (A03) to THINKING so UI spinner stays active.
+                // The full set of backend states: idle | thinking | executing |
+                // waiting_approval | backtracking
+                val state = event.payload.state.uppercase()
+                onStatusChange(if (state == "BACKTRACKING") "THINKING" else state)
+            }
             is IpcEvent.MessageStart -> onStatusChange("THINKING")
             is IpcEvent.TextDelta -> {
                 val lastMsg = currentMessages.lastOrNull()
@@ -79,6 +87,25 @@ object IpcHandler {
                         type = MessageType.ACTION
                     )
                 )
+            }
+            // B02: append streaming subprocess output lines to the tool call bubble
+            is IpcEvent.ToolOutputDelta -> {
+                val toolMsgId = "tool-${event.payload.id}"
+                val existing = currentMessages.lastOrNull { it.id == toolMsgId }
+                if (existing != null) {
+                    onLastMessageUpdated(existing.copy(text = existing.text + "\n" + event.payload.line))
+                } else {
+                    onMessageAdded(
+                        Message(
+                            id = "$toolMsgId-out",
+                            sender = "Tool",
+                            text = event.payload.line,
+                            isFromUser = false,
+                            type = MessageType.ACTION
+                        )
+                    )
+                }
+                onToolOutputDelta(event.payload)
             }
             is IpcEvent.ToolResult -> {
                 val body = if (event.payload.error != null)
@@ -141,7 +168,9 @@ object IpcHandler {
         onMessageAdded: (Message) -> Unit,
         onClearInput: () -> Unit,
         onClearAttachments: () -> Unit,
-        onStatusChange: (String) -> Unit
+        onStatusChange: (String) -> Unit,
+        // B06: pass working directory to backend
+        workingDir: String? = null
     ) {
         val msgId = "msg-${System.currentTimeMillis()}"
         val attachList = attachments.takeIf { it.isNotEmpty() }
@@ -153,7 +182,12 @@ object IpcHandler {
 
         scope.launch {
             try {
-                val payload = SendMessagePayload(session_id = sessionId, text = text, attachments = attachList)
+                val payload = SendMessagePayload(
+                    session_id = sessionId,
+                    text = text,
+                    attachments = attachList,
+                    working_dir = workingDir?.takeIf { it.isNotBlank() }
+                )
                 when (mode) {
                     ConnectionMode.IPC -> client.sendCommand(IpcCommand.SendMessage(payload))
                     ConnectionMode.STDIO -> stdioExecutor.sendCommand(IpcCommand.SendMessage(payload))

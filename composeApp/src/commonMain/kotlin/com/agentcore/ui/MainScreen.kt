@@ -430,25 +430,48 @@ fun MainScreen(
                                         onValueChange = { inputText = it },
                                         modifier = Modifier.weight(1f)
                                             .onPreviewKeyEvent { event ->
-                                                if (event.type == KeyEventType.KeyDown &&
-                                                    event.key == Key.Enter &&
-                                                    !event.isShiftPressed) {
-                                                    if (inputText.isNotBlank()) {
-                                                        onSendMessage(inputText)
-                                                        inputText = ""
-                                                    }
-                                                    true
+                                                if (event.type == KeyEventType.KeyDown) {
+                                                    if (event.key == Key.Enter && !event.isShiftPressed) {
+                                                        if (inputText.isNotBlank()) {
+                                                            onSendMessage(inputText)
+                                                            inputText = ""
+                                                        }
+                                                        true
+                                                    } else if (event.key == Key.DirectionUp && inputText.isEmpty()) {
+                                                        val lastMsg = messages.lastOrNull { it.isFromUser }
+                                                        if (lastMsg != null) {
+                                                            inputText = lastMsg.text
+                                                            true
+                                                        } else false
+                                                    } else false
                                                 } else false
                                             },
-                                        placeholder = { Text("Type a message...") }
+                                        placeholder = { Text("Type a message...") },
+                                        maxLines = 10
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Button(onClick = {
-                                        if (inputText.isNotBlank()) {
-                                            onSendMessage(inputText)
-                                            inputText = ""
+                                    
+                                    // Retry Button
+                                    AppTooltip("Przywróć ostatnią wiadomość (Strzałka w górę)") {
+                                        IconButton(
+                                            onClick = {
+                                                messages.lastOrNull { it.isFromUser }?.let { inputText = it.text }
+                                            },
+                                            modifier = Modifier.padding(bottom = 8.dp)
+                                        ) {
+                                            Icon(Icons.Default.History, contentDescription = "Retry last", tint = Color.Gray)
                                         }
-                                    }) {
+                                    }
+
+                                    Button(
+                                        onClick = {
+                                            if (inputText.isNotBlank()) {
+                                                onSendMessage(inputText)
+                                                inputText = ""
+                                            }
+                                        },
+                                        modifier = Modifier.padding(bottom = 8.dp)
+                                    ) {
                                         Text("Send")
                                     }
                                 }
