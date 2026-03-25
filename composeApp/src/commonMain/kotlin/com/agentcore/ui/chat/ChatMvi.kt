@@ -12,6 +12,7 @@ data class ChatUiState(
     val availableSkills: List<SkillInfo> = emptyList(),
     val availableBackends: List<BackendInfo> = emptyList(),
     val currentSessionId: String? = null,
+    val historySearchText: String = "",
     val statusState: String = "IDLE",
     val currentBackend: String = "lmstudio",
     val currentRole: String = "base",
@@ -49,7 +50,9 @@ data class ChatUiState(
     val toolOutput: List<String> = emptyList(),
     val showToolOutput: Boolean = false,
     val tokenHistory: List<UsagePayload> = emptyList(),
-    val showTokenAnalytics: Boolean = false
+    val showTokenAnalytics: Boolean = false,
+    val loadingModelName: String? = null,
+    val modelLoadingProgress: Float? = null
 )
 
 sealed class ChatIntent {
@@ -105,6 +108,7 @@ sealed class ChatIntent {
     object NavigateHistoryUp : ChatIntent()
     object NavigateHistoryDown : ChatIntent()
     data class UpdateInputText(val text: String) : ChatIntent()
+    data class UpdateHistorySearch(val query: String) : ChatIntent()
     object ExportSession : ChatIntent()
     data class PasteToInput(val text: String) : ChatIntent()
     data class MoveSessionToFolder(val sessionId: String, val folderName: String?) : ChatIntent()

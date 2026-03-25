@@ -10,9 +10,15 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 
 object IpcHandler {
+    private var idCounter = 0
+
+    fun nextId(prefix: String): String {
+        return "$prefix-${System.currentTimeMillis()}-${idCounter++}"
+    }
+
     fun handleIpcEvent(
         event: IpcEvent,
-        currentMessages: List<Message>,
+        getCurrentMessages: () -> List<Message>,
         onMessageAdded: (Message) -> Unit,
         onLastMessageUpdated: (Message) -> Unit,
         onStatusChange: (String) -> Unit,
@@ -44,6 +50,7 @@ object IpcHandler {
         // FIX: route sub-agent events to console log
         onSubAgentLog: (agentId: String, type: String, text: String) -> Unit = { _, _, _ -> },
         onPlanReady: (PlanReadyPayload) -> Unit = {},
+        onSubAgentThought: (agentId: String, text: String) -> Unit = { _, _ -> },
         onToolProgress: (ToolProgressPayload) -> Unit = {},
         onSkillsUpdate: (List<SkillInfo>) -> Unit = {},
         onSessionsUpdate: (List<SessionInfo>) -> Unit = {}
@@ -75,13 +82,13 @@ object IpcHandler {
                     onSubAgentLog(agentId, "text", event.payload.text.take(80))
                     return
                 }
-                val lastMsg = currentMessages.lastOrNull()
+                val lastMsg = getCurrentMessages().lastOrNull()
                 if (lastMsg != null && !lastMsg.isFromUser && lastMsg.type == MessageType.TEXT) {
                     onLastMessageUpdated(lastMsg.copy(text = lastMsg.text + event.payload.text))
                 } else {
                     onMessageAdded(
                         Message(
-                            id = "agent-${System.currentTimeMillis()}",
+                            id = nextId("agent"),
                             sender = "Agent",
                             text = event.payload.text,
                             isFromUser = false
@@ -105,7 +112,7 @@ object IpcHandler {
             is IpcEvent.Error -> {
                 onMessageAdded(
                     Message(
-                        id = "err-${System.currentTimeMillis()}",
+                        id = nextId("err"),
                         sender = "System",
                         text = "❌ [${event.payload.code}] ${event.payload.message}",
                         isFromUser = false,
@@ -136,7 +143,7 @@ object IpcHandler {
             // B02: append streaming subprocess output lines to the tool call bubble
             is IpcEvent.ToolOutputDelta -> {
                 val toolMsgId = "tool-${event.payload.id}"
-                val existing = currentMessages.lastOrNull { it.id == toolMsgId }
+                val existing = getCurrentMessages().lastOrNull { it.id == toolMsgId }
                 if (existing != null) {
                     onLastMessageUpdated(existing.copy(text = existing.text + "\n" + event.payload.line))
                 } else {
@@ -175,16 +182,28 @@ object IpcHandler {
                 )
             }
             is IpcEvent.Thought -> {
-                onMessageAdded(
-                    Message(
-                        id = "thought-${System.currentTimeMillis()}",
-                        sender = if (event.agentId != null) "Sub-Agent Thought" else "Thought",
-                        text = "💭 ${event.payload.text}",
-                        isFromUser = false,
-                        type = MessageType.SYSTEM,
-                        agentId = event.agentId
+                val agentId = event.agentId
+                if (agentId != null) {
+                    onSubAgentThought(agentId, event.payload.text)
+                    return
+                }
+                
+                val lastMsg = getCurrentMessages().lastOrNull()
+                if (lastMsg != null && lastMsg.sender == "Thought" && lastMsg.type == MessageType.SYSTEM) {
+                    // Harmonize Auto-Approve and Thought Clutter: update in place
+                    onLastMessageUpdated(lastMsg.copy(text = "💭 ${event.payload.text}"))
+                } else {
+                    onMessageAdded(
+                        Message(
+                            id = nextId("thought"),
+                            sender = "Thought",
+                            text = "💭 ${event.payload.text}",
+                            isFromUser = false,
+                            type = MessageType.SYSTEM,
+                            agentId = agentId
+                        )
                     )
-                )
+                }
             }
             is IpcEvent.Log -> onLogReceived(event.payload)
             is IpcEvent.Scratchpad -> onScratchpadUpdate(event.payload.content)
@@ -225,7 +244,7 @@ object IpcHandler {
             is IpcEvent.ToolCreated -> {
                 onMessageAdded(
                     Message(
-                        id = "tool-created-${System.currentTimeMillis()}",
+                        id = nextId("tool-created"),
                         sender = "System",
                         text = "🛠️ New tool created: ${event.payload.name} (${event.payload.path})",
                         isFromUser = false,
@@ -279,7 +298,7 @@ object IpcHandler {
         // B06: pass working directory to backend
         workingDir: String? = null
     ) {
-        val msgId = "msg-${System.currentTimeMillis()}"
+        val msgId = nextId("msg")
         val attachList = attachments.takeIf { it.isNotEmpty() }
         val userMsg = Message(msgId, "User", text, true, MessageType.TEXT, attachList)
         onStatusChange("THINKING")

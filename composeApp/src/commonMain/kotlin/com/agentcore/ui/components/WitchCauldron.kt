@@ -24,11 +24,12 @@ object WitchCauldronConstants {
     const val BUBBLE_DENSITY_SENDING = 12
     const val BUBBLE_DENSITY_RECEIVING = 18
     const val BUBBLE_DENSITY_THINKING = 10
+    const val BUBBLE_DENSITY_LOADING = 24
     const val SCALE_MIN = 0.1f
 }
 
 enum class CauldronState {
-    IDLE, SENDING, RECEIVING, THINKING
+    IDLE, SENDING, RECEIVING, THINKING, LOADING
 }
 
 @Composable
@@ -40,7 +41,8 @@ fun WitchCauldron(
         CauldronState.IDLE to Color(0xFF2E7D32),
         CauldronState.SENDING to Color(0xFF4CAF50),
         CauldronState.RECEIVING to Color(0xFF00FF00),
-        CauldronState.THINKING to Color(0xFF81C784)
+        CauldronState.THINKING to Color(0xFF81C784),
+        CauldronState.LOADING to Color(0xFF7B1FA2) // Purple magic
     ),
 ) {
     val transition = rememberInfiniteTransition()
@@ -86,7 +88,7 @@ fun WitchCauldron(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = LinearEasing),
+            animation = tween(3000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         )
     )
@@ -95,7 +97,7 @@ fun WitchCauldron(
         initialValue = 0.4f,
         targetValue = 0.9f,
         animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = LinearEasing),
+            animation = tween(1200, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         )
     )
@@ -127,6 +129,7 @@ fun WitchCauldron(
                 CauldronState.SENDING -> WitchCauldronConstants.BUBBLE_DENSITY_SENDING
                 CauldronState.RECEIVING -> WitchCauldronConstants.BUBBLE_DENSITY_RECEIVING
                 CauldronState.THINKING -> WitchCauldronConstants.BUBBLE_DENSITY_THINKING
+                CauldronState.LOADING -> WitchCauldronConstants.BUBBLE_DENSITY_LOADING
             }
 
             drawPixelBubbles(gridSize, pixelSize, bubbleProgress, density, scale, liquidY, liquidColor)
@@ -174,8 +177,8 @@ private fun DrawScope.drawPixelFire(
         val flicker = (frame % WitchCauldronConstants.FIRE_FRAME_COUNT).toFloat()
 
         val layers = listOf(
-            Triple(Color(0xFF8B0000).copy(alpha = 0.4f), 14f, 1.4f),
-            Triple(Color(0xFFFF4500), 10f, 1.2f),
+            Triple(Color(0xFF8B0000).copy(alpha = 0.4f), 14f, 1.2f),
+            Triple(Color(0xFFFF4500), 10f, 1.0f),
             Triple(Color(0xFFFFD700), 6f, 0.9f)
         )
 
@@ -271,13 +274,15 @@ private fun DrawScope.drawPixelBubbles(
     liquidY: Int,
     liquidColor: Color
 ) {
-    val random = kotlin.random.Random((progress * 500).toInt())
     val centerX = gridSize / 2
 
     repeat(density) { i ->
-        val p = (progress + i.toFloat() / density) % 1f
+        // Use a stable seed for each bubble index to avoid flickering
+        val bubbleRandom = kotlin.random.Random(i.toLong() * 1000L)
+        
+        val p = (progress + i.toFloat() / density) % 1.1f
         val spread = (30 * scale).toInt()
-        val bx = centerX + (random.nextInt(spread * 2) - spread)
+        val bx = centerX + (bubbleRandom.nextInt(spread * 2) - spread)
         val by = liquidY - (p * 60 * scale).toInt()
 
         val alpha = (1f - p).pow(0.7f)
@@ -308,7 +313,7 @@ private fun DrawScope.drawPixelIngredients(gridSize: Int, pixelSize: Float, prog
     val centerX = gridSize / 2
     repeat(3) { i ->
         val p = progress % 1f
-        val ix = centerX + (sin(i * 2.0 + p * 5) * 15 * scale).toInt()
+        val ix = centerX + (sin(i * 2.0 + p * 5) * 20 * scale).toInt()
         val iy = (p * liquidY).toInt()
 
         val color = when (i) {
@@ -320,7 +325,7 @@ private fun DrawScope.drawPixelIngredients(gridSize: Int, pixelSize: Float, prog
         // Większe składniki (3x3 z rdzeniem)
         for (dx in -1..1) {
             for (dy in -1..1) {
-                drawPixel(ix + dx, iy + dy, color, pixelSize)
+                drawPixel(ix + dx, iy + dy + 5, color, pixelSize)
             }
         }
         // Biały błysk dla widoczności
@@ -331,7 +336,7 @@ private fun DrawScope.drawPixelIngredients(gridSize: Int, pixelSize: Float, prog
 private fun DrawScope.drawPixelPowerStream(gridSize: Int, pixelSize: Float, alpha: Float, scale: Float, liquidY: Int) {
     val centerX = gridSize / 2
     // Szeroki strumień (dopasowany do wlotu kociołka)
-    val streamWidth = (32 * scale).toInt()
+    val streamWidth = (52 * scale).toInt()
     
     for (dy in 0..(liquidY)) {
         val y = liquidY - dy
@@ -342,7 +347,7 @@ private fun DrawScope.drawPixelPowerStream(gridSize: Int, pixelSize: Float, alph
             val finalAlpha = a * distFactor.pow(1.5f)
             
             // Biały rdzeń, zielone brzegi
-            val color = if (abs(dx) < 2) Color.White else Color(0xFF00FF00)
+            val color = if (abs(dx) < 2) Color.Cyan else Color(0xFF00FF00)
             drawPixel(centerX + dx, y, color.copy(alpha = finalAlpha), pixelSize)
         }
     }

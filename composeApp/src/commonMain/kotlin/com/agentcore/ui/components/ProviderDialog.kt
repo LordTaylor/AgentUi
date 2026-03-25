@@ -580,13 +580,22 @@ private fun LmsParamsPanel(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(
-                value = cfg.contextLength?.toString() ?: "",
-                onValueChange = { onUpdate(cfg.copy(contextLength = it.toIntOrNull())) },
-                label = { Text("Context Length") },
-                modifier = Modifier.weight(1f),
-                singleLine = true
-            )
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                OutlinedTextField(
+                    value = cfg.contextLength?.toString() ?: "",
+                    onValueChange = { onUpdate(cfg.copy(contextLength = it.toIntOrNull()?.coerceIn(1024, 128000))) },
+                    label = { Text("Context Length") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                Slider(
+                    value = (cfg.contextLength ?: 4096).toFloat().coerceIn(1024f, 128000f),
+                    onValueChange = { onUpdate(cfg.copy(contextLength = it.toInt())) },
+                    valueRange = 1024f..128000f,
+                    steps = 124, // Roughly 1024 increments
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
             OutlinedTextField(
                 value = cfg.evalBatchSize?.toString() ?: "",
                 onValueChange = { onUpdate(cfg.copy(evalBatchSize = it.toIntOrNull())) },

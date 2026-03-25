@@ -21,6 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Shadow
 import com.agentcore.model.Message
 import com.agentcore.ui.chat.ChatIntent
 import kotlinx.coroutines.CoroutineScope
@@ -47,7 +49,7 @@ fun ChatArea(
     codeFontSize: Float,
     showScrollToBottom: Boolean,
     searchFocusRequester: androidx.compose.ui.focus.FocusRequester,
-    developerMode: Boolean = true,
+    loadingModelName: String? = null,
     modifier: Modifier = Modifier
 ) {
     val isAtBottom by remember { 
@@ -62,7 +64,7 @@ fun ChatArea(
         }
     }
 
-    androidx.compose.runtime.LaunchedEffect(filteredMessages.size, statusState, filteredMessages.lastOrNull()?.text?.length) {
+    androidx.compose.runtime.LaunchedEffect(filteredMessages.size, statusState) {
         if (isAtBottom) {
             val lastIdx = (filteredMessages.size + if (statusState == "THINKING") 1 else 0) - 1
             if (lastIdx >= 0) {
@@ -71,12 +73,28 @@ fun ChatArea(
         }
     }
 
-    Box(modifier = modifier.fillMaxWidth()) {
+    Box(modifier = modifier.fillMaxSize()) {
         WitchCauldron(
             state = cauldronState,
             modifier = Modifier.size(500.dp).align(Alignment.Center).alpha(0.15f),
             gridSize = cauldronGridSize
         )
+
+        if (cauldronState == CauldronState.LOADING) {
+            Column(
+                modifier = Modifier.align(Alignment.Center).padding(top = 180.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Summoning ${loadingModelName ?: "Model"}...",
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        color = Color(0xFFE1BEE7),
+                        fontWeight = FontWeight.Bold,
+                        shadow = Shadow(color = Color.Black, blurRadius = 10f)
+                    )
+                )
+            }
+        }
 
         Column(modifier = Modifier.fillMaxSize()) {
             LazyColumn(

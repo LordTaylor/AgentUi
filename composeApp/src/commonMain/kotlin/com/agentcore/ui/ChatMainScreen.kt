@@ -37,6 +37,7 @@ fun ChatMainScreen(mode: ConnectionMode) {
     AgentTheme(themeMode = themeMode) {
         val lastMsg = state.messages.lastOrNull()
         val cauldronState = when {
+            state.loadingModelName != null -> CauldronState.LOADING
             state.statusState.uppercase() in listOf("THINKING", "BACKTRACKING") &&
                 lastMsg != null && !lastMsg.isFromUser && lastMsg.type == MessageType.TEXT
                 -> CauldronState.RECEIVING
@@ -101,7 +102,10 @@ fun ChatMainScreen(mode: ConnectionMode) {
         },
         activeFilters = state.activeFilters,
         onToggleFilter = { tag -> viewModel.onIntent(ChatIntent.ToggleFilter(tag), scope, mode) },
-        onSessionTag = { id, tags -> viewModel.onIntent(ChatIntent.TagSession(id, tags), scope, mode) },
+        historySearchText = state.historySearchText,
+        onHistorySearchChange = { query -> 
+            viewModel.onIntent(ChatIntent.UpdateHistorySearch(query), scope, mode)
+        },
         inputText = state.inputText,
         onIntent = { intent, sc, m -> viewModel.onIntent(intent, sc, m) },
         isSummarizing = state.isSummarizing,
@@ -130,6 +134,8 @@ fun ChatMainScreen(mode: ConnectionMode) {
             viewModel.onIntent(ChatIntent.ActivateProvider(backend, model), scope, mode) 
         },
         currentModelName = state.currentModelName,
+        loadingModelName = state.loadingModelName,
+        modelLoadingProgress = state.modelLoadingProgress,
         cauldronState = cauldronState,
         onRetryMessage = { viewModel.onIntent(ChatIntent.RetryMessage, scope, mode) },
         showSearch = state.showSearch,

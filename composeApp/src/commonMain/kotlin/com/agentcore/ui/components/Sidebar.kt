@@ -1,63 +1,39 @@
 package com.agentcore.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agentcore.api.SessionInfo
+import com.agentcore.ui.components.sidebar.HistoryGrouping
+import com.agentcore.ui.components.sidebar.SessionItem
+import com.agentcore.ui.components.sidebar.SidebarHeader
 
 @Composable
 fun Sidebar(
     sessions: List<SessionInfo>,
     activeFilters: List<String>,
+    currentSessionId: String?,
+    searchText: String,
+    onSearchChange: (String) -> Unit,
     onSessionSelect: (String) -> Unit,
     onSessionDelete: (String) -> Unit,
     onSessionPrune: (String) -> Unit,
     onToggleFilter: (String) -> Unit,
-    onSessionTag: (String, List<String>) -> Unit,
-    workingDir: String = "",
-    onFileSelected: (String?) -> Unit = {},
-    selectedFilePath: String? = null,
     onCollapse: () -> Unit = {},
     onNewSession: () -> Unit = {},
     sessionFolders: Map<String, String> = emptyMap(),
     onMoveToFolder: (String, String?) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier.fillMaxHeight()) {
-
-        // ── Header with collapse button ───────────────────────────────────────
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(40.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                AppTooltip("Nowa sesja") {
-                    IconButton(onClick = onNewSession, modifier = Modifier.size(28.dp)) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = null,
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
@@ -85,10 +61,10 @@ fun Sidebar(
 
         HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
 
-        // ── Sessions (30% of remaining height) ───────────────────────────────
+        // ── Sessions (full remaining height) ─────────────────────────────────
         Column(
             modifier = Modifier
-                .weight(0.3f)
+                .weight(1f)
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
@@ -170,35 +146,6 @@ fun Sidebar(
             }
         }
 
-        HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
-
-        // ── Working directory label ───────────────────────────────────────────
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                .padding(horizontal = 10.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp)
-        ) {
-            Icon(Icons.Default.Folder, null, Modifier.size(12.dp), Color(0xFFFFB74D))
-            Text(
-                text = if (workingDir.isEmpty()) "nie ustawiono" else shortenSidebarPath(workingDir),
-                fontSize = 10.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-
-        // ── File tree (remaining ~70% of height) ──────────────────────────────
-        Box(modifier = Modifier.weight(0.7f).fillMaxWidth()) {
-            FileTree(
-                rootPath = workingDir.ifEmpty { System.getProperty("user.home") ?: "" },
-                selectedFilePath = selectedFilePath,
-                onFileSelected = onFileSelected
-            )
-        }
     }
 }
 

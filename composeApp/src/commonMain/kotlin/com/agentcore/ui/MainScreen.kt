@@ -80,6 +80,8 @@ fun MainScreen(
     onSessionPrune: (String) -> Unit,
     activeFilters: List<String> = emptyList(),
     onToggleFilter: (String) -> Unit = {},
+    historySearchText: String = "",
+    onHistorySearchChange: (String) -> Unit = {},
     onSessionTag: (String, List<String>) -> Unit = { _, _ -> },
     isSummarizing: Boolean = false,
     onSummarize: () -> Unit = {},
@@ -99,6 +101,8 @@ fun MainScreen(
     onRestartAgent: () -> Unit = {},
     onActivateProvider: (String, String) -> Unit = { _, _ -> },
     currentModelName: String = "",
+    loadingModelName: String? = null,
+    modelLoadingProgress: Float? = null,
     cauldronState: CauldronState = CauldronState.IDLE,
     messageSearchQuery: String = "",
     onUpdateSearchQuery: (String) -> Unit = {},
@@ -166,6 +170,10 @@ fun MainScreen(
     )
 
     var activeTab by remember { mutableStateOf("Chat") }
+    // Keep History tab highlight in sync with sidebar visibility
+    LaunchedEffect(sidebarVisible) {
+        if (!sidebarVisible && activeTab == "History") activeTab = "Chat"
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize()
@@ -176,7 +184,13 @@ fun MainScreen(
             // ── Fixed Narrow Sidebar ─────────────────────────────────────────
             NarrowSidebar(
                 activeTab = activeTab,
-                onTabSelect = { activeTab = it },
+                onTabSelect = { tab ->
+                    activeTab = tab
+                    // History tab toggles the session sidebar
+                    if (tab == "History") {
+                        onUpdateUiSettings(uiSettings.copy(sidebarVisible = !sidebarVisible))
+                    }
+                },
                 onNewSession = onNewSession
             )
 
@@ -231,21 +245,24 @@ fun MainScreen(
                             Sidebar(
                                 sessions = sessions,
                                 activeFilters = activeFilters,
+                                currentSessionId = currentSessionId,
+                                searchText = historySearchText,
+                                onSearchChange = onHistorySearchChange,
                                 onSessionSelect = onSessionSelect,
                                 onSessionDelete = onSessionDelete,
                                 onSessionPrune = onSessionPrune,
                                 onToggleFilter = onToggleFilter,
-                                onSessionTag = onSessionTag,
-                                workingDir = workingDir,
-                                onFileSelected = { selectedFilePath = it },
-                                selectedFilePath = selectedFilePath,
-                                onCollapse = { onUpdateUiSettings(uiSettings.copy(sidebarVisible = false)) },
+                                onCollapse = {
+                                    onUpdateUiSettings(uiSettings.copy(sidebarVisible = false))
+                                    activeTab = "Chat"
+                                },
                                 onNewSession = onNewSession,
                                 sessionFolders = sessionFolders,
                                 onMoveToFolder = onMoveToFolder,
                                 modifier = Modifier
                                     .width(260.dp)
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
+                            )
                             )
                             VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                         }
@@ -282,6 +299,7 @@ fun MainScreen(
                                 onSendMessage(text, imgs)
                                 selectedImages.clear()
                             },
+                            loadingModelName = loadingModelName,
                             onIntent = onIntent,
                             scope = scope,
                             mode = mode,
@@ -289,7 +307,6 @@ fun MainScreen(
                             codeFontSize = uiSettings.codeFontSize,
                             showScrollToBottom = showScrollButton,
                             searchFocusRequester = searchFocusRequester,
-                            developerMode = uiSettings.developerMode,
                             modifier = Modifier.weight(1f)
                         )
 

@@ -135,8 +135,11 @@ class ChatViewModel(
                 workingDir = saved.workingDir.ifEmpty { System.getProperty("user.home") ?: "" },
                 currentModelName = saved.providerConfigs[_uiState.value.currentBackend]?.model ?: ""
             )
-            // Sync auto-accept preference to backend
-            onIntent(ChatIntent.UpdateConfig("approval_mode", kotlinx.serialization.json.JsonPrimitive(!saved.autoAccept)), scope, mode)
+            // Sync auto-accept preferences to backend
+            val auto = saved.autoAccept
+            onIntent(ChatIntent.UpdateConfig("approval_mode", kotlinx.serialization.json.JsonPrimitive(!auto)), scope, mode)
+            onIntent(ChatIntent.UpdateConfig("plan_before_act", kotlinx.serialization.json.JsonPrimitive(!auto)), scope, mode)
+            onIntent(ChatIntent.UpdateConfig("confidence_gate_approval", kotlinx.serialization.json.JsonPrimitive(!auto)), scope, mode)
 
             // Inject provider env vars before starting the executor
             if (mode == ConnectionMode.STDIO) {
@@ -203,15 +206,16 @@ class ChatViewModel(
 
         IpcHandler.handleIpcEvent(
             event = event,
-            currentMessages = currentState.messages,
+            getCurrentMessages = { _uiState.value.messages },
             onMessageAdded = { msg ->
                 _uiState.value = _uiState.value.copy(messages = _uiState.value.messages + msg)
                 saveSessionCache()
             },
             onLastMessageUpdated = { msg ->
                 val msgs = _uiState.value.messages.toMutableList()
-                if (msgs.isNotEmpty()) {
-                    msgs[msgs.size - 1] = msg
+                val idx = msgs.indexOfLast { it.id == msg.id }
+                if (idx >= 0) {
+                    msgs[idx] = msg
                     _uiState.value = _uiState.value.copy(messages = msgs)
                     saveSessionCache()
                 }
@@ -433,6 +437,12 @@ class ChatViewModel(
 
     fun onIntent(intent: ChatIntent, scope: CoroutineScope, mode: ConnectionMode) {
         when (intent) {
+            is ChatIntent.UpdateInputText -> {
+                _uiState.value = _uiState.value.copy(inputText = intent.text)
+            }
+            is ChatIntent.UpdateHistorySearch -> {
+                _uiState.value = _uiState.value.copy(historySearchText = intent.query)
+            }
             is ChatIntent.FetchModels -> {
                 addIpcLog("→", "list_models", intent.backend)
                 scope.launch {
@@ -721,7 +731,10 @@ class ChatViewModel(
                 settingsManager.save(intent.settings, UiSettings.serializer())
                 
                 if (oldAutoAccept != intent.settings.autoAccept) {
-                    onIntent(ChatIntent.UpdateConfig("approval_mode", kotlinx.serialization.json.JsonPrimitive(!intent.settings.autoAccept)), scope, mode)
+                    val auto = intent.settings.autoAccept
+                    onIntent(ChatIntent.UpdateConfig("approval_mode", kotlinx.serialization.json.JsonPrimitive(!auto)), scope, mode)
+                    onIntent(ChatIntent.UpdateConfig("plan_before_act", kotlinx.serialization.json.JsonPrimitive(!auto)), scope, mode)
+                    onIntent(ChatIntent.UpdateConfig("confidence_gate_approval", kotlinx.serialization.json.JsonPrimitive(!auto)), scope, mode)
                 }
             }
             ChatIntent.ToggleIpcLog -> {
@@ -830,13 +843,19 @@ class ChatViewModel(
                 }
             }
             is ChatIntent.LmsLoadModel -> {
+                _uiState.value = _uiState.value.copy(loadingModelName = intent.model)
                 scope.launch {
                     try {
                         addIpcLog("→", "lms_load_model", intent.model)
-                        val response = httpClient.post("${intent.url}/api/v1/models/load") {
+                        val baseUrl = if (!intent.url.startsWith("http")) "http://${intent.url}" else intent.url
+                        val response = httpClient.post("${baseUrl}/api/v1/models/load") {
                             contentType(ContentType.Application.Json)
+                            if (intent.config.apiKey.isNotEmpty()) {
+                                header("Authorization", "Bearer ${intent.config.apiKey}")
+                            }
                             setBody(buildJsonObject {
                                 put("model", intent.model)
+                                put("echo_load_config", true)
                                 intent.config.contextLength?.let { put("context_length", it) }
                                 intent.config.evalBatchSize?.let { put("eval_batch_size", it) }
                                 intent.config.flashAttention?.let { put("flash_attention", it) }
@@ -853,6 +872,8 @@ class ChatViewModel(
                         }
                     } catch (e: Exception) {
                         addIpcLog("←", "lms_load_err", e.message ?: "unknown error")
+                    } finally {
+                        _uiState.value = _uiState.value.copy(loadingModelName = null)
                     }
                 }
             }
@@ -866,8 +887,9 @@ class ChatViewModel(
             }
             is ChatIntent.RestartProvider -> {
                 addIpcLog("→", "restart_provider", intent.provider)
+                val model = _uiState.value.uiSettings.providerConfigs[intent.provider]?.model
+                _uiState.value = _uiState.value.copy(loadingModelName = model)
                 scope.launch {
-                    val model = _uiState.value.uiSettings.providerConfigs[intent.provider]?.model
                     val cmd = IpcCommand.RestartProvider(RestartProviderPayload(intent.provider, model))
                     when (mode) {
                         ConnectionMode.IPC -> client.sendCommand(cmd)
@@ -875,6 +897,7 @@ class ChatViewModel(
                         ConnectionMode.UNIX_SOCKET -> unixSocketExecutor.sendCommand(cmd)
                         else -> {}
                     }
+                    _uiState.value = _uiState.value.copy(loadingModelName = null)
                 }
             }
             is ChatIntent.CreateTool -> {
@@ -1256,7 +1279,7 @@ class ChatViewModel(
                     - `/help` - Wyświetl tę pomoc
                 """.trimIndent()
                 val helpMsg = Message(
-                    id = "help-${System.currentTimeMillis()}",
+                    id = IpcHandler.nextId("help"),
                     sender = "System",
                     text = helpText,
                     isFromUser = false,
@@ -1318,7 +1341,7 @@ class ChatViewModel(
         try {
             file.writeText(content)
             val successMsg = Message(
-                id = "export-${System.currentTimeMillis()}",
+                id = IpcHandler.nextId("export"),
                 sender = "System",
                 text = "Sesja została wyeksportowana do: `${file.absolutePath}`",
                 isFromUser = false,
