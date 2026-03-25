@@ -42,9 +42,14 @@ object IpcHandler {
         // FIX: notify caller when backend is ready (after process start)
         onBackendReady: () -> Unit = {},
         // FIX: route sub-agent events to console log
-        onSubAgentLog: (agentId: String, type: String, text: String) -> Unit = { _, _, _ -> }
+        onSubAgentLog: (agentId: String, type: String, text: String) -> Unit = { _, _, _ -> },
+        onPlanReady: (PlanReadyPayload) -> Unit = {},
+        onToolProgress: (ToolProgressPayload) -> Unit = {},
+        onSkillsUpdate: (List<SkillInfo>) -> Unit = {},
+        onSessionsUpdate: (List<SessionInfo>) -> Unit = {}
     ) {
         when (event) {
+            is IpcEvent.SessionsList -> onSessionsUpdate(event.payload.sessions)
             is IpcEvent.Status -> {
                 // B04: map "backtracking" (A03) to THINKING so UI spinner stays active.
                 // The full set of backend states: idle | thinking | executing |
@@ -84,7 +89,17 @@ object IpcHandler {
                     )
                 }
             }
-            is IpcEvent.MessageEnd -> onStatusChange("IDLE")
+            is IpcEvent.MessageEnd -> {
+                onStatusChange("IDLE")
+                event.payload.usage?.let { usage ->
+                    // Convert usage to JsonObject for onStatsUpdate consistency
+                    val stats = kotlinx.serialization.json.buildJsonObject {
+                        put("input_tokens", kotlinx.serialization.json.JsonPrimitive(usage.input_tokens))
+                        put("output_tokens", kotlinx.serialization.json.JsonPrimitive(usage.output_tokens))
+                    }
+                    onStatsUpdate(stats)
+                }
+            }
             is IpcEvent.Stats -> onStatsUpdate(event.payload)
             is IpcEvent.ApprovalRequest -> onApprovalRequest(event.payload)
             is IpcEvent.Error -> {
@@ -94,7 +109,7 @@ object IpcHandler {
                         sender = "System",
                         text = "❌ [${event.payload.code}] ${event.payload.message}",
                         isFromUser = false,
-                        type = MessageType.SYSTEM,
+                        type = MessageType.ERROR,
                         agentId = event.agentId
                     )
                 )
@@ -200,6 +215,49 @@ object IpcHandler {
                 onStatusChange("IDLE")
                 onBackendReady()
             }
+            is IpcEvent.PlanReady -> {
+                onPlanReady(event.payload)
+                onStatusChange("WAITING_APPROVAL")
+            }
+            is IpcEvent.ToolProgress -> {
+                onToolProgress(event.payload)
+            }
+            is IpcEvent.ToolCreated -> {
+                onMessageAdded(
+                    Message(
+                        id = "tool-created-${System.currentTimeMillis()}",
+                        sender = "System",
+                        text = "🛠️ New tool created: ${event.payload.name} (${event.payload.path})",
+                        isFromUser = false,
+                        type = MessageType.SYSTEM
+                    )
+                )
+            }
+            is IpcEvent.AgentQuery -> {
+                onMessageAdded(
+                    Message(
+                        id = "query-${event.payload.query_id}",
+                        sender = "System",
+                        text = "🔍 Delegating to ${event.payload.role}: ${event.payload.question}",
+                        isFromUser = false,
+                        type = MessageType.SYSTEM,
+                        agentId = event.agentId
+                    )
+                )
+            }
+            is IpcEvent.AgentQueryResponse -> {
+                onMessageAdded(
+                    Message(
+                        id = "response-${event.payload.query_id}",
+                        sender = "System",
+                        text = "💡 Response from delegation: ${event.payload.answer}",
+                        isFromUser = false,
+                        type = MessageType.SYSTEM,
+                        agentId = event.agentId
+                    )
+                )
+            }
+            is IpcEvent.SkillsList -> onSkillsUpdate(event.payload.skills)
             else -> {}
         }
     }

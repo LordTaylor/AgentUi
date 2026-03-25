@@ -124,6 +124,9 @@ Format JSON: `{"cmd":"<nazwa>","payload":{...}}`.
 | `cancel` | Przycisk Cancel (THINKING) | `IpcCommand.Cancel` ✅ |
 | `ping` | AgentClient.ping() | `IpcCommand.Ping` |
 | `delete_session` | AgentClient.deleteSession() | `IpcCommand.DeleteSession` |
+| `fork_session` | Kliknięcie ikony "Fork" (Branch) przy wiadomości | `IpcCommand.ForkSession` |
+| `dump_debug_log` | Kliknięcie ikony Bug w TopBarze | `IpcCommand.DumpDebugLog` |
+| `update_config` | Synchronizacja `approval_mode` | `IpcCommand.UpdateConfig` |
 
 > ✅ `cancel` — zaimplementowany w CoreApp (commit `5fc2fc2`). Backend ustawia `AtomicBool`
 > cancel token + przerywa task cooperative na granicy iteracji pętli agenta.
@@ -191,6 +194,8 @@ Handler: `IpcHandler.handleIpcEvent()` (Functional Registry) wywoływany przez `
 | `session_data` | `onSessionData` | Callback gotowy (metadane sesji) |
 | `human_input_request` | `onHumanInputRequest` | Otwiera HumanInputDialog |
 | `agent_group_update` | `onAgentGroupUpdate` | Aktualizuje AgentOrchestrator |
+| `session_forked` | `onSessionForked` | Automatyczne przełączenie na nową odnogę sesji |
+| `session_started` | `onSessionStart` | Powiązanie UI z aktualnym UUID sesji i auto-zapis |
 
 ### Eventy odbierane, niezaimplementowane w UI (trafiają do `else -> {}`)
 

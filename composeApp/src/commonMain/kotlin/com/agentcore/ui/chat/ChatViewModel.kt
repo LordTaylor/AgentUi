@@ -15,6 +15,12 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.*
 import com.agentcore.model.Message
 import com.agentcore.model.MessageType
+import io.ktor.client.*
+import io.ktor.client.engine.okhttp.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.request.*
+import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
 
 class ChatViewModel(
     private val client: AgentClient,
@@ -34,6 +40,15 @@ class ChatViewModel(
     private var lastRestartTime: Long = 0L
     private val _uiState = mutableStateOf(ChatUiState())
     val uiState: State<ChatUiState> = _uiState
+
+    private val httpClient = HttpClient(OkHttp) {
+        install(ContentNegotiation) {
+            json(Json {
+                ignoreUnknownKeys = true
+                encodeDefaults = true
+            })
+        }
+    }
 
     private val logDateFmt = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US)
 
@@ -76,7 +91,7 @@ class ChatViewModel(
         is IpcEvent.PluginMetadata -> "plugin_metadata"
         is IpcEvent.WorkflowStatus -> "workflow_status"
         is IpcEvent.ModelsList -> "models_list"
-        is IpcEvent.ToolOutputDelta -> "tool_output_delta" // B02
+        is IpcEvent.ToolOutputDelta -> "tool_output_delta"
         is IpcEvent.SubAgentDone -> "sub_agent_done"
         else -> event::class.simpleName ?: "unknown"
     }
@@ -89,7 +104,7 @@ class ChatViewModel(
         is IpcEvent.Error -> "[${event.payload.code}] ${event.payload.message.take(40)}"
         is IpcEvent.Log -> "${event.payload.level}: ${event.payload.message.take(40)}"
         is IpcEvent.ApprovalRequest -> event.payload.tool
-        is IpcEvent.HumanInputRequest -> "\"${event.payload.prompt.take(30)}\""
+        is IpcEvent.HumanInputRequest -> "\"${event.payload.question.take(30)}\""
         is IpcEvent.SessionData -> "sid=${event.payload.session_id?.take(8)}"
         is IpcEvent.SessionForked -> "new=${event.payload.new_session_id.take(8)}"
         is IpcEvent.ModelsList -> "${event.payload.models.size} models"
@@ -107,7 +122,8 @@ class ChatViewModel(
         settingsManager.load(UiSettings.serializer())?.let { saved ->
             _uiState.value = _uiState.value.copy(
                 uiSettings = saved,
-                workingDir = saved.workingDir.ifEmpty { System.getProperty("user.home") ?: "" }
+                workingDir = saved.workingDir.ifEmpty { System.getProperty("user.home") ?: "" },
+                currentModelName = saved.providerConfigs[_uiState.value.currentBackend]?.model ?: ""
             )
             // Sync auto-accept preference to backend
             onIntent(ChatIntent.UpdateConfig("approval_mode", kotlinx.serialization.json.JsonPrimitive(!saved.autoAccept)), scope, mode)
@@ -122,7 +138,10 @@ class ChatViewModel(
         // Load session cache for offline support
         sessionCache.load(SessionCache.serializer())?.let { cache ->
             this.cachedData = cache
-            _uiState.value = _uiState.value.copy(sessions = cache.sessions)
+            _uiState.value = _uiState.value.copy(
+                sessions = cache.sessions,
+                sessionFolders = cache.sessionFolders
+            )
         }
 
         scope.launch {
@@ -152,7 +171,10 @@ class ChatViewModel(
                     scope.launch {
                         val tools = client.listTools()
                         val backends = client.listBackends()
+                        val skills = client.sendCommand(IpcCommand.ListSkills()) // assuming this returns something or we wait for event
                         _uiState.value = _uiState.value.copy(availableTools = tools, availableBackends = backends)
+                        // Trigger skill fetch for all modes
+                        onIntent(ChatIntent.ReloadSkills, scope, mode)
                     }
                     client.observeEvents().collect { eventHandler(it) }
                 }
@@ -162,6 +184,10 @@ class ChatViewModel(
     }
 
     private fun handleIpcEvent(event: IpcEvent) {
+        // Detailed logging for status debugging
+        if (event is IpcEvent.Status) {
+            addIpcLog("←", "status_raw", "state=${event.payload.state} agent=${event.agentId}")
+        }
         addIpcLog("←", ipcEventName(event), ipcEventSummary(event))
         val currentState = _uiState.value
 
@@ -182,7 +208,9 @@ class ChatViewModel(
             },
             onStatusChange = { state -> 
                 _uiState.value = _uiState.value.copy(statusState = state)
-                // If this status event came from handle_update_config or has backend/model info
+                if (state == "IDLE") {
+                    syncSessions()
+                }
                 if (event is IpcEvent.Status) {
                     val payload = event.payload
                     if (payload.updated_key == "approval_mode") {
@@ -191,13 +219,43 @@ class ChatViewModel(
                     }
                     val backend = payload.backend
                     if (backend != null) {
-                        _uiState.value = _uiState.value.copy(currentBackend = backend)
+                        _uiState.value = _uiState.value.copy(
+                            currentBackend = backend,
+                            currentModelName = _uiState.value.uiSettings.providerConfigs[backend]?.model ?: _uiState.value.currentModelName
+                        )
                     }
-                    // If the backend eventually sends 'model' in status, we'd capture it here.
-                    // For now we mostly rely on onActivateProvider.
                 }
             },
-            onStatsUpdate = { _uiState.value = _uiState.value.copy(sessionStats = it) },
+            onStatsUpdate = { stats ->
+                val current = _uiState.value.sessionStats
+                // Merge if it's partial usage from MessageEnd, otherwise replace
+                val updated = if (stats.containsKey("usage")) {
+                    stats // it's a full stats object
+                } else if (stats.containsKey("input_tokens") && current != null) {
+                    // It's a partial usage update (from MessageEnd) — merge with current to preserve context_window_tokens
+                    buildJsonObject {
+                        current.forEach { (k, v) -> put(k, v) }
+                        stats.forEach { (k, v) -> put(k, v) }
+                    }
+                } else {
+                    stats
+                }
+                
+                _uiState.value = _uiState.value.copy(sessionStats = updated)
+                
+                // Also extract usage for historical tracking
+                try {
+                    val usage = if (updated.containsKey("usage")) {
+                        updated["usage"]?.let { u -> Json.decodeFromJsonElement<UsagePayload>(u) }
+                    } else if (updated.containsKey("input_tokens")) {
+                        Json.decodeFromJsonElement<UsagePayload>(updated)
+                    } else null
+                    
+                    if (usage != null) {
+                        _uiState.value = _uiState.value.copy(tokenHistory = _uiState.value.tokenHistory + usage)
+                    }
+                } catch (_: Exception) {}
+            },
             onApprovalRequest = { _uiState.value = _uiState.value.copy(pendingApproval = it) },
             onLogReceived = { log -> 
                 _uiState.value = _uiState.value.copy(logs = _uiState.value.logs + log) 
@@ -211,6 +269,13 @@ class ChatViewModel(
             onWorkflowsUpdate = { _uiState.value = _uiState.value.copy(workflows = it) },
             onVoiceUpdate = { },
             onContextSuggestions = { _uiState.value = _uiState.value.copy(suggestedContext = it) },
+            onSkillsUpdate = { skills ->
+                _uiState.value = _uiState.value.copy(availableSkills = skills)
+            },
+            onSessionsUpdate = { sessions ->
+                _uiState.value = _uiState.value.copy(sessions = sessions)
+                saveSessionCache()
+            },
             onError = { error ->
                 if (error.code == "STDIO_EXITED" && error.message.contains("137")) {
                     addIpcLog("→", "crash_detected", "OOM (137) detected")
@@ -245,7 +310,11 @@ class ChatViewModel(
                 if (_uiState.value.currentSessionId != payload.session_id) {
                     _uiState.value = _uiState.value.copy(messages = emptyList(), currentSessionId = payload.session_id)
                 }
-                _uiState.value = _uiState.value.copy(currentSystemPrompt = payload.system_prompt ?: "")
+                _uiState.value = _uiState.value.copy(
+                    currentSystemPrompt = payload.system_prompt ?: "",
+                    currentBackend = payload.backend,
+                    currentModelName = _uiState.value.uiSettings.providerConfigs[payload.backend]?.model ?: ""
+                )
                 saveSessionCache()
             },
             onHumanInputRequest = { _uiState.value = _uiState.value.copy(pendingHumanInput = it) },
@@ -255,9 +324,8 @@ class ChatViewModel(
                 val currentScope = viewModelScope
                 if (currentScope != null) {
                     currentScope.launch {
-                        val data = client.getSession(payload.new_session_id)
-                        val sessions = client.listSessions()
-                        _uiState.value = _uiState.value.copy(sessions = sessions)
+                        val sessionData = client.getSession(payload.new_session_id)
+                        syncSessions()
                     }
                 }
             },
@@ -280,6 +348,11 @@ class ChatViewModel(
                     msgs[idx] = msgs[idx].copy(text = msgs[idx].text + "\n" + delta.line)
                     _uiState.value = _uiState.value.copy(messages = msgs)
                 }
+                // B02: also append to dedicated tool output list
+                _uiState.value = _uiState.value.copy(
+                    toolOutput = _uiState.value.toolOutput + delta.line,
+                    showToolOutput = true // auto-show on activity
+                )
             },
             onSubAgentDone = { payload ->
                 addIpcLog("←", "sub_agent_done", "agent=${payload.agent_id.take(8)} success=${payload.success}")
@@ -289,6 +362,8 @@ class ChatViewModel(
                 if (_uiState.value.currentSessionId != sessionId) {
                     _uiState.value = _uiState.value.copy(currentSessionId = sessionId)
                     addIpcLog("←", "session_bound", "sid=${sessionId.take(8)}")
+                    saveSessionCache()
+                    syncSessions()
                 }
             },
             // FIX 2: sync approval_mode AFTER backend is ready to avoid race condition
@@ -299,6 +374,13 @@ class ChatViewModel(
             onSubAgentLog = { agentId, type, text ->
                 val short = agentId.take(6)
                 addIpcLog("←", "[sub:$short] $type", text.take(60))
+            },
+            onPlanReady = { payload ->
+                _uiState.value = _uiState.value.copy(pendingPlan = payload)
+            },
+            onToolProgress = { payload ->
+                // B3 fix: field renamed from chunk → message to match Rust ToolProgressPayload
+                addIpcLog("IN", "tool_progress", payload.message)
             }
         )
     }
@@ -314,6 +396,27 @@ class ChatViewModel(
                 ConnectionMode.UNIX_SOCKET -> unixSocketExecutor.sendCommand(cmd)
                 ConnectionMode.IPC -> client.sendCommand(cmd)
                 else -> {}
+            }
+        }
+    }
+
+    private fun syncSessions() {
+        val currentScope = viewModelScope ?: return
+        currentScope.launch(Dispatchers.IO) {
+            delay(500) // Small delay to let backend finalize DB writes
+            if (currentMode == ConnectionMode.IPC) {
+                try {
+                    val sessions = client.listSessions()
+                    _uiState.value = _uiState.value.copy(sessions = sessions)
+                    saveSessionCache()
+                } catch (e: Exception) {
+                    addIpcLog("←", "sync_sessions_err", e.message ?: "unknown")
+                }
+            } else if (currentMode == ConnectionMode.STDIO || currentMode == ConnectionMode.UNIX_SOCKET) {
+                // For non-HTTP modes, send command and wait for SessionsList event
+                val cmd = IpcCommand.ListSessions()
+                if (currentMode == ConnectionMode.STDIO) stdioExecutor.sendCommand(cmd)
+                else unixSocketExecutor.sendCommand(cmd)
             }
         }
     }
@@ -334,6 +437,13 @@ class ChatViewModel(
             }
             is ChatIntent.SendMessage -> {
                 if (handleSlashCommand(intent.text, scope, mode)) return
+                
+                // Add to history if not empty and not same as last
+                val history = _uiState.value.messageHistory.toMutableList()
+                if (intent.text.isNotBlank() && history.lastOrNull() != intent.text) {
+                    history.add(intent.text)
+                }
+
                 addIpcLog("→", "send_message", "\"${intent.text.take(40)}${if (intent.text.length > 40) "…" else ""}\"")
                 IpcHandler.performSendMessage(
                     scope, client, stdioExecutor, unixSocketExecutor, cliExecutor, mode,
@@ -346,6 +456,14 @@ class ChatViewModel(
                     onClearAttachments = { },
                     onStatusChange = { _uiState.value = _uiState.value.copy(statusState = it) },
                     workingDir = _uiState.value.workingDir.takeIf { it.isNotBlank() } // B06
+                )
+                
+                // Reset history index and input
+                _uiState.value = _uiState.value.copy(
+                    messageHistory = history,
+                    historyIndex = null,
+                    draftMessage = "",
+                    inputText = ""
                 )
             }
             is ChatIntent.SelectSession -> {
@@ -388,20 +506,24 @@ class ChatViewModel(
                 }
             }
             is ChatIntent.RespondHumanInput -> {
+                // B2 fix: was incorrectly calling performSendMessage() which starts a NEW turn.
+                // Must send human_input_response command so the agent unblocks its pending
+                // HumanInputRequest channel — not inject a new user message.
+                val pending = _uiState.value.pendingHumanInput
                 _uiState.value = _uiState.value.copy(pendingHumanInput = null)
-                
-                IpcHandler.performSendMessage(
-                    scope, client, stdioExecutor, unixSocketExecutor, cliExecutor, mode,
-                    intent.answer, emptyList(), _uiState.value.currentSessionId,
-                    onMessageAdded = { msg ->
-                        _uiState.value = _uiState.value.copy(messages = _uiState.value.messages + msg)
-                        saveSessionCache()
-                    },
-                    onClearInput = { },
-                    onClearAttachments = { },
-                    onStatusChange = { _uiState.value = _uiState.value.copy(statusState = it) },
-                    workingDir = _uiState.value.workingDir.takeIf { it.isNotBlank() } // B06
-                )
+                if (pending != null) {
+                    val cmd = IpcCommand.HumanInputResponse(
+                        HumanInputResponsePayload(id = pending.id, answer = intent.answer)
+                    )
+                    scope.launch {
+                        when (mode) {
+                            ConnectionMode.IPC -> client.sendCommand(cmd)
+                            ConnectionMode.STDIO -> stdioExecutor.sendCommand(cmd)
+                            ConnectionMode.UNIX_SOCKET -> unixSocketExecutor.sendCommand(cmd)
+                            ConnectionMode.CLI -> { /* CLI uses stdin directly */ }
+                        }
+                    }
+                }
             }
             ChatIntent.CancelAction -> {
                 scope.launch {
@@ -439,41 +561,92 @@ class ChatViewModel(
                 _uiState.value = _uiState.value.copy(scratchpadContent = intent.content)
             }
             is ChatIntent.DeleteSession -> {
+                val oldSessions = _uiState.value.sessions
+                val oldCurrentId = _uiState.value.currentSessionId
+                val oldMessages = _uiState.value.messages
+
+                // Optimistic UI update
+                _uiState.value = _uiState.value.copy(
+                    sessions = _uiState.value.sessions.filter { it.id != intent.id },
+                    currentSessionId = if (oldCurrentId == intent.id) null else oldCurrentId,
+                    messages = if (oldCurrentId == intent.id) emptyList() else oldMessages
+                )
+                saveSessionCache()
+
                 scope.launch {
-                    if (mode == ConnectionMode.IPC) {
-                        client.deleteSession(intent.id)
-                        val updatedSessions = client.listSessions()
+                    try {
+                        if (mode == ConnectionMode.IPC) {
+                            client.deleteSession(intent.id)
+                            // Final sync to ensure consistency
+                            val updatedSessions = client.listSessions()
+                            _uiState.value = _uiState.value.copy(sessions = updatedSessions)
+                            saveSessionCache()
+                        }
+                    } catch (e: Exception) {
+                        // Rollback on failure
                         _uiState.value = _uiState.value.copy(
-                            sessions = updatedSessions,
-                            currentSessionId = if (_uiState.value.currentSessionId == intent.id) null else _uiState.value.currentSessionId,
-                            messages = if (_uiState.value.currentSessionId == intent.id) emptyList() else _uiState.value.messages
+                            sessions = oldSessions,
+                            currentSessionId = oldCurrentId,
+                            messages = oldMessages
                         )
+                        saveSessionCache()
+                        addIpcLog("←", "delete_failed", e.message ?: "network error")
                     }
                 }
             }
             ChatIntent.ReloadTools -> {
                 scope.launch {
+                    val cmd = IpcCommand.ReloadTools()
+                    when (mode) {
+                        ConnectionMode.IPC -> client.sendCommand(cmd)
+                        ConnectionMode.STDIO -> stdioExecutor.sendCommand(cmd)
+                        ConnectionMode.UNIX_SOCKET -> unixSocketExecutor.sendCommand(cmd)
+                        else -> {}
+                    }
                     if (mode == ConnectionMode.IPC) {
-                        client.sendCommand(IpcCommand.ReloadTools())
                         val tools = client.listTools()
                         _uiState.value = _uiState.value.copy(availableTools = tools)
                     }
                 }
             }
+            ChatIntent.ReloadSkills -> {
+                scope.launch {
+                    val cmd = IpcCommand.ListSkills()
+                    when (mode) {
+                        ConnectionMode.IPC -> client.sendCommand(cmd)
+                        ConnectionMode.STDIO -> stdioExecutor.sendCommand(cmd)
+                        ConnectionMode.UNIX_SOCKET -> unixSocketExecutor.sendCommand(cmd)
+                        else -> {}
+                    }
+                }
+            }
             is ChatIntent.PruneSession -> {
                 scope.launch {
+                    val cmd = IpcCommand.PruneSession(PruneSessionPayload(intent.id, 6)) // Default to 6 recent
+                    when (mode) {
+                        ConnectionMode.IPC -> client.sendCommand(cmd)
+                        ConnectionMode.STDIO -> stdioExecutor.sendCommand(cmd)
+                        ConnectionMode.UNIX_SOCKET -> unixSocketExecutor.sendCommand(cmd)
+                        else -> {}
+                    }
                     if (mode == ConnectionMode.IPC) {
                         client.pruneSession(intent.id)
                         if (_uiState.value.currentSessionId == intent.id) {
                             val sessions = client.listSessions()
                             _uiState.value = _uiState.value.copy(sessions = sessions)
-                            val data = client.getSession(intent.id)
                         }
                     }
                 }
             }
             is ChatIntent.TagSession -> {
                 scope.launch {
+                    val cmd = IpcCommand.TagSession(TagSessionPayload(intent.id, intent.tags))
+                    when (mode) {
+                        ConnectionMode.IPC -> client.sendCommand(cmd)
+                        ConnectionMode.STDIO -> stdioExecutor.sendCommand(cmd)
+                        ConnectionMode.UNIX_SOCKET -> unixSocketExecutor.sendCommand(cmd)
+                        else -> {}
+                    }
                     if (mode == ConnectionMode.IPC) {
                         client.tagSession(intent.id, intent.tags)
                         val updatedSessions = client.listSessions()
@@ -497,8 +670,12 @@ class ChatViewModel(
             }
             is ChatIntent.ForkSession -> {
                 scope.launch {
-                    if (mode == ConnectionMode.IPC) {
-                        client.sendCommand(IpcCommand.ForkSession(ForkSessionPayload(intent.sessionId, intent.messageIdx)))
+                    val cmd = IpcCommand.ForkSession(ForkSessionPayload(intent.sessionId, intent.messageIdx))
+                    when (mode) {
+                        ConnectionMode.IPC -> client.sendCommand(cmd)
+                        ConnectionMode.STDIO -> stdioExecutor.sendCommand(cmd)
+                        ConnectionMode.UNIX_SOCKET -> unixSocketExecutor.sendCommand(cmd)
+                        else -> {}
                     }
                 }
             }
@@ -607,6 +784,68 @@ class ChatViewModel(
                 _uiState.value = _uiState.value.copy(uiSettings = newSettings)
                 settingsManager.save(newSettings, UiSettings.serializer())
             }
+            is ChatIntent.SaveNamedProviderConfig -> {
+                val settings = _uiState.value.uiSettings
+                val saved = settings.savedProviderConfigs.toMutableMap()
+                val list = saved[intent.backend]?.toMutableList() ?: mutableListOf()
+                list.removeAll { it.name == intent.name }
+                list.add(SavedProviderConfig(intent.name, intent.config))
+                saved[intent.backend] = list
+                val newSettings = settings.copy(savedProviderConfigs = saved)
+                _uiState.value = _uiState.value.copy(uiSettings = newSettings)
+                settingsManager.save(newSettings, UiSettings.serializer())
+            }
+            is ChatIntent.DeleteNamedProviderConfig -> {
+                val settings = _uiState.value.uiSettings
+                val saved = settings.savedProviderConfigs.toMutableMap()
+                val list = saved[intent.backend]?.toMutableList() ?: return@onIntent
+                list.removeAll { it.name == intent.name }
+                saved[intent.backend] = list
+                val newSettings = settings.copy(savedProviderConfigs = saved)
+                _uiState.value = _uiState.value.copy(uiSettings = newSettings)
+                settingsManager.save(newSettings, UiSettings.serializer())
+            }
+            is ChatIntent.LoadNamedProviderConfig -> {
+                val settings = _uiState.value.uiSettings
+                val list = settings.savedProviderConfigs[intent.backend] ?: return@onIntent
+                val named = list.find { it.name == intent.name } ?: return@onIntent
+                val updatedProviderConfigs = settings.providerConfigs.toMutableMap()
+                updatedProviderConfigs[intent.backend] = named.config
+                val newSettings = settings.copy(providerConfigs = updatedProviderConfigs)
+                _uiState.value = _uiState.value.copy(uiSettings = newSettings)
+                settingsManager.save(newSettings, UiSettings.serializer())
+                // Re-fetch models if URL changed? Optional, but good for UX
+                if (intent.backend in listOf("lmstudio", "ollama", "huggingface")) {
+                    onIntent(ChatIntent.FetchModels(intent.backend, named.config.baseUrl), scope, mode)
+                }
+            }
+            is ChatIntent.LmsLoadModel -> {
+                scope.launch {
+                    try {
+                        addIpcLog("→", "lms_load_model", intent.model)
+                        val response = httpClient.post("${intent.url}/api/v1/models/load") {
+                            contentType(ContentType.Application.Json)
+                            setBody(buildJsonObject {
+                                put("model", intent.model)
+                                intent.config.contextLength?.let { put("context_length", it) }
+                                intent.config.evalBatchSize?.let { put("eval_batch_size", it) }
+                                intent.config.flashAttention?.let { put("flash_attention", it) }
+                                intent.config.numExperts?.let { put("num_experts", it) }
+                                intent.config.offloadKvCacheToGpu?.let { put("offload_kv_cache_to_gpu", it) }
+                            })
+                        }
+                        if (response.status.isSuccess()) {
+                            addIpcLog("←", "lms_load_ok", "Model loaded")
+                            // Update current model name in state
+                            _uiState.value = _uiState.value.copy(currentModelName = intent.model)
+                        } else {
+                            addIpcLog("←", "lms_load_fail", "HTTP ${response.status.value}")
+                        }
+                    } catch (e: Exception) {
+                        addIpcLog("←", "lms_load_err", e.message ?: "unknown error")
+                    }
+                }
+            }
             ChatIntent.RestartAgent -> {
                 addIpcLog("→", "manual_restart", "User requested restart")
                 scope.launch(Dispatchers.IO) {
@@ -647,6 +886,100 @@ class ChatViewModel(
                         _uiState.value = _uiState.value.copy(availableTools = tools)
                     }
                 }
+            }
+            is ChatIntent.UpdateSearchQuery -> {
+                _uiState.value = _uiState.value.copy(messageSearchQuery = intent.query)
+            }
+            ChatIntent.RetryMessage -> {
+                val lastUserMsg = _uiState.value.messages.lastOrNull { it.isFromUser }
+                if (lastUserMsg != null) {
+                    onIntent(ChatIntent.SendMessage(lastUserMsg.text, lastUserMsg.attachments ?: emptyList()), scope, mode)
+                }
+            }
+            ChatIntent.ToggleSidebar -> {
+                val newSettings = _uiState.value.uiSettings.copy(sidebarVisible = !_uiState.value.uiSettings.sidebarVisible)
+                onIntent(ChatIntent.UpdateUiSettings(newSettings), scope, mode)
+            }
+            ChatIntent.NavigateHistoryUp -> {
+                val history = _uiState.value.messageHistory
+                if (history.isEmpty()) return
+                
+                val currentIndex = _uiState.value.historyIndex
+                val newIndex = if (currentIndex == null) {
+                    // Start navigating
+                    _uiState.value = _uiState.value.copy(draftMessage = _uiState.value.inputText)
+                    history.size - 1
+                } else {
+                    (currentIndex - 1).coerceAtLeast(0)
+                }
+                
+                _uiState.value = _uiState.value.copy(
+                    historyIndex = newIndex,
+                    inputText = history[newIndex]
+                )
+            }
+            ChatIntent.NavigateHistoryDown -> {
+                val history = _uiState.value.messageHistory
+                val currentIndex = _uiState.value.historyIndex ?: return
+                
+                if (currentIndex >= history.size - 1) {
+                    // Back to draft
+                    _uiState.value = _uiState.value.copy(
+                        historyIndex = null,
+                        inputText = _uiState.value.draftMessage
+                    )
+                } else {
+                    val newIndex = currentIndex + 1
+                    _uiState.value = _uiState.value.copy(
+                        historyIndex = newIndex,
+                        inputText = history[newIndex]
+                    )
+                }
+            }
+            is ChatIntent.UpdateInputText -> {
+                _uiState.value = _uiState.value.copy(inputText = intent.text)
+                // If user edits while in history, treat as new draft?
+                // For now just allow editing the history line without dropping out of history mode
+            }
+            ChatIntent.ExportSession -> {
+                exportCurrentSession()
+            }
+            is ChatIntent.PasteToInput -> {
+                _uiState.value = _uiState.value.copy(inputText = intent.text)
+            }
+            is ChatIntent.MoveSessionToFolder -> {
+                val folders = _uiState.value.sessionFolders.toMutableMap()
+                if (intent.folderName == null) {
+                    folders.remove(intent.sessionId)
+                } else {
+                    folders[intent.sessionId] = intent.folderName
+                }
+                _uiState.value = _uiState.value.copy(sessionFolders = folders)
+                saveSessionCache()
+            }
+            is ChatIntent.ResolvePlan -> {
+                scope.launch {
+                    val cmd = IpcCommand.ApprovePlan(ApprovePlanPayload(intent.planId, intent.approved))
+                    when (mode) {
+                        ConnectionMode.IPC -> client.sendCommand(cmd)
+                        ConnectionMode.STDIO -> stdioExecutor.sendCommand(cmd)
+                        ConnectionMode.UNIX_SOCKET -> unixSocketExecutor.sendCommand(cmd)
+                        else -> {}
+                    }
+                    _uiState.value = _uiState.value.copy(pendingPlan = null)
+                }
+            }
+            ChatIntent.ToggleToolOutput -> {
+                _uiState.value = _uiState.value.copy(showToolOutput = !_uiState.value.showToolOutput)
+            }
+            ChatIntent.ClearToolOutput -> {
+                _uiState.value = _uiState.value.copy(toolOutput = emptyList())
+            }
+            ChatIntent.ToggleTokenAnalytics -> {
+                _uiState.value = _uiState.value.copy(showTokenAnalytics = !_uiState.value.showTokenAnalytics)
+            }
+            ChatIntent.ToggleSearch -> {
+                _uiState.value = _uiState.value.copy(showSearch = !_uiState.value.showSearch)
             }
         }
     }
@@ -924,8 +1257,66 @@ class ChatViewModel(
             "/stats" -> {
                 onIntent(ChatIntent.RefreshStats, scope, mode)
             }
+            "/bash" -> {
+                val code = text.removePrefix("/bash").trim()
+                if (code.isNotEmpty()) {
+                    IpcHandler.performSendMessage(scope, client, stdioExecutor, unixSocketExecutor, cliExecutor, mode, "Executing: $code", emptyList(), _uiState.value.currentSessionId ?: "", {}, {}, {}, {})
+                    // The actual execution is handled by the backend when it sees this message if we have a tool for it.
+                    // Or we can explicitly call a tool here if needed.
+                }
+            }
+            "/export" -> {
+                exportCurrentSession()
+            }
             else -> return false
         }
         return true
+    }
+
+    private fun exportCurrentSession() {
+        val state = _uiState.value
+        val sid = state.currentSessionId ?: return
+        val messages = state.messages
+        if (messages.isEmpty()) return
+
+        val baseDir = state.workingDir.ifEmpty { System.getProperty("user.home") ?: "." }
+        val exportsDir = java.io.File(baseDir, "Exports")
+        exportsDir.mkdirs()
+
+        val fileName = "session_${sid.take(8)}_${System.currentTimeMillis()}.md"
+        val file = java.io.File(exportsDir, fileName)
+
+        val content = buildString {
+            appendLine("# Chat Session Export")
+            appendLine("Session ID: $sid")
+            appendLine("Date: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(java.util.Date())}")
+            appendLine()
+            appendLine("---")
+            appendLine()
+            messages.forEach { msg ->
+                appendLine("### ${msg.sender}${if (msg.isFromUser) " (User)" else ""}")
+                appendLine(msg.text)
+                appendLine()
+                val atts = msg.attachments
+                if (!atts.isNullOrEmpty()) {
+                    appendLine("Attached Images/Files: ${atts.size}")
+                    appendLine()
+                }
+            }
+        }
+
+        try {
+            file.writeText(content)
+            val successMsg = Message(
+                id = "export-${System.currentTimeMillis()}",
+                sender = "System",
+                text = "Sesja została wyeksportowana do: `${file.absolutePath}`",
+                isFromUser = false,
+                type = MessageType.SYSTEM
+            )
+            _uiState.value = _uiState.value.copy(messages = _uiState.value.messages + successMsg)
+        } catch (e: Exception) {
+            addIpcLog("←", "export_failed", e.message ?: "unknown error")
+        }
     }
 }

@@ -29,11 +29,13 @@ Granular components for performance and maintainability.
 - **`HelpSystem`**: Interactive guidance system with usage examples for all features.
 - **`AgentOrchestrator`**: Hierarchical visualization and task delegation for multi-agent teams.
 - **`PredictiveContext`**: Smart UI component for context-aware file and resource suggestions.
+- **`WitchCauldron`**: Atmospheric procedural animation reacting to agent states (Idle, Thinking, Sending, Receiving).
 
 ### 4. Application Logic (`composeApp`)
 Follows the **MVI (Model-View-Intent)** pattern for predictable state management.
 - **`ViewModels`**: Single source of truth for UI state using `uiState` (Compose `State<T>`).
 - **`IpcHandler`**: Functional registry for mapping IPC events to state updates.
+- **`SessionManagement`**: Debounced persistence and automatic background synchronization of conversation history.
 - **`Dependency Injection`**: **Koin** is used to provide singletons for executors and factories for ViewModels.
 
 ## Core Principles

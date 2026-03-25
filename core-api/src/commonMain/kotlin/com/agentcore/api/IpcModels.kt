@@ -244,7 +244,28 @@ sealed class IpcCommand {
     @Serializable
     @SerialName("delete_tool")
     data class DeleteTool(val payload: DeleteToolPayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("approve_plan")
+    data class ApprovePlan(val payload: ApprovePlanPayload) : IpcCommand()
+
+    // B2 fix: N11 ask_human response — Kotlin was missing this command entirely.
+    // Without it the agent blocks forever waiting for a human answer.
+    @Serializable
+    @SerialName("human_input_response")
+    data class HumanInputResponse(val payload: HumanInputResponsePayload) : IpcCommand()
+
+    @Serializable
+    @SerialName("list_skills")
+    class ListSkills : IpcCommand()
 }
+
+@Serializable
+data class ApprovePlanPayload(val plan_id: String, val approved: Boolean)
+
+// B2 fix: payload for human_input_response command (N11 ask_human)
+@Serializable
+data class HumanInputResponsePayload(val id: String, val answer: String)
 
 @Serializable
 data class ListModelsPayload(val backend: String, val base_url: String? = null)
@@ -523,12 +544,50 @@ sealed class IpcEvent {
     @SerialName("session_forked")
     data class SessionForked(val payload: SessionForkedPayload) : IpcEvent()
 
+    // B8 fix: session_export event was missing — exportSession() always returned false
+    @Serializable
+    @SerialName("session_export")
+    data class SessionExport(val payload: SessionExportPayload) : IpcEvent()
+
+    // B9 fix: tool_test_result event was missing — testTool() always returned false
+    @Serializable
+    @SerialName("tool_test_result")
+    data class ToolTestResult(val payload: ToolTestResultPayload) : IpcEvent()
+
+    // B10 fix: checkpoint_restored event was missing — restoreCheckpoint() always returned false
+    @Serializable
+    @SerialName("checkpoint_restored")
+    data class CheckpointRestored(val payload: CheckpointRestoredPayload) : IpcEvent()
+
+    // B10 (list): checkpoints_list event for listCheckpoints()
+    @Serializable
+    @SerialName("checkpoints_list")
+    data class CheckpointsList(val payload: CheckpointsListPayload) : IpcEvent()
+
+    // B11 fix: subagent_spawned event was missing — spawnSubAgent() always returned null
+    @Serializable
+    @SerialName("subagent_spawned")
+    data class SubAgentSpawned(val payload: SubAgentSpawnedPayload) : IpcEvent()
+
+    // B12 fix: subagent_result event was missing — waitSubAgent() always returned null
+    @Serializable
+    @SerialName("subagent_result")
+    data class SubAgentResult(val payload: SubAgentResultPayload) : IpcEvent()
+
+    // B13 fix: subagents_list event was missing — listSubAgents() always returned empty
+    @Serializable
+    @SerialName("subagents_list")
+    data class SubAgentsList(val payload: SubAgentsListPayload) : IpcEvent()
+
     @Serializable
     @SerialName("ready")
     data class Ready(
         @SerialName("protocol_version") val protocolVersion: String,
         val transport: String
     ) : IpcEvent()
+
+    // NOTE: approve_plan is an IpcCommand (client→backend), NOT an IpcEvent.
+    // Removed dead IpcEvent.ApprovePlan variant — it was never emitted by backend.
 
     @Serializable
     @SerialName("models_list")
@@ -545,7 +604,43 @@ sealed class IpcEvent {
     @Serializable
     @SerialName("sub_agent_done")
     data class SubAgentDone(val payload: SubAgentDonePayload) : IpcEvent()
+
+    @Serializable
+    @SerialName("plan_ready")
+    data class PlanReady(
+        @SerialName("agent_id") val agentId: String? = null,
+        val payload: PlanReadyPayload
+    ) : IpcEvent()
+
+    @Serializable
+    @SerialName("agent_query")
+    data class AgentQuery(
+        @SerialName("agent_id") val agentId: String? = null,
+        val payload: AgentQueryPayload
+    ) : IpcEvent()
+
+    @Serializable
+    @SerialName("agent_query_response")
+    data class AgentQueryResponse(
+        @SerialName("agent_id") val agentId: String? = null,
+        val payload: AgentQueryResponsePayload
+    ) : IpcEvent()
+
+    @Serializable
+    @SerialName("skills_list")
+    data class SkillsList(val payload: SkillListPayload) : IpcEvent()
 }
+
+@Serializable
+data class SkillListPayload(val count: Int, val skills: List<SkillInfo>)
+
+@Serializable
+data class SkillInfo(
+    val id: String,
+    val name: String,
+    val description: String,
+    val path: String
+)
 
 @Serializable
 data class ModelsListPayload(val backend: String, val models: List<String>)
@@ -621,6 +716,7 @@ data class SessionInfo(
     val role: String = "base",
     val message_count: Int = 0,
     val tags: List<String> = emptyList(),
+    val title: String? = null,
     val created_at: String = "",
     val updated_at: String = ""
 )
@@ -751,17 +847,24 @@ data class ContextItem(
     val score: Float = 1.0f
 )
 
+// B5 fix: Rust ThoughtPayload has { text: String, step: usize }
 @Serializable
-data class ThoughtPayload(val text: String)
+data class ThoughtPayload(val text: String, val step: Int = 0)
 
+// B3 fix: field names must match Rust ToolProgressPayload { tool: String, message: String }
 @Serializable
-data class ToolProgressPayload(val call_id: String, val chunk: String)
+data class ToolProgressPayload(val tool: String, val message: String)
 
 @Serializable
 data class ToolCreatedPayload(val name: String, val path: String)
 
+// B1 fix: field names must match Rust HumanInputRequestPayload { id, question, context }
 @Serializable
-data class HumanInputPayload(val prompt: String, val request_id: String)
+data class HumanInputPayload(
+    val id: String,
+    val question: String,
+    val context: String = ""
+)
 
 @Serializable
 data class PingResultPayload(
@@ -798,16 +901,40 @@ data class ConfigPayload(val config: kotlinx.serialization.json.JsonObject)
 data class ScheduledTaskInfo(
     val id: String,
     val kind: String,
-    val next_fire: String,
-    val text: String,
-    val session_id: String? = null
+    val next_fire: String? = null
+)
+
+@Serializable
+data class PlanReadyPayload(
+    val plan_id: String,
+    val steps: List<String>
+)
+
+@Serializable
+data class AgentQueryPayload(
+    val query_id: String,
+    val question: String,
+    val role: String
+)
+
+@Serializable
+data class AgentQueryResponsePayload(
+    val query_id: String,
+    val answer: String,
+    val success: Boolean
 )
 
 @Serializable
 data class ScheduledTasksListPayload(val count: Int, val tasks: List<ScheduledTaskInfo>)
 
+// B7 fix: Rust emits "source_session_id", not "original_session_id"
 @Serializable
-data class SessionForkedPayload(val original_session_id: String, val new_session_id: String)
+data class SessionForkedPayload(
+    @SerialName("source_session_id") val originalSessionId: String,
+    val new_session_id: String,
+    val from_message_idx: Int = 0,
+    val message_count: Int = 0
+)
 
 @Serializable
 data class SubAgentDonePayload(
@@ -829,3 +956,51 @@ data class RestartProviderPayload(
     val provider: String,
     val model: String? = null
 )
+
+// B8 fix payloads — session_export
+@Serializable
+data class SessionExportPayload(
+    val session_id: String,
+    val format: String,
+    val content: String
+)
+
+// B9 fix payloads — tool_test_result
+@Serializable
+data class ToolTestResultPayload(
+    val tool: String,
+    val passed: Int,
+    val failed: Int,
+    val output: String
+)
+
+// B10 fix payloads — checkpoint_restored / checkpoints_list
+@Serializable
+data class CheckpointRestoredPayload(
+    val session_id: String,
+    val checkpoint_n: Int,
+    val message_count: Int
+)
+
+@Serializable
+data class CheckpointsListPayload(
+    val session_id: String,
+    val checkpoints: List<Int>
+)
+
+// B11 fix payloads — subagent_spawned
+@Serializable
+data class SubAgentSpawnedPayload(val id: String)
+
+// B12 fix payloads — subagent_result
+@Serializable
+data class SubAgentResultPayload(
+    val id: String,
+    val response: String = "",
+    val success: Boolean,
+    val error: String? = null
+)
+
+// B13 fix payloads — subagents_list (Rust returns ids: List<String>, not full objects)
+@Serializable
+data class SubAgentsListPayload(val count: Int, val ids: List<String>)

@@ -12,7 +12,19 @@ import kotlinx.serialization.Serializable
 data class ProviderConfig(
     val model: String = "",
     val baseUrl: String = "",
-    val apiKey: String = ""
+    val apiKey: String = "",
+    // LM Studio specific
+    val contextLength: Int? = null,
+    val evalBatchSize: Int? = null,
+    val flashAttention: Boolean? = null,
+    val numExperts: Int? = null,
+    val offloadKvCacheToGpu: Boolean? = null
+)
+
+@Serializable
+data class SavedProviderConfig(
+    val name: String,
+    val config: ProviderConfig
 )
 
 @Serializable
@@ -21,7 +33,7 @@ data class UiSettings(
     val sidePanelWidth: Float = 400f,
     val showStats: Boolean = false,
     val showFiles: Boolean = true,
-    val showTools: Boolean = false,
+    val showSkills: Boolean = false,
     val showLogs: Boolean = false,
     val showScratchpad: Boolean = false,
     val showTerminal: Boolean = false,
@@ -33,8 +45,12 @@ data class UiSettings(
     val workingDir: String = "",
     val autoAccept: Boolean = false,
     val themeMode: String = "DARK", // "LIGHT", "DARK", "SYSTEM"
+    val developerMode: Boolean = true,
+    val cauldronGridSize: Int = 128,
     val chatFontSize: Float = 14f,
     val codeFontSize: Float = 13f,
     /** Per-provider configs keyed by backend name (lmstudio, ollama, claude, openai, google, huggingface) */
-    val providerConfigs: Map<String, ProviderConfig> = emptyMap()
+    val providerConfigs: Map<String, ProviderConfig> = emptyMap(),
+    /** Saved named configurations keyed by backend name */
+    val savedProviderConfigs: Map<String, List<SavedProviderConfig>> = emptyMap()
 )

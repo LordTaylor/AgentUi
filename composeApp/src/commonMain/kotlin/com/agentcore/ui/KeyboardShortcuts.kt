@@ -7,7 +7,8 @@ data class AppShortcuts(
     val onClearChat: () -> Unit,
     val onToggleSettings: () -> Unit,
     val onToggleSidebar: () -> Unit,
-    val onFocusInput: () -> Unit
+    val onFocusInput: () -> Unit,
+    val onFocusSearch: () -> Unit
 )
 
 fun KeyEvent.matchesShortcut(key: Key, ctrl: Boolean = true, shift: Boolean = false): Boolean =
@@ -22,6 +23,8 @@ fun handleKeyboardShortcut(event: KeyEvent, shortcuts: AppShortcuts): Boolean {
         event.matchesShortcut(Key.L) -> { shortcuts.onClearChat(); true }
         event.matchesShortcut(Key.Comma) -> { shortcuts.onToggleSettings(); true }
         event.matchesShortcut(Key.B) -> { shortcuts.onToggleSidebar(); true }
+        event.matchesShortcut(Key.F) -> { shortcuts.onFocusSearch(); true }
+        event.matchesShortcut(Key.L) -> { shortcuts.onFocusInput(); true }
         else -> false
     }
 }

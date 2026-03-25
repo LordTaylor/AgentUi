@@ -6,5 +6,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class SessionCache(
     val sessions: List<SessionInfo> = emptyList(),
-    val sessionMessages: Map<String, List<Message>> = emptyMap()
+    val sessionMessages: Map<String, List<Message>> = emptyMap(),
+    val sessionFolders: Map<String, String> = emptyMap()
 )

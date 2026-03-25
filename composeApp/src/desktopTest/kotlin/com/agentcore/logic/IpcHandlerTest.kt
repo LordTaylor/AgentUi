@@ -22,7 +22,7 @@ class IpcHandlerTest {
         val messages = mutableListOf<Message>()
         
         IpcHandler.handleIpcEvent(
-            event = IpcEvent.Status(StatusPayload("THINKING")),
+            event = IpcEvent.Status(payload = StatusPayload("THINKING")),
             currentMessages = messages,
             onMessageAdded = { messages.add(it) },
             onLastMessageUpdated = { messages[messages.size - 1] = it },

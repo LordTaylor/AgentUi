@@ -82,6 +82,10 @@ class AgentClient(private val serverUrl: String = "http://localhost:7700") {
     suspend fun cancel(sessionId: String): Boolean =
         sendCommand(IpcCommand.Cancel(CancelPayload(sessionId))) != null
 
+    // B2 fix: send human answer back to agent (N11 ask_human flow)
+    suspend fun sendHumanInputResponse(requestId: String, answer: String): Boolean =
+        sendCommand(IpcCommand.HumanInputResponse(HumanInputResponsePayload(requestId, answer))) != null
+
     suspend fun deleteSession(sessionId: String): Boolean =
         sendCommand(IpcCommand.DeleteSession(DeleteSessionPayload(sessionId))) != null
 
@@ -292,12 +296,10 @@ class AgentClient(private val serverUrl: String = "http://localhost:7700") {
                 setBody(IpcCommand.SpawnSubAgent(SpawnSubAgentPayload(task, role, backend)))
             }
             if (response.status == HttpStatusCode.OK) {
-                val body = response.bodyAsText()
-                val json = Json { ignoreUnknownKeys = true }
-                val element = json.parseToJsonElement(body)
-                if (element is JsonObject && element["event"]?.jsonPrimitive?.content == "status") {
-                    element["payload"]?.jsonObject?.get("subagent_id")?.jsonPrimitive?.content
-                } else null
+                // B11 fix: Rust emits {"event":"subagent_spawned","payload":{"id":...}}
+                // Old code checked for "status" event and "subagent_id" field — both wrong.
+                val event = parseCommandResponse(response.bodyAsText())
+                if (event is IpcEvent.SubAgentSpawned) event.payload.id else null
             } else null
         } catch (e: Exception) { null }
     }
@@ -309,11 +311,11 @@ class AgentClient(private val serverUrl: String = "http://localhost:7700") {
                 setBody(IpcCommand.WaitSubAgent(WaitSubAgentPayload(id, timeoutSecs)))
             }
             if (response.status == HttpStatusCode.OK) {
-                val body = response.bodyAsText()
-                val json = Json { ignoreUnknownKeys = true }
-                val element = json.parseToJsonElement(body)
-                if (element is JsonObject && element["event"]?.jsonPrimitive?.content == "status") {
-                    element["payload"]?.jsonObject
+                // B12 fix: Rust emits {"event":"subagent_result","payload":{"id","response","success","error"}}
+                // Old code checked for "status" event — wrong, always returned null.
+                val event = parseCommandResponse(response.bodyAsText())
+                if (event is IpcEvent.SubAgentResult) {
+                    Json.encodeToJsonElement(SubAgentResultPayload.serializer(), event.payload).jsonObject
                 } else null
             } else null
         } catch (e: Exception) { null }
@@ -330,11 +332,11 @@ class AgentClient(private val serverUrl: String = "http://localhost:7700") {
                 setBody(IpcCommand.ListSubAgents())
             }
             if (response.status == HttpStatusCode.OK) {
-                val body = response.bodyAsText()
-                val json = Json { ignoreUnknownKeys = true }
-                val element = json.parseToJsonElement(body)
-                if (element is JsonObject && element["event"]?.jsonPrimitive?.content == "status") {
-                    element["payload"]?.jsonObject?.get("subagents")?.jsonArray?.map { it.jsonObject } ?: emptyList()
+                // B13 fix: Rust emits {"event":"subagents_list","payload":{"count":...,"ids":[...]}}
+                // Old code checked for "status" event and "subagents" key — both wrong.
+                val event = parseCommandResponse(response.bodyAsText())
+                if (event is IpcEvent.SubAgentsList) {
+                    event.payload.ids.map { id -> buildJsonObject { put("id", id) } }
                 } else emptyList()
             } else emptyList()
         } catch (e: Exception) { emptyList() }
@@ -347,11 +349,11 @@ class AgentClient(private val serverUrl: String = "http://localhost:7700") {
                 setBody(IpcCommand.ListCheckpoints(ListCheckpointsPayload(sessionId)))
             }
             if (response.status == HttpStatusCode.OK) {
-                val body = response.bodyAsText()
-                val json = Json { ignoreUnknownKeys = true }
-                val element = json.parseToJsonElement(body)
-                // Assuming status event with checkpoints array
-                element.jsonObject["payload"]?.jsonObject?.get("checkpoints")?.jsonArray?.map { it.jsonPrimitive.int } ?: emptyList()
+                // Fix: Rust emits {"event":"checkpoints_list","payload":{"session_id","checkpoints":[...]}}
+                // Old code navigated element["payload"]["checkpoints"] directly but the HTTP server
+                // wraps the response in {"events":[...]}, so top-level "payload" was always null.
+                val event = parseCommandResponse(response.bodyAsText())
+                if (event is IpcEvent.CheckpointsList) event.payload.checkpoints else emptyList()
             } else emptyList()
         } catch (e: Exception) { emptyList() }
     }

@@ -8,6 +8,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,7 +35,10 @@ fun ChatBubble(
     isGrouped: Boolean = false,
     fontSize: Float = 14f,
     codeFontSize: Float = 13f,
-    onFork: () -> Unit = {}
+    onFork: () -> Unit = {},
+    onRetry: () -> Unit = {},
+    onRunCode: (String) -> Unit = {},
+    onRunInTerminal: (String) -> Unit = {}
 ) {
     if (msg.type == MessageType.SYSTEM) {
         Box(
@@ -145,10 +149,36 @@ fun ChatBubble(
                 val text = msg.text
                 SelectionContainer {
                     if (text.contains("```") && !msg.isFromUser) {
-                        Markdown(content = text)
+                        Markdown(
+                            content = text,
+                            components = agentMarkdownComponents(
+                                onRunCode = onRunCode,
+                                onRunInTerminal = onRunInTerminal
+                            )
+                        )
                     } else {
+                        // Simple LaTeX-like styling for $ ... $
+                        val primaryColor = MaterialTheme.colorScheme.primary
+                        val annotatedText = remember(text, primaryColor) {
+                            val builder = AnnotatedString.Builder()
+                            val parts = text.split("$")
+                            parts.forEachIndexed { index, part ->
+                                if (index % 2 == 1 && part.isNotEmpty()) {
+                                    builder.pushStyle(androidx.compose.ui.text.SpanStyle(
+                                        fontStyle = FontStyle.Italic,
+                                        fontWeight = FontWeight.Bold,
+                                        color = primaryColor
+                                    ))
+                                    builder.append(part)
+                                    builder.pop()
+                                } else {
+                                    builder.append(part)
+                                }
+                            }
+                            builder.toAnnotatedString()
+                        }
                         Text(
-                            text = text,
+                            text = annotatedText,
                             style = MaterialTheme.typography.bodyMedium.copy(fontSize = fontSize.sp),
                             lineHeight = (fontSize * 1.4f).sp
                         )
@@ -159,6 +189,22 @@ fun ChatBubble(
                     modifier = Modifier.padding(top = 6.dp).align(Alignment.End),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    if (msg.isFromUser) {
+                        AppTooltip("Powtórz to zapytanie") {
+                            IconButton(
+                                onClick = onRetry,
+                                modifier = Modifier.size(20.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(12.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
                     val timeStr = com.agentcore.shared.DateTimeUtils.formatRelativeTime(msg.timestamp)
                     Text(
                         text = timeStr,
@@ -168,6 +214,20 @@ fun ChatBubble(
                     
                     if (!msg.isFromUser && msg.type != MessageType.ACTION) {
                         Spacer(modifier = Modifier.width(10.dp))
+                        AppTooltip("Kopiuj wiadomość") {
+                            IconButton(
+                                onClick = { clipboardManager.setText(AnnotatedString(msg.text)) },
+                                modifier = Modifier.size(20.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ContentCopy,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(12.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
                         AppTooltip("Rozgałęź sesję od tej wiadomości") {
                             IconButton(
                                 onClick = onFork,

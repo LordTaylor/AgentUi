@@ -10,6 +10,7 @@
 
 ## Phase 2: Core Features (DONE ✅)
 - [x] **Session Management**: Sidebar to list, load, and delete past sessions.
+- [x] **Auto-Save & New Session**: Persistent local cache and "New Session" quick action in top-left.
 - [x] **Settings Dashboard**: Runtime backend and role switching.
 - [x] **File Attachments**: Support for context injection via 📎 icon.
 - [x] **Markdown Rendering**: Rich text formatting for agent responses.
@@ -54,8 +55,8 @@
 - [x] **Empty States**: Informative placeholder views when no messages / no sessions / no tools.
 - [x] **Connection Status Banner**: Persistent top-bar indicator when backend is unreachable.
 
-## Phase 8: Protocol Alignment — CoreApp v1.5 (COMPLETE ✅ 📋)
-> Align Kotlin IPC layer with the full agent-core protocol v1.5 spec.
+## Phase 8: Protocol Alignment — CoreApp v1.6 (COMPLETE ✅ 📋)
+> Align Kotlin IPC layer with the full agent-core protocol v1.6 spec.
 
 ### IpcModels — Payload Fixes
 - [x] **Fix `SessionsListPayload`**: Change `sessions: List<String>` → `sessions: List<SessionInfo>` with full metadata.
@@ -162,3 +163,7 @@
 - [ ] **Export to PDF/HTML**: High-fidelity export of conversation history with code formatting.
 - [ ] **Local Model Manager**: UI for downloading and status monitoring of Ollama/LM Studio models.
 - [ ] **Advanced Prompt Library**: Pre-defined, community-driven system prompts for specific tasks (Coding, Analysis, Creative).
+- [ ] **Visual Session Timeline**: A visual Gantt-style view of session history and message timings.
+- [ ] **Smart Context Pruning**: Interactive tool to identify and remove "context bloat" to optimize token costs.
+- [ ] **Personality Lab**: Dedicated workspace for designing and testing specialized agent personas.
+- [ ] **Multi-Modal Export System**: Export conversations as interactive HTML notebooks or high-fidelity PDFs.

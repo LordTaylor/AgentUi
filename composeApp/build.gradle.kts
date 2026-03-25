@@ -2,20 +2,26 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 kotlin {
-    jvm("desktop")
+    jvm() // Standard target name "jvm"
     jvmToolchain(17)
     
     sourceSets {
-        val desktopMain by getting {
+        val jvmMain by getting {
+            kotlin.srcDirs("src/desktopMain/kotlin")
+            resources.srcDirs("src/desktopMain/resources")
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.kotlinx.coroutines.swing)
+                implementation(libs.ktor.client.okhttp)
             }
         }
-        val desktopTest by getting {
+        val jvmTest by getting {
+            kotlin.srcDirs("src/desktopTest/kotlin")
+            resources.srcDirs("src/desktopTest/resources")
             dependencies {
                 implementation(libs.mockk)
                 implementation(libs.kotlin.test)
@@ -26,6 +32,8 @@ kotlin {
             implementation(project(":shared"))
             implementation(project(":core-api"))
             implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.kotlinx.json)
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
@@ -49,16 +57,7 @@ kotlin {
 }
 
 // ── Packaging resources directory ─────────────────────────────────────────────
-// agent-core binary and Python tools are bundled here so the UI can start the
-// backend automatically without any separate installation step.
-//
-// Compose Desktop 1.5+ requires platform-specific subdirectories inside appResourcesRootDir:
-//   packaging/resources/macos/   → Contents/app/resources/ on macOS
-//   packaging/resources/linux/   → lib/app/resources/ on Linux
-//   packaging/resources/windows/ → app/resources/ on Windows
 val packagingResourcesDir = project.layout.projectDirectory.dir("packaging/resources")
-
-// Detect OS at configuration time for platform-specific resource subdirectory
 val osName = System.getProperty("os.name").lowercase()
 val platformSubdir = when {
     osName.contains("mac") || osName.contains("darwin") -> "macos"
@@ -66,9 +65,6 @@ val platformSubdir = when {
     else -> "linux"
 }
 
-// Copy the Rust binary for the current platform into the correct platform subdirectory.
-// Compose Desktop reads only platform-specific (macos/, linux/, windows/) and common/
-// subdirectories — root-level files are ignored by prepareAppResources.
 val copyRustBinary by tasks.registering(Copy::class) {
     val coreDir = project.layout.projectDirectory.dir("../../CoreApp")
     val binaryName = if (osName.contains("win")) "agent-core.exe" else "agent-core"
@@ -78,17 +74,8 @@ val copyRustBinary by tasks.registering(Copy::class) {
     from(if (releaseBin.canExecute()) releaseBin else debugBin)
     into(packagingResourcesDir.dir(platformSubdir))
     rename { binaryName }
-
-    doFirst {
-        val src = if (releaseBin.canExecute()) releaseBin else debugBin
-        if (!src.canExecute()) throw GradleException(
-            "agent-core binary not found — run 'cargo build --release' in CoreApp/ first"
-        )
-        println("[packaging] Copying $src → packaging/resources/$platformSubdir/$binaryName")
-    }
 }
 
-// Copy built-in Python tools alongside the binary (platform-specific dir)
 val copyBuiltinTools by tasks.registering(Copy::class) {
     val toolsDir = project.layout.projectDirectory.dir("../../CoreApp/tools/builtin")
     from(toolsDir)
@@ -102,7 +89,7 @@ val preparePackagingResources by tasks.registering {
 
 compose.desktop {
     application {
-        mainClass = "MainKt"
+        mainClass = "com.agentcore.MainKt"
         nativeDistributions {
             targetFormats(
                 org.jetbrains.compose.desktop.application.dsl.TargetFormat.Dmg,
@@ -114,15 +101,18 @@ compose.desktop {
             )
             packageName = "agent-core-ui"
             packageVersion = "1.0.0"
-
-            // Bundle agent-core binary + Python tools into every distributable
             appResourcesRootDir.set(packagingResourcesDir)
         }
     }
 }
 
-// Wire preparePackagingResources before every package/distributable task,
-// including Compose Desktop's internal prepareAppResources which reads appResourcesRootDir.
+// Explicitly set mainClass for the run task as a fallback
+tasks.withType<JavaExec>().configureEach {
+    if (name == "run" || name == "desktopRun") {
+        mainClass.set("com.agentcore.MainKt")
+    }
+}
+
 afterEvaluate {
     listOf(
         "prepareAppResources",

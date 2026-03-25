@@ -1,5 +1,7 @@
 package com.agentcore.ui.components
 
+import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.agentcore.api.ProviderConfig
+import com.agentcore.api.SavedProviderConfig
 
 // ── Provider metadata ──────────────────────────────────────────────────────────
 
@@ -113,13 +116,22 @@ fun ProviderDialog(
     activeBackend: String,
     providerConfigs: Map<String, ProviderConfig>,
     availableModels: Map<String, List<String>>,
+    savedConfigs: Map<String, List<SavedProviderConfig>>,
     onDismiss: () -> Unit,
     onActivate: (backend: String, model: String) -> Unit,
     onActivateAndRestart: (backend: String, envVars: Map<String, String>, updatedConfigs: Map<String, ProviderConfig>) -> Unit,
     onSaveConfigs: (Map<String, ProviderConfig>) -> Unit,
+    onSaveNamedConfig: (backend: String, name: String, config: ProviderConfig) -> Unit,
+    onDeleteNamedConfig: (backend: String, name: String) -> Unit,
+    onLoadNamedConfig: (backend: String, name: String) -> Unit,
+    onLmsLoadModel: (url: String, model: String, config: ProviderConfig) -> Unit,
     onFetchModels: (backend: String, url: String?) -> Unit
 ) {
     var selectedId by remember { mutableStateOf(activeBackend.ifEmpty { "lmstudio" }) }
+    var showSavedConfigs by remember { mutableStateOf(false) }
+    var showLmsParams by remember { mutableStateOf(false) }
+    var newConfigName by remember { mutableStateOf("") }
+
     // Local editable copy of all provider configs
     var configs by remember(providerConfigs) {
         mutableStateOf(
@@ -128,7 +140,12 @@ fun ProviderDialog(
                 meta.id to ProviderConfig(
                     model = existing.model.ifEmpty { meta.defaultModel },
                     baseUrl = existing.baseUrl.ifEmpty { meta.defaultUrl },
-                    apiKey = existing.apiKey
+                    apiKey = existing.apiKey,
+                    contextLength = existing.contextLength,
+                    evalBatchSize = existing.evalBatchSize,
+                    flashAttention = existing.flashAttention,
+                    numExperts = existing.numExperts,
+                    offloadKvCacheToGpu = existing.offloadKvCacheToGpu
                 )
             }
         )
@@ -136,7 +153,7 @@ fun ProviderDialog(
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            modifier = Modifier.width(640.dp),
+            modifier = Modifier.width(if (showSavedConfigs) 900.dp else 640.dp),
             shape = RoundedCornerShape(12.dp),
             tonalElevation = 6.dp
         ) {
@@ -162,31 +179,69 @@ fun ProviderDialog(
 
                 HorizontalDivider()
 
-                // Two-column body
-                Row(modifier = Modifier.height(400.dp)) {
+                // Three-column body
+                Row(modifier = Modifier.height(500.dp)) {
 
-                    // Left: provider list
+                    // Column 0: Saved Configs (Collapsible)
+                    AnimatedVisibility(
+                        visible = showSavedConfigs,
+                        enter = expandHorizontally(),
+                        exit = shrinkHorizontally()
+                    ) {
+                        SavedConfigsPanel(
+                            backend = selectedId,
+                            configs = savedConfigs[selectedId] ?: emptyList(),
+                            currentConfig = configs[selectedId] ?: ProviderConfig(),
+                            onLoad = { name -> onLoadNamedConfig(selectedId, name) },
+                            onDelete = { name -> onDeleteNamedConfig(selectedId, name) },
+                            onSaveAs = { name -> onSaveNamedConfig(selectedId, name, configs[selectedId] ?: ProviderConfig()) }
+                        )
+                    }
+
+                    if (showSavedConfigs) VerticalDivider()
+
+                    // Column 1: provider list
                     Column(
                         modifier = Modifier
                             .width(220.dp)
                             .fillMaxHeight()
                             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                            .verticalScroll(rememberScrollState())
-                            .padding(vertical = 8.dp)
                     ) {
-                        PROVIDERS.forEach { meta ->
-                            ProviderRow(
-                                meta = meta,
-                                isSelected = meta.id == selectedId,
-                                isActive = meta.id == activeBackend,
-                                onClick = { selectedId = meta.id }
-                            )
+                        // Toggle for saved configs
+                        ListItem(
+                            headlineContent = { Text("Zapisane konfigi", fontSize = 12.sp) },
+                            leadingContent = { Icon(Icons.Default.Bookmark, null, Modifier.size(18.dp)) },
+                            trailingContent = { 
+                                Icon(
+                                    if (showSavedConfigs) Icons.Default.KeyboardArrowLeft else Icons.Default.KeyboardArrowRight, 
+                                    null, Modifier.size(16.dp)
+                                ) 
+                            },
+                            modifier = Modifier.clickable { showSavedConfigs = !showSavedConfigs }
+                        )
+
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 8.dp))
+
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .verticalScroll(rememberScrollState())
+                                .padding(vertical = 8.dp)
+                        ) {
+                            PROVIDERS.forEach { meta ->
+                                ProviderRow(
+                                    meta = meta,
+                                    isSelected = meta.id == selectedId,
+                                    isActive = meta.id == activeBackend,
+                                    onClick = { selectedId = meta.id }
+                                )
+                            }
                         }
                     }
 
                     VerticalDivider()
 
-                    // Right: config form for selected provider
+                    // Column 2: config form for selected provider
                     val meta = PROVIDERS.first { it.id == selectedId }
                     val cfg = configs[selectedId] ?: ProviderConfig()
                     var showApiKey by remember(selectedId) { mutableStateOf(false) }
@@ -303,22 +358,6 @@ fun ProviderDialog(
                                     )
                                 }
                             }
-                            Surface(
-                                color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f),
-                                shape = RoundedCornerShape(6.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(12.dp), tint = Color.Gray)
-                                    Text(
-                                        "Zmiana URL wymaga restartu — użyj przycisku \"Aktywuj i restartuj\"",
-                                        fontSize = 10.sp, color = Color.Gray
-                                    )
-                                }
-                            }
                         }
 
                         // API key (cloud providers)
@@ -342,10 +381,40 @@ fun ProviderDialog(
                                 },
                                 modifier = Modifier.fillMaxWidth()
                             )
-                            Text(
-                                "Klucz jest przechowywany lokalnie i przekazywany jako zmienna środowiskowa ${meta.apiKeyEnv}",
-                                fontSize = 10.sp, color = Color.Gray.copy(alpha = 0.7f)
-                            )
+                        }
+
+                        // LM Studio Specific Section
+                        if (selectedId == "lmstudio") {
+                            HorizontalDivider()
+                            
+                            Button(
+                                onClick = { onLmsLoadModel(cfg.baseUrl, cfg.model, cfg) },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Icon(Icons.Default.PlayArrow, null, Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Załaduj model do LM Studio", fontSize = 12.sp)
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth().clickable { showLmsParams = !showLmsParams }.padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Dodatkowe parametry (HTTP API)", fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                Icon(if (showLmsParams) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null, Modifier.size(20.dp))
+                            }
+
+                            if (showLmsParams) {
+                                LmsParamsPanel(
+                                    cfg = cfg,
+                                    onUpdate = { newCfg ->
+                                        configs = configs + (selectedId to newCfg)
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -366,34 +435,190 @@ fun ProviderDialog(
 
                     if (meta.defaultUrl.isNotEmpty()) {
                         // Providers with URL — show restart button
-                        AppTooltip("Aktywuj backend i zrestartuj agent-core z nowym URL") {
-                            OutlinedButton(onClick = {
-                                onSaveConfigs(configs)
-                                onActivateAndRestart(
-                                    selectedId,
-                                    buildEnvVars(selectedId, cfg, meta),
-                                    configs
-                                )
-                                onDismiss()
-                            }) {
-                                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(14.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Aktywuj i restartuj", fontSize = 12.sp)
-                            }
+                        OutlinedButton(onClick = {
+                            onSaveConfigs(configs)
+                            onActivateAndRestart(
+                                selectedId,
+                                buildEnvVars(selectedId, cfg, meta),
+                                configs
+                            )
+                            onDismiss()
+                        }) {
+                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Aktywuj i restartuj", fontSize = 12.sp)
                         }
                     }
 
-                    AppTooltip("Zmień backend/model bez restartu (URL ignorowany)") {
-                        Button(onClick = {
-                            onSaveConfigs(configs)
-                            onActivate(selectedId, modelToSend)
-                            onDismiss()
-                        }) {
-                            Text("Aktywuj")
+                    Button(onClick = {
+                        onSaveConfigs(configs)
+                        onActivate(selectedId, modelToSend)
+                        onDismiss()
+                    }) {
+                        Text("Aktywuj")
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── Saved Configurations Panel ────────────────────────────────────────────────
+
+@Composable
+private fun SavedConfigsPanel(
+    backend: String,
+    configs: List<SavedProviderConfig>,
+    currentConfig: ProviderConfig,
+    onLoad: (String) -> Unit,
+    onDelete: (String) -> Unit,
+    onSaveAs: (String) -> Unit
+) {
+    var newName by remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .width(260.dp)
+            .fillMaxHeight()
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text("Zapisane konfiguracje", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        
+        // Save Current Section
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            OutlinedTextField(
+                value = newName,
+                onValueChange = { newName = it },
+                label = { Text("Nazwa nowej konfiguracji", fontSize = 10.sp) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                textStyle = LocalTextStyle.current.copy(fontSize = 12.sp)
+            )
+            Button(
+                onClick = { if (newName.isNotBlank()) { onSaveAs(newName); newName = "" } },
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Icon(Icons.Default.Save, null, Modifier.size(14.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Zapisz bieżącą", fontSize = 11.sp)
+            }
+        }
+
+        HorizontalDivider()
+
+        // List
+        Column(
+            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (configs.isEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Brak zapisanych", fontSize = 11.sp, color = Color.Gray)
+                }
+            }
+            configs.forEach { item ->
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                ) {
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(item.name, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                            IconButton(onClick = { onDelete(item.name) }, modifier = Modifier.size(24.dp)) {
+                                Icon(Icons.Default.Delete, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                        Text("Model: ${item.config.model}", fontSize = 10.sp, color = Color.Gray)
+                        Spacer(Modifier.height(8.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(
+                                onClick = { onLoad(item.name) },
+                                modifier = Modifier.height(32.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp)
+                            ) {
+                                Icon(Icons.Default.Input, null, Modifier.size(14.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Wczytaj", fontSize = 10.sp)
+                            }
+                            TextButton(
+                                onClick = { onSaveAs(item.name) },
+                                modifier = Modifier.height(32.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp)
+                            ) {
+                                Icon(Icons.Default.Update, null, Modifier.size(14.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Aktualizuj", fontSize = 10.sp)
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+// ── LM Studio Parameters Panel ────────────────────────────────────────────────
+
+@Composable
+private fun LmsParamsPanel(
+    cfg: ProviderConfig,
+    onUpdate: (ProviderConfig) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedTextField(
+                value = cfg.contextLength?.toString() ?: "",
+                onValueChange = { onUpdate(cfg.copy(contextLength = it.toIntOrNull())) },
+                label = { Text("Context Length") },
+                modifier = Modifier.weight(1f),
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = cfg.evalBatchSize?.toString() ?: "",
+                onValueChange = { onUpdate(cfg.copy(evalBatchSize = it.toIntOrNull())) },
+                label = { Text("Batch Size") },
+                modifier = Modifier.weight(1f),
+                singleLine = true
+            )
+        }
+        
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedTextField(
+                value = cfg.numExperts?.toString() ?: "",
+                onValueChange = { onUpdate(cfg.copy(numExperts = it.toIntOrNull())) },
+                label = { Text("Num Experts") },
+                modifier = Modifier.weight(1f),
+                singleLine = true
+            )
+            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = cfg.flashAttention ?: false,
+                    onCheckedChange = { onUpdate(cfg.copy(flashAttention = it)) }
+                )
+                Text("Flash Attention", fontSize = 12.sp)
+            }
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(
+                checked = cfg.offloadKvCacheToGpu ?: true,
+                onCheckedChange = { onUpdate(cfg.copy(offloadKvCacheToGpu = it)) }
+            )
+            Text("Offload KV Cache to GPU", fontSize = 12.sp)
         }
     }
 }
@@ -467,21 +692,23 @@ private fun buildEnvVars(backend: String, cfg: ProviderConfig, meta: ProviderMet
     if (meta.apiKeyEnv.isNotEmpty() && cfg.apiKey.isNotEmpty()) {
         vars[meta.apiKeyEnv] = cfg.apiKey
     }
-    // Model is handled via set_backend IPC command, not env vars
     return vars
 }
-
-/** Build combined env vars map for all providers (used at StdioExecutor start). */
-fun buildAllEnvVars(providerConfigs: Map<String, com.agentcore.api.ProviderConfig>): Map<String, String> {
-    val vars = mutableMapOf<String, String>()
+ 
+/**
+ * Utility to build all environment variables for all provider configs.
+ * Used by ChatViewModel to ensure all potential backends have their required env vars set.
+ */
+fun buildAllEnvVars(configs: Map<String, ProviderConfig>): Map<String, String> {
+    val allVars = mutableMapOf<String, String>()
     PROVIDERS.forEach { meta ->
-        val cfg = providerConfigs[meta.id] ?: return@forEach
+        val cfg = configs[meta.id] ?: ProviderConfig()
         if (meta.urlEnvVar.isNotEmpty() && cfg.baseUrl.isNotEmpty()) {
-            vars[meta.urlEnvVar] = cfg.baseUrl
+            allVars[meta.urlEnvVar] = cfg.baseUrl
         }
         if (meta.apiKeyEnv.isNotEmpty() && cfg.apiKey.isNotEmpty()) {
-            vars[meta.apiKeyEnv] = cfg.apiKey
+            allVars[meta.apiKeyEnv] = cfg.apiKey
         }
     }
-    return vars
+    return allVars
 }

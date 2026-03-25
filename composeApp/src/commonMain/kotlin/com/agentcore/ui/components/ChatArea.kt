@@ -1,0 +1,180 @@
+package com.agentcore.ui.components
+
+import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.filled.SearchOff
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import com.agentcore.model.Message
+import com.agentcore.ui.chat.ChatIntent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.agentcore.shared.ConnectionMode
+
+@Composable
+fun ChatArea(
+    messages: List<Message>,
+    filteredMessages: List<Message>,
+    statusState: String,
+    cauldronState: CauldronState,
+    cauldronGridSize: Int,
+    listState: LazyListState,
+    showSearch: Boolean,
+    messageSearchQuery: String,
+    onFork: (Int) -> Unit,
+    onSendMessage: (String, List<String>) -> Unit,
+    onIntent: (ChatIntent, CoroutineScope, com.agentcore.shared.ConnectionMode) -> Unit,
+    scope: CoroutineScope,
+    mode: com.agentcore.shared.ConnectionMode,
+    chatFontSize: Float,
+    codeFontSize: Float,
+    showScrollToBottom: Boolean,
+    searchFocusRequester: androidx.compose.ui.focus.FocusRequester,
+    developerMode: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    val isAtBottom by remember { 
+        derivedStateOf { 
+            val layoutInfo = listState.layoutInfo
+            val visibleItems = layoutInfo.visibleItemsInfo
+            if (visibleItems.isEmpty()) true
+            else {
+                val lastVisibleItem = visibleItems.last()
+                lastVisibleItem.index >= layoutInfo.totalItemsCount - 2
+            }
+        }
+    }
+
+    androidx.compose.runtime.LaunchedEffect(filteredMessages.size, statusState, filteredMessages.lastOrNull()?.text?.length) {
+        if (isAtBottom) {
+            val lastIdx = (filteredMessages.size + if (statusState == "THINKING") 1 else 0) - 1
+            if (lastIdx >= 0) {
+                listState.animateScrollToItem(lastIdx)
+            }
+        }
+    }
+
+    Box(modifier = modifier.fillMaxWidth()) {
+        WitchCauldron(
+            state = cauldronState,
+            modifier = Modifier.size(500.dp).align(Alignment.Center).alpha(0.15f),
+            gridSize = cauldronGridSize
+        )
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp),
+                contentPadding = PaddingValues(vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (filteredMessages.isEmpty()) {
+                    item {
+                        Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    if (messageSearchQuery.isEmpty()) Icons.Default.MailOutline else Icons.Default.SearchOff,
+                                    null,
+                                    Modifier.size(64.dp),
+                                    Color.Gray.copy(alpha = 0.3f)
+                                )
+                                Text(
+                                    if (messageSearchQuery.isEmpty()) "Brak wiadomości" else "Nie znaleziono wiadomości",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = Color.Gray.copy(alpha = 0.5f)
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    itemsIndexed(filteredMessages, key = { _, msg -> msg.id }) { index, msg ->
+                        ChatBubble(
+                            msg = msg,
+                            isGrouped = index > 0 && filteredMessages[index - 1].sender == msg.sender,
+                            fontSize = chatFontSize,
+                            codeFontSize = codeFontSize,
+                            onFork = { onFork(index) },
+                            onRetry = { onSendMessage(msg.text, emptyList()) },
+                            onRunCode = { code -> onIntent(ChatIntent.PasteToInput(code), scope, mode) },
+                            onRunInTerminal = { code -> 
+                                onSendMessage("/bash $code", emptyList())
+                            }
+                        )
+                    }
+                    if (statusState == "THINKING") {
+                        item {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp).padding(start = 24.dp))
+                        }
+                    }
+                }
+            }
+        }
+
+        // Search field overlay
+        if (showSearch) {
+            Box(modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter)) {
+                MessageSearchField(
+                    query = messageSearchQuery,
+                    onQueryChange = { onIntent(ChatIntent.UpdateSearchQuery(it), scope, mode) },
+                    onDismiss = { onIntent(ChatIntent.ToggleSearch, scope, mode) },
+                    focusRequester = searchFocusRequester
+                )
+            }
+        }
+
+        // Floating scroll button
+        Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.BottomCenter) {
+            FloatingScrollButton(
+                visible = showScrollToBottom && messageSearchQuery.isEmpty(),
+                onClick = {
+                    scope.launch { listState.animateScrollToItem(messages.size) }
+                }
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+fun ChatAreaPreview() {
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val searchFocusRequester = androidx.compose.ui.focus.FocusRequester()
+    MaterialTheme {
+        ChatArea(
+            messages = emptyList(),
+            filteredMessages = emptyList(),
+            statusState = "IDLE",
+            cauldronState = CauldronState.IDLE,
+            cauldronGridSize = 32,
+            listState = rememberLazyListState(),
+            showSearch = false,
+            messageSearchQuery = "",
+            onFork = {},
+            onSendMessage = { _, _ -> },
+            onIntent = { _, _, _ -> },
+            scope = scope,
+            mode = ConnectionMode.STDIO,
+            chatFontSize = 14f,
+            codeFontSize = 13f,
+            showScrollToBottom = true,
+            searchFocusRequester = searchFocusRequester
+        )
+    }
+}

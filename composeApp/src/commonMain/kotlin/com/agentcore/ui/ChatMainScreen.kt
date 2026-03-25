@@ -11,7 +11,6 @@ import com.agentcore.ui.components.CauldronState
 import com.agentcore.ui.components.HumanInputDialog
 import com.agentcore.ui.components.ProviderDialog
 import com.agentcore.ui.components.SettingsDialog
-import com.agentcore.ui.components.WitchCauldron
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
@@ -36,12 +35,15 @@ fun ChatMainScreen(mode: ConnectionMode) {
     }
 
     AgentTheme(themeMode = themeMode) {
-        val cauldronState = when (state.statusState.uppercase()) {
-        "THINKING", "BACKTRACKING" -> CauldronState.THINKING
-        "EXECUTING" -> CauldronState.SENDING
-        "IDLE", "WAITING_APPROVAL" -> CauldronState.IDLE
-        else -> CauldronState.IDLE
-    }
+        val lastMsg = state.messages.lastOrNull()
+        val cauldronState = when {
+            state.statusState.uppercase() in listOf("THINKING", "BACKTRACKING") &&
+                lastMsg != null && !lastMsg.isFromUser && lastMsg.type == MessageType.TEXT
+                -> CauldronState.RECEIVING
+            state.statusState.uppercase() in listOf("THINKING", "BACKTRACKING") -> CauldronState.THINKING
+            state.statusState.uppercase() == "EXECUTING" -> CauldronState.SENDING
+            else -> CauldronState.IDLE
+        }
 
     MainScreen(
             scope = scope,
@@ -56,6 +58,7 @@ fun ChatMainScreen(mode: ConnectionMode) {
             viewModel.onIntent(ChatIntent.SendMessage(text, images), scope, mode)
         },
         onReloadTools = { viewModel.onIntent(ChatIntent.ReloadTools, scope, mode) },
+        onReloadSkills = { viewModel.onIntent(ChatIntent.ReloadSkills, scope, mode) },
         onCreateTool = { name, template -> 
             viewModel.onIntent(ChatIntent.CreateTool(name, template), scope, mode)
         },
@@ -63,6 +66,7 @@ fun ChatMainScreen(mode: ConnectionMode) {
             viewModel.onIntent(ChatIntent.DeleteTool(name), scope, mode)
         },
         availableTools = state.availableTools,
+        availableSkills = state.availableSkills,
         messages = state.messages,
         statusState = state.statusState,
         onStatusChange = { /* Handled via VM intents in onSendMessage etc */ },
@@ -81,6 +85,12 @@ fun ChatMainScreen(mode: ConnectionMode) {
         onResolveApproval = { approved ->
             viewModel.onIntent(ChatIntent.ResolveApproval(approved), scope, mode)
         },
+        pendingPlan = state.pendingPlan,
+        onResolvePlan = { approved ->
+            state.pendingPlan?.let {
+                viewModel.onIntent(ChatIntent.ResolvePlan(it.plan_id, approved), scope, mode)
+            }
+        },
         showSettings = state.showSettings,
         onToggleSettings = { viewModel.onIntent(ChatIntent.ToggleSettings, scope, mode) },
         onSessionDelete = { id -> viewModel.onIntent(ChatIntent.DeleteSession(id), scope, mode) },
@@ -92,6 +102,8 @@ fun ChatMainScreen(mode: ConnectionMode) {
         activeFilters = state.activeFilters,
         onToggleFilter = { tag -> viewModel.onIntent(ChatIntent.ToggleFilter(tag), scope, mode) },
         onSessionTag = { id, tags -> viewModel.onIntent(ChatIntent.TagSession(id, tags), scope, mode) },
+        inputText = state.inputText,
+        onIntent = { intent, sc, m -> viewModel.onIntent(intent, sc, m) },
         isSummarizing = state.isSummarizing,
         onSummarize = { 
             state.currentSessionId?.let { 
@@ -118,7 +130,20 @@ fun ChatMainScreen(mode: ConnectionMode) {
             viewModel.onIntent(ChatIntent.ActivateProvider(backend, model), scope, mode) 
         },
         currentModelName = state.currentModelName,
-        cauldronState = cauldronState
+        cauldronState = cauldronState,
+        onRetryMessage = { viewModel.onIntent(ChatIntent.RetryMessage, scope, mode) },
+        showSearch = state.showSearch,
+        toolOutput = state.toolOutput,
+        showToolOutput = state.showToolOutput,
+        onToggleToolOutput = { viewModel.onIntent(ChatIntent.ToggleToolOutput, scope, mode) },
+        onClearToolOutput = { viewModel.onIntent(ChatIntent.ClearToolOutput, scope, mode) },
+        tokenHistory = state.tokenHistory,
+        showTokenAnalytics = state.showTokenAnalytics,
+        onToggleTokenAnalytics = { viewModel.onIntent(ChatIntent.ToggleTokenAnalytics, scope, mode) },
+        sessionFolders = state.sessionFolders,
+        onMoveToFolder = { sessionId, folderName ->
+            viewModel.onIntent(ChatIntent.MoveSessionToFolder(sessionId, folderName), scope, mode)
+        }
     )
 
     if (state.showSettings) {
@@ -144,6 +169,7 @@ fun ChatMainScreen(mode: ConnectionMode) {
             activeBackend = state.currentBackend,
             providerConfigs = state.uiSettings.providerConfigs,
             availableModels = state.availableModels,
+            savedConfigs = state.uiSettings.savedProviderConfigs,
             onDismiss = { viewModel.onIntent(ChatIntent.ToggleProviderDialog, scope, mode) },
             onActivate = { backend, model ->
                 viewModel.onIntent(ChatIntent.ActivateProvider(backend, model), scope, mode)
@@ -157,6 +183,18 @@ fun ChatMainScreen(mode: ConnectionMode) {
             onSaveConfigs = { configs ->
                 viewModel.onIntent(ChatIntent.SaveProviderConfigs(configs), scope, mode)
             },
+            onSaveNamedConfig = { backend, name, config ->
+                viewModel.onIntent(ChatIntent.SaveNamedProviderConfig(backend, name, config), scope, mode)
+            },
+            onDeleteNamedConfig = { backend, name ->
+                viewModel.onIntent(ChatIntent.DeleteNamedProviderConfig(backend, name), scope, mode)
+            },
+            onLoadNamedConfig = { backend, name ->
+                viewModel.onIntent(ChatIntent.LoadNamedProviderConfig(backend, name), scope, mode)
+            },
+            onLmsLoadModel = { url, model, config ->
+                viewModel.onIntent(ChatIntent.LmsLoadModel(url, model, config), scope, mode)
+            },
             onFetchModels = { backend, url ->
                 viewModel.onIntent(ChatIntent.FetchModels(backend, url), scope, mode)
             }
@@ -168,6 +206,15 @@ fun ChatMainScreen(mode: ConnectionMode) {
             request = state.pendingHumanInput!!,
             onRespond = { answer ->
                 viewModel.onIntent(ChatIntent.RespondHumanInput(answer), scope, mode)
+            }
+        )
+    }
+
+    if (state.pendingPlan != null) {
+        com.agentcore.ui.components.PlanApprovalDialog(
+            plan = state.pendingPlan!!,
+            onResolve = { approved ->
+                viewModel.onIntent(ChatIntent.ResolvePlan(state.pendingPlan!!.plan_id, approved), scope, mode)
             }
         )
     }

@@ -29,8 +29,9 @@ fun HumanInputDialog(
                     color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(12.dp))
+                // B1 fix: was request.prompt — correct field is request.question
                 Text(
-                    text = request.prompt,
+                    text = request.question,
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Spacer(modifier = Modifier.height(16.dp))

@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.*
 import kotlinx.serialization.json.*
+import com.agentcore.api.SkillInfo
 
 @Composable
 fun StatsDashboard(stats: JsonObject) {
@@ -56,13 +57,15 @@ private fun StatRow(label: String, value: String) {
 
 
 @Composable
-fun ToolExplorer(
+fun SkillLibrary(
     tools: List<JsonObject>,
-    onReloadTools: () -> Unit,
+    skills: List<SkillInfo>,
+    onReload: () -> Unit,
     onCreateTool: () -> Unit = {},
     onDeleteTool: (String) -> Unit = {}
 ) {
     var toolToDelete by remember { mutableStateOf<String?>(null) }
+    var selectedTab by remember { mutableStateOf(0) }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Row(
@@ -70,51 +73,62 @@ fun ToolExplorer(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Available Tools", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text("Skills Library", fontWeight = FontWeight.Bold, fontSize = 20.sp)
             Row {
                 IconButton(onClick = onCreateTool) {
                     Icon(Icons.Default.Add, contentDescription = "Create Tool")
                 }
-                IconButton(onClick = onReloadTools) {
-                    Icon(Icons.Default.Refresh, contentDescription = "Reload Tools")
+                IconButton(onClick = onReload) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Reload")
                 }
             }
         }
+        
+        TabRow(
+            selectedTabIndex = selectedTab,
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.primary,
+            divider = {}
+        ) {
+            Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
+                Text("Tools (${tools.size})", modifier = Modifier.padding(vertical = 8.dp), fontSize = 13.sp)
+            }
+            Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
+                Text("Skills (${skills.size})", modifier = Modifier.padding(vertical = 8.dp), fontSize = 13.sp)
+            }
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
         
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(tools) { tool ->
-                val name = tool["name"]?.jsonPrimitive?.content ?: "Unknown"
-                val desc = tool["description"]?.jsonPrimitive?.content ?: "No description"
-                val needsApproval = tool["requires_approval"]?.jsonPrimitive?.booleanOrNull ?: false
-                
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 2.dp,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                            if (needsApproval) {
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Badge(containerColor = Color.Red.copy(alpha = 0.2f), contentColor = Color.Red) {
-                                    Text("PAUSE", fontSize = 9.sp)
-                                }
-                            }
-                            Spacer(modifier = Modifier.weight(1f))
-                            IconButton(onClick = { toolToDelete = name }, modifier = Modifier.size(24.dp)) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp), tint = Color.Gray)
-                            }
-                        }
-                        Text(desc, fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(top = 4.dp))
-                    }
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (selectedTab == 0) {
+                items(tools) { tool ->
+                    val name = tool["name"]?.jsonPrimitive?.content ?: "Unknown"
+                    val desc = tool["description"]?.jsonPrimitive?.content ?: "No description"
+                    val needsApproval = tool["requires_approval"]?.jsonPrimitive?.booleanOrNull ?: false
+                    
+                    SkillCard(
+                        name = name,
+                        description = desc,
+                        isTool = true,
+                        needsApproval = needsApproval,
+                        onDelete = { toolToDelete = name }
+                    )
+                }
+            } else {
+                items(skills) { skill ->
+                    SkillCard(
+                        name = skill.name,
+                        description = skill.description,
+                        isTool = false,
+                        onDelete = null // For now, can't delete skills via UI
+                    )
                 }
             }
         }
     }
 
+    // ... AlertDialog logic for tool deletion remains same ...
     if (toolToDelete != null) {
         AlertDialog(
             onDismissRequest = { toolToDelete = null },
@@ -137,5 +151,51 @@ fun ToolExplorer(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun SkillCard(
+    name: String,
+    description: String,
+    isTool: Boolean,
+    needsApproval: Boolean = false,
+    onDelete: (() -> Unit)? = null
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val icon = if (isTool) "⚙️" else "📚"
+                Text(icon, fontSize = 16.sp)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                
+                if (needsApproval) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Badge(containerColor = Color.Red.copy(alpha = 0.2f), contentColor = Color.Red) {
+                        Text("PAUSE", fontSize = 9.sp)
+                    }
+                }
+                
+                Spacer(modifier = Modifier.weight(1f))
+                if (onDelete != null) {
+                    IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp), tint = Color.Gray)
+                    }
+                }
+            }
+            Text(
+                description,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp),
+                lineHeight = 16.sp
+            )
+        }
     }
 }

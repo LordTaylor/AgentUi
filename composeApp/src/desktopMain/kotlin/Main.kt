@@ -1,3 +1,5 @@
+package com.agentcore
+
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition

@@ -31,7 +31,7 @@ import kotlinx.coroutines.delay
 fun FileTree(
     rootPath: String,
     selectedFilePath: String? = null,
-    onFileSelected: (String) -> Unit = {},
+    onFileSelected: (String?) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()

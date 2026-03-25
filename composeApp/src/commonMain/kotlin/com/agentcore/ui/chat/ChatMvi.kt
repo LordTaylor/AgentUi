@@ -9,6 +9,7 @@ data class ChatUiState(
     val messages: List<Message> = emptyList(),
     val sessions: List<SessionInfo> = emptyList(),
     val availableTools: List<JsonObject> = emptyList(),
+    val availableSkills: List<SkillInfo> = emptyList(),
     val availableBackends: List<BackendInfo> = emptyList(),
     val currentSessionId: String? = null,
     val statusState: String = "IDLE",
@@ -37,6 +38,18 @@ data class ChatUiState(
     val availableModels: Map<String, List<String>> = emptyMap(),
     val approvalMode: Boolean = true,
     val currentModelName: String = "",
+    val messageSearchQuery: String = "",
+    val showSearch: Boolean = false,
+    val pendingPlan: com.agentcore.api.PlanReadyPayload? = null,
+    val inputText: String = "",
+    val messageHistory: List<String> = emptyList(),
+    val historyIndex: Int? = null,
+    val draftMessage: String = "",
+    val sessionFolders: Map<String, String> = emptyMap(), // sessionId -> folderName
+    val toolOutput: List<String> = emptyList(),
+    val showToolOutput: Boolean = false,
+    val tokenHistory: List<UsagePayload> = emptyList(),
+    val showTokenAnalytics: Boolean = false
 )
 
 sealed class ChatIntent {
@@ -50,6 +63,7 @@ sealed class ChatIntent {
     data class DeleteSession(val id: String) : ChatIntent()
     data class PruneSession(val id: String) : ChatIntent()
     object ReloadTools : ChatIntent()
+    object ReloadSkills : ChatIntent()
     object CancelAction : ChatIntent()
     object ClearChat : ChatIntent()
     data class UpdateSettings(val backend: String, val role: String) : ChatIntent()
@@ -76,8 +90,26 @@ sealed class ChatIntent {
         val updatedConfigs: Map<String, ProviderConfig>
     ) : ChatIntent()
     data class SaveProviderConfigs(val configs: Map<String, ProviderConfig>) : ChatIntent()
+    data class SaveNamedProviderConfig(val backend: String, val name: String, val config: ProviderConfig) : ChatIntent()
+    data class DeleteNamedProviderConfig(val backend: String, val name: String) : ChatIntent()
+    data class LoadNamedProviderConfig(val backend: String, val name: String) : ChatIntent()
+    data class LmsLoadModel(val url: String, val model: String, val config: ProviderConfig) : ChatIntent()
     object RestartAgent : ChatIntent()
     data class RestartProvider(val provider: String) : ChatIntent()
     data class CreateTool(val name: String, val template: String) : ChatIntent()
     data class DeleteTool(val name: String) : ChatIntent()
+    data class UpdateSearchQuery(val query: String) : ChatIntent()
+    data class ResolvePlan(val planId: String, val approved: Boolean) : ChatIntent()
+    object RetryMessage : ChatIntent()
+    object ToggleSidebar : ChatIntent()
+    object NavigateHistoryUp : ChatIntent()
+    object NavigateHistoryDown : ChatIntent()
+    data class UpdateInputText(val text: String) : ChatIntent()
+    object ExportSession : ChatIntent()
+    data class PasteToInput(val text: String) : ChatIntent()
+    data class MoveSessionToFolder(val sessionId: String, val folderName: String?) : ChatIntent()
+    object ToggleToolOutput : ChatIntent()
+    object ClearToolOutput : ChatIntent()
+    object ToggleTokenAnalytics : ChatIntent()
+    object ToggleSearch : ChatIntent()
 }

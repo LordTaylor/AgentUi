@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 enum class MessageType {
-    TEXT, ACTION, SYSTEM
+    TEXT, ACTION, SYSTEM, ERROR
 }
 
 @Serializable
