@@ -46,10 +46,10 @@ object CoreLauncher {
             "agent-core.exe" else "agent-core"
 
         val candidates = listOfNotNull(
-            resourcesDir?.let { File("$it/$binaryName").takeIf { f -> f.canExecute() } },
-            File("$home/.local/bin/$binaryName").takeIf { it.canExecute() },
-            // Dev: look relative to the jar/class location heuristically
+            // Dev: look relative to the jar/class location heuristically (priority for developers)
             findDevBinary(binaryName),
+            File("$home/.local/bin/$binaryName").takeIf { it.canExecute() },
+            resourcesDir?.let { File("$it/$binaryName").takeIf { f -> f.canExecute() } },
         )
         return candidates.firstOrNull()?.absolutePath?.also {
             println("[CoreLauncher] Found agent-core binary: $it")
@@ -84,13 +84,24 @@ object CoreLauncher {
     }
 
     private fun findDevBinary(name: String): File? {
-        // Walk up from working directory looking for CoreApp/target/release/agent-core
         var dir = File(System.getProperty("user.dir") ?: return null)
         repeat(5) {
-            val candidate = File(dir, "CoreApp/target/release/$name")
-            if (candidate.canExecute()) return candidate
-            val candidate2 = File(dir, "CoreApp/target/debug/$name")
-            if (candidate2.canExecute()) return candidate2
+            val releaseBin = File(dir, "CoreApp/target/release/$name")
+            val debugBin = File(dir, "CoreApp/target/debug/$name")
+            
+            val newer = when {
+                releaseBin.exists() && debugBin.exists() -> {
+                    if (releaseBin.lastModified() >= debugBin.lastModified()) releaseBin else debugBin
+                }
+                releaseBin.exists() -> releaseBin
+                debugBin.exists() -> debugBin
+                else -> null
+            }
+
+            if (newer != null && newer.canExecute()) {
+                println("[CoreLauncher] Found dev binary at: ${newer.absolutePath}")
+                return newer
+            }
             dir = dir.parentFile ?: return null
         }
         return null

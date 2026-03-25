@@ -109,6 +109,16 @@ class ChatViewModel(
         is IpcEvent.SessionForked -> "new=${event.payload.new_session_id.take(8)}"
         is IpcEvent.ModelsList -> "${event.payload.models.size} models"
         is IpcEvent.SubAgentDone -> "agent=${event.payload.agent_id.take(8)} ${if (event.payload.success) "ok" else "FAIL"}"
+        is IpcEvent.Stats -> {
+            val i = event.payload["input_tokens"]?.jsonPrimitive?.content ?: "0"
+            val o = event.payload["output_tokens"]?.jsonPrimitive?.content ?: "0"
+            "tokens in=$i out=$o"
+        }
+        is IpcEvent.MessageEnd -> {
+            val i = event.payload.usage?.input_tokens ?: 0
+            val o = event.payload.usage?.output_tokens ?: 0
+            "done in=$i out=$o"
+        }
         else -> ""
     }
 

@@ -71,9 +71,22 @@ val copyRustBinary by tasks.registering(Copy::class) {
     val releaseBin = coreDir.file("target/release/$binaryName").asFile
     val debugBin   = coreDir.file("target/debug/$binaryName").asFile
 
-    from(if (releaseBin.canExecute()) releaseBin else debugBin)
-    into(packagingResourcesDir.dir(platformSubdir))
-    rename { binaryName }
+    val sourceBin = when {
+        releaseBin.exists() && debugBin.exists() -> {
+            if (releaseBin.lastModified() >= debugBin.lastModified()) releaseBin else debugBin
+        }
+        releaseBin.exists() -> releaseBin
+        debugBin.exists() -> debugBin
+        else -> null
+    }
+
+    if (sourceBin != null) {
+        from(sourceBin)
+        into(packagingResourcesDir.dir(platformSubdir))
+        rename { binaryName }
+    } else {
+        println("⚠️ [copyRustBinary] No agent-core binary found in release or debug targets!")
+    }
 }
 
 val copyBuiltinTools by tasks.registering(Copy::class) {

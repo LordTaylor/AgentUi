@@ -20,6 +20,8 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.doubleOrNull
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material3.surfaceColorAtElevation
 
 /**
  * Bottom status bar showing model info, token usage, and IPC status.
@@ -43,36 +45,115 @@ fun BottomStatusBar(stats: JsonObject?, lastIpc: String, currentModel: String) {
     val inTokens = if (usage != null) extractLong("input_tokens", usage) else extractLong("input_tokens", stats)
     val outTokens = if (usage != null) extractLong("output_tokens", usage) else extractLong("output_tokens", stats)
     val context = if (usage != null) extractLong("context_window_tokens", usage) else extractLong("context_window_tokens", stats)
+    val contextLimit = if (usage != null) extractLong("context_window_limit", usage) else extractLong("context_window_limit", stats)
+
+    val contextPercent = if (contextLimit > 0L) (context * 100 / contextLimit) else 0L
 
     Surface(
-        color = MaterialTheme.colorScheme.surface,
-        modifier = Modifier.fillMaxWidth().height(28.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+        color = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
+        modifier = Modifier.fillMaxWidth().height(32.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.05f))
     ) {
         Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Left: Model and Tokens
+            // Left: Model Indicator
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(6.dp).background(Color.Cyan, RoundedCornerShape(3.dp)))
-                Spacer(Modifier.width(8.dp))
+                Box(
+                    Modifier.size(8.dp)
+                        .background(
+                            brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                colors = listOf(Color.Cyan, Color(0xFF00BFA5))
+                            ),
+                            shape = RoundedCornerShape(4.dp)
+                        )
+                )
+                Spacer(Modifier.width(10.dp))
                 val modelDisplay = currentModel.ifEmpty { "UNKNOWN" }.uppercase()
-                Text("MODEL: $modelDisplay", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    text = "MODEL: $modelDisplay",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    letterSpacing = 0.5.sp
+                )
             }
             
-            Text("TOKENS: $inTokens ↑ $outTokens ↓", fontSize = 9.sp, color = Color.Gray)
-            Text("CONTEXT: $context", fontSize = 9.sp, color = Color.Gray)
+            VerticalDivider(modifier = Modifier.height(14.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+
+            // Middle: Tokens
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                LabelValue("SENT", "$inTokens", Color.Gray)
+                LabelValue("RECV", "$outTokens", Color.Gray)
+            }
+
+            VerticalDivider(modifier = Modifier.height(14.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+
+            // Context usage with percentage
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "CONTEXT: ",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "$context / $contextLimit",
+                    fontSize = 9.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "(${contextPercent}%)",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = when {
+                        contextPercent > 90 -> Color.Red
+                        contextPercent > 70 -> Color(0xFFFFA000)
+                        else -> Color(0xFF4CAF50)
+                    }
+                )
+            }
 
             Spacer(modifier = Modifier.weight(1f))
 
-            Text("IPC: ${lastIpc.take(35)}", fontSize = 9.sp, color = Color.Gray.copy(alpha = 0.7f))
+            // Right: IPC Status
+            Text(
+                text = "LOG: ${lastIpc.take(40)}",
+                fontSize = 9.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
             
-            VerticalDivider(modifier = Modifier.height(12.dp), color = Color.Gray.copy(alpha = 0.2f))
+            VerticalDivider(modifier = Modifier.height(14.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
             
-            Text("THREAD: 0x${(stats?.hashCode() ?: 0).toString(16).uppercase().take(4)}", fontSize = 9.sp, color = Color.Gray)
+            Text(
+                text = "0x${(stats?.hashCode() ?: 0).toString(16).uppercase().take(4)}",
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
         }
+    }
+}
+
+@Composable
+private fun LabelValue(label: String, value: String, color: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = "$label: ",
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            fontSize = 9.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+        )
     }
 }
 

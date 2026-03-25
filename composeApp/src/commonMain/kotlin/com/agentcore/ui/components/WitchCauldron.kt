@@ -19,12 +19,11 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.*
 
 object WitchCauldronConstants {
-    const val DEFAULT_GRID_SIZE = 64
     const val FIRE_FRAME_COUNT = 4
-    const val BUBBLE_DENSITY_IDLE = 8
-    const val BUBBLE_DENSITY_SENDING = 16
-    const val BUBBLE_DENSITY_RECEIVING = 24
-    const val BUBBLE_DENSITY_THINKING = 12
+    const val BUBBLE_DENSITY_IDLE = 6
+    const val BUBBLE_DENSITY_SENDING = 12
+    const val BUBBLE_DENSITY_RECEIVING = 18
+    const val BUBBLE_DENSITY_THINKING = 10
     const val SCALE_MIN = 0.1f
 }
 
@@ -67,9 +66,9 @@ fun WitchCauldron(
 
     val bounceOffset by transition.animateFloat(
         initialValue = 0f,
-        targetValue = if (state == CauldronState.THINKING) -6f else 0f,
+        targetValue = if (state == CauldronState.THINKING) -7f else 0f,
         animationSpec = infiniteRepeatable(
-            animation = tween(250, easing = LinearOutSlowInEasing),
+            animation = tween(300, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         )
     )
@@ -78,7 +77,7 @@ fun WitchCauldron(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2500, easing = LinearEasing),
+            animation = tween(15000, easing = LinearEasing), // Wolno - 15 sekund
             repeatMode = RepeatMode.Restart
         )
     )
@@ -107,21 +106,22 @@ fun WitchCauldron(
         
         if (pixelSize >= WitchCauldronConstants.SCALE_MIN) {
             val bounceY = bounceOffset.toInt()
-            // liquidY to poziom wlotu kociołka
-            val liquidY = (gridSize / 2 - (22 * scale) + bounceY).toInt()
+            val liquidY = (gridSize / 2 - (24 * scale) + bounceY).toInt()
             val liquidColor = liquidColors[state] ?: Color(0xFF1B5E20)
 
             val offset1 = (sin(fireTime * PI * 2.0) * 8 * scale).toInt()
             val offset2 = (sin(fireTime * PI * 2.5) * 8 * scale).toInt()
 
             // 1. Ogień z tyłu
-            drawPixelFire(gridSize, pixelSize, fireFrame, offset1, scale, 0.82f)
-            // 3. Ciecz "bulgocząca" na wierzchu kociołka
-            drawBubblingLiquid(gridSize, pixelSize, liquidY, liquidColor, scale, fireTime)
-            // 2. Kociołek (Sam korpus, bez cieczy w środku)
+            drawPixelFire(gridSize, pixelSize, fireFrame, offset1, scale, 0.82f, fireTime)
+            
+            // 2. Ciecz
+            drawBubblingLiquid(gridSize, pixelSize, liquidY, liquidColor, scale, fireTime, bounceOffset)
+            
+            // 3. Kociołek
             drawPixelCauldronBase(gridSize, pixelSize, bounceY, scale)
 
-            // 4. Efekty stanu (Bąbelki lecą Z cieczy)
+            // 4. Efekty stanu
             val density = when(state) {
                 CauldronState.IDLE -> WitchCauldronConstants.BUBBLE_DENSITY_IDLE
                 CauldronState.SENDING -> WitchCauldronConstants.BUBBLE_DENSITY_SENDING
@@ -129,7 +129,7 @@ fun WitchCauldron(
                 CauldronState.THINKING -> WitchCauldronConstants.BUBBLE_DENSITY_THINKING
             }
 
-            drawPixelBubbles(gridSize, pixelSize, bubbleProgress, bounceY, density, scale, liquidY, liquidColor)
+            drawPixelBubbles(gridSize, pixelSize, bubbleProgress, density, scale, liquidY, liquidColor)
 
             if (state == CauldronState.SENDING) {
                 drawPixelIngredients(gridSize, pixelSize, ingredientProgress, scale, liquidY)
@@ -139,7 +139,7 @@ fun WitchCauldron(
             }
 
             // 5. Ogień z przodu
-            drawPixelFire(gridSize, pixelSize, fireFrame, offset2, scale, 0.86f)
+            drawPixelFire(gridSize, pixelSize, fireFrame, offset2, scale, 0.86f, fireTime)
         }
     }
 }
@@ -152,26 +152,38 @@ private fun DrawScope.drawPixel(x: Int, y: Int, color: Color, pixelSize: Float) 
     )
 }
 
-private fun DrawScope.drawPixelFire(gridSize: Int, pixelSize: Float, frame: Int, offset: Int, scale: Float, verticalPos: Float) {
+private fun DrawScope.drawPixelFire(
+    gridSize: Int,
+    pixelSize: Float,
+    frame: Int,
+    offset: Int,
+    scale: Float,
+    verticalPos: Float,
+    time: Float
+) {
     val centerX = gridSize / 2
     val centerY = (gridSize * verticalPos).toInt()
     val center = centerX + offset
-    val fireHalfWidth = (10 * scale).toInt().coerceAtLeast(1)
+    val fireHalfWidth = (48 * scale).toInt().coerceAtLeast(1)
 
     for (dx in -fireHalfWidth..fireHalfWidth) {
-        val absDx = abs(dx)
-        val relDx = absDx / scale
-        val flicker = frame % WitchCauldronConstants.FIRE_FRAME_COUNT
+        val baseIntensity = cos((dx.toFloat() / fireHalfWidth) * (PI / 2).toFloat()).pow(1.2f)
+        val noise = (sin(time * PI * 12 + dx * 0.3) * 0.4 + 
+                    cos(time * PI * 5 - dx * 0.5) * 0.3 +
+                    sin(dx * 0.8) * 0.3)
+        val flicker = (frame % WitchCauldronConstants.FIRE_FRAME_COUNT).toFloat()
 
         val layers = listOf(
-            Triple(Color(0xFFFF4500), if (relDx <= 8) 10 else 4, 1.0f),
-            Triple(Color(0xFFFFD700), if (relDx <= 5) 6 else 1, 0.8f)
+            Triple(Color(0xFF8B0000).copy(alpha = 0.4f), 14f, 1.4f),
+            Triple(Color(0xFFFF4500), 10f, 1.2f),
+            Triple(Color(0xFFFFD700), 6f, 0.9f)
         )
 
         for ((color, baseHeight, heightMult) in layers) {
-            val h = ((baseHeight + flicker * 2) * scale * heightMult).toInt()
+            val h = ((baseHeight + flicker * 2) * scale * heightMult * (baseIntensity + 0.3f) * (1.2 + noise)).toInt()
             for (dy in 0 until h) {
-                drawPixel(center + dx, centerY - dy, color, pixelSize)
+                val lick = (sin(time * PI * 6 + dy * 0.2 + dx * 0.1) * 2.5 * scale * (dy.toFloat() / h.coerceAtLeast(1))).toInt()
+                drawPixel(center + dx + lick, centerY - dy, color, pixelSize)
             }
         }
     }
@@ -180,17 +192,22 @@ private fun DrawScope.drawPixelFire(gridSize: Int, pixelSize: Float, frame: Int,
 private fun DrawScope.drawPixelCauldronBase(gridSize: Int, pixelSize: Float, bounceY: Int, scale: Float) {
     val centerX = gridSize / 2
     val centerY = gridSize / 2 + (8 * scale).toInt() + bounceY
-    val cauldronColor = Color(0xFF222222) // Jednolity ciemny kolor
+    val cauldronColor = Color(0xFF222222)
 
-    // Nogi
-    val legOffsetsX = listOf(-20, -19, -18, 17, 18, 19).map { (it * scale).toInt() }
-    for (dx in legOffsetsX) {
-        for (dy in (24 * scale).toInt()..(27 * scale).toInt()) {
+    val legWidth = (8 * scale).toInt().coerceAtLeast(2)
+    val legPosX = (20 * scale).toInt()
+    
+    for (dx in -legPosX - legWidth / 2..-legPosX + legWidth / 2) {
+        for (dy in (24 * scale).toInt()..(34 * scale).toInt()) {
+            drawPixel(centerX + dx, centerY + dy, cauldronColor, pixelSize)
+        }
+    }
+    for (dx in legPosX - legWidth / 2..legPosX + legWidth / 2) {
+        for (dy in (24 * scale).toInt()..(34 * scale).toInt()) {
             drawPixel(centerX + dx, centerY + dy, cauldronColor, pixelSize)
         }
     }
 
-    // Korpus
     val radius = 40 * scale
     val radiusSq = radius * radius
     for (dy in (-28 * scale).toInt()..(32 * scale).toInt()) {
@@ -202,61 +219,87 @@ private fun DrawScope.drawPixelCauldronBase(gridSize: Int, pixelSize: Float, bou
         }
     }
 
-    // Obrzeże (Rim)
     for (dx in (-38 * scale).toInt()..(37 * scale).toInt()) {
-        for (dy in (-30 * scale).toInt()..(-24 * scale).toInt()) {
+        for (dy in (-32 * scale).toInt()..(-24 * scale).toInt()) {
             drawPixel(centerX + dx, centerY + dy, cauldronColor, pixelSize)
         }
     }
 
-    // Odblask (jedyny detal)
     val reflectSize = (5 * scale).toInt().coerceAtLeast(1)
     for (dx in 0 until reflectSize) {
         for (dy in 0 until reflectSize) {
-            drawPixel(centerX - (22 * scale).toInt() + dx, centerY - (6 * scale).toInt() + dy, Color.White.copy(alpha = 0.2f), pixelSize)
+            drawPixel(centerX - (24 * scale).toInt() + dx, centerY - (8 * scale).toInt() + dy, Color.White.copy(alpha = 0.15f), pixelSize)
         }
     }
 }
 
-private fun DrawScope.drawBubblingLiquid(gridSize: Int, pixelSize: Float, liquidY: Int, color: Color, scale: Float, time: Float) {
+private fun DrawScope.drawBubblingLiquid(
+    gridSize: Int,
+    pixelSize: Float,
+    liquidY: Int,
+    color: Color,
+    scale: Float,
+    time: Float,
+    bounceOffset: Float
+) {
     val centerX = gridSize / 2
-    val width = (30 * scale).toInt()
+    val width = (34 * scale).toInt()
+    val horizontalSway = (sin(time * PI * 2) * 2 * scale).toInt()
+    val sloshIntensity = if (bounceOffset < 0) abs(bounceOffset) * 0.7f else 0f
     
     for (dx in -width..width) {
-        // Efekt falowania powierzchni
-        val wave = (sin(time * PI * 10 + dx * 0.5) * 2 * scale).toInt()
-        val surfaceY = liquidY + wave
+        val edgeFactor = cos((dx.toFloat() / width) * (PI / 2).toFloat()).pow(0.5f)
+        val wave = (sin(time * PI * 8 + dx * 0.2) * (5 * scale + sloshIntensity) * edgeFactor).toInt()
+        val centerJump = if (abs(dx) < width / 3) (sloshIntensity * 1.5f).toInt() else 0
+        val surfaceY = liquidY + wave - centerJump
         
-        // Rysujemy wypełnienie wlotu
+        val x = centerX + dx + horizontalSway
+        // Rysujemy ciecz tylko w obrębie obręczy (rim), ograniczając dy
         for (dy in 0..(6 * scale).toInt()) {
-            drawPixel(centerX + dx, surfaceY + dy, color, pixelSize)
+            drawPixel(x, surfaceY + dy, color, pixelSize)
         }
-        
-        // Jaśniejszy "blask" na szczycie bąbelków cieczy
-        drawPixel(centerX + dx, surfaceY, color.copy(alpha = 0.8f), pixelSize)
+        drawPixel(x, surfaceY, color.copy(alpha = 0.9f), pixelSize)
     }
 }
 
-private fun DrawScope.drawPixelBubbles(gridSize: Int, pixelSize: Float, progress: Float, bounceY: Int, density: Int, scale: Float, liquidY: Int, liquidColor: Color) {
-    val random = kotlin.random.Random((progress * 1000).toInt())
+private fun DrawScope.drawPixelBubbles(
+    gridSize: Int,
+    pixelSize: Float,
+    progress: Float,
+    density: Int,
+    scale: Float,
+    liquidY: Int,
+    liquidColor: Color
+) {
+    val random = kotlin.random.Random((progress * 500).toInt())
     val centerX = gridSize / 2
 
     repeat(density) { i ->
         val p = (progress + i.toFloat() / density) % 1f
-        val spread = (28 * scale).toInt()
+        val spread = (30 * scale).toInt()
         val bx = centerX + (random.nextInt(spread * 2) - spread)
-        val by = liquidY - (p * 40 * scale).toInt()
+        val by = liquidY - (p * 60 * scale).toInt()
 
-        val alpha = 1f - p
-        val bubbleColor = if (i % 2 == 0) Color(0xFFCCFF90) else liquidColor.copy(alpha = 0.7f)
+        val alpha = (1f - p).pow(0.7f)
+        val bubbleBaseColor = liquidColor
+        val bubbleColor = Color(
+            red = (bubbleBaseColor.red * 0.8f + 0.2f).coerceAtMost(1f),
+            green = (bubbleBaseColor.green * 0.8f + 0.2f).coerceAtMost(1f),
+            blue = (bubbleBaseColor.blue * 0.8f + 0.2f).coerceAtMost(1f),
+            alpha = alpha
+        )
 
-        if (by < liquidY && by > 0) {
-            // "Okrągły" bąbelek w pixel-art (krzyżyk 3x3)
-            drawPixel(bx, by, bubbleColor.copy(alpha = alpha), pixelSize) // środek
-            drawPixel(bx - 1, by, bubbleColor.copy(alpha = alpha * 0.6f), pixelSize) // lewo
-            drawPixel(bx + 1, by, bubbleColor.copy(alpha = alpha * 0.6f), pixelSize) // prawo
-            drawPixel(bx, by - 1, bubbleColor.copy(alpha = alpha * 0.6f), pixelSize) // góra
-            drawPixel(bx, by + 1, bubbleColor.copy(alpha = alpha * 0.6f), pixelSize) // dół
+        if (by in 1 until liquidY) {
+            for (dx in -2..2) {
+                for (dy in -2..2) {
+                    val distSq = dx * dx + dy * dy
+                    if (distSq <= 6) { 
+                        val pixelAlpha = if (distSq >= 5) alpha * 0.4f else alpha
+                        drawPixel(bx + dx, by + dy, bubbleColor.copy(alpha = pixelAlpha), pixelSize)
+                    }
+                }
+            }
+            drawPixel(bx - 1, by - 1, Color.White.copy(alpha = alpha * 0.5f), pixelSize)
         }
     }
 }
@@ -269,20 +312,39 @@ private fun DrawScope.drawPixelIngredients(gridSize: Int, pixelSize: Float, prog
         val iy = (p * liquidY).toInt()
 
         val color = when (i) {
-            0 -> Color.White; 1 -> Color(0xFF8B4513); else -> Color.Red
+            0 -> Color.White
+            1 -> Color(0xFFFF5722) // Jaskrawy pomarańcz
+            else -> Color(0xFFFFEB3B) // Jaskrawy żółty
         }
-        drawPixel(ix, iy, color, pixelSize)
+        
+        // Większe składniki (3x3 z rdzeniem)
+        for (dx in -1..1) {
+            for (dy in -1..1) {
+                drawPixel(ix + dx, iy + dy, color, pixelSize)
+            }
+        }
+        // Biały błysk dla widoczności
+        drawPixel(ix, iy, Color.White, pixelSize)
     }
 }
 
 private fun DrawScope.drawPixelPowerStream(gridSize: Int, pixelSize: Float, alpha: Float, scale: Float, liquidY: Int) {
     val centerX = gridSize / 2
+    // Szeroki strumień (dopasowany do wlotu kociołka)
+    val streamWidth = (32 * scale).toInt()
+    
     for (dy in 0..(liquidY)) {
         val y = liquidY - dy
         val a = alpha * (1f - dy.toFloat() / liquidY)
-        drawPixel(centerX, y, Color.Green.copy(alpha = a), pixelSize)
-        drawPixel(centerX - 1, y, Color.Green.copy(alpha = a * 0.5f), pixelSize)
-        drawPixel(centerX + 1, y, Color.Green.copy(alpha = a * 0.5f), pixelSize)
+        
+        for (dx in -streamWidth / 2..streamWidth / 2) {
+            val distFactor = 1f - abs(dx).toFloat() / (streamWidth / 2)
+            val finalAlpha = a * distFactor.pow(1.5f)
+            
+            // Biały rdzeń, zielone brzegi
+            val color = if (abs(dx) < 2) Color.White else Color(0xFF00FF00)
+            drawPixel(centerX + dx, y, color.copy(alpha = finalAlpha), pixelSize)
+        }
     }
 }
 

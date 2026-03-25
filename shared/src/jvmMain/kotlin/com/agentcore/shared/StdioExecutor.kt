@@ -47,7 +47,7 @@ class StdioExecutor(private val workingDir: String = "/Users/jaroslawkrawczyk/Ag
         // Delegate to CoreLauncher for consistent binary resolution
         // (checks bundled resources dir, ~/.local/bin, dev build paths)
         val binary = CoreLauncher.findBinary()
-        if (binary != null) return listOf(binary, "--stdio") to null
+        if (binary != null) return listOf(binary, "--stdio", "--debug") to null
 
         // Fallback: use cargo run for dev environments.
         // cargo may not be in PATH when launched from a GUI app bundle, so try known locations.
@@ -58,7 +58,7 @@ class StdioExecutor(private val workingDir: String = "/Users/jaroslawkrawczyk/Ag
             "/opt/homebrew/bin/cargo"
         ).firstOrNull { File(it).canExecute() } ?: "cargo"
 
-        return listOf(cargo, "run", "--", "--stdio") to File(workingDir)
+        return listOf(cargo, "run", "--", "--stdio", "--debug") to File(workingDir)
     }
 
     fun start() {
