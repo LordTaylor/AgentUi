@@ -93,6 +93,7 @@ class ChatViewModel(
         is IpcEvent.ModelsList -> "models_list"
         is IpcEvent.ToolOutputDelta -> "tool_output_delta"
         is IpcEvent.SubAgentDone -> "sub_agent_done"
+        is IpcEvent.AgentWorkflowStatus -> "agent_workflow_status"
         else -> event::class.simpleName ?: "unknown"
     }
 
@@ -203,6 +204,12 @@ class ChatViewModel(
         }
         addIpcLog("←", ipcEventName(event), ipcEventSummary(event))
         val currentState = _uiState.value
+
+        // A12: handle memory_list before delegating to IpcHandler
+        if (event is IpcEvent.MemoryList) {
+            _uiState.value = _uiState.value.copy(memoryFacts = event.payload.facts)
+            return
+        }
 
         IpcHandler.handleIpcEvent(
             event = event,
@@ -395,6 +402,28 @@ class ChatViewModel(
             onToolProgress = { payload ->
                 // B3 fix: field renamed from chunk → message to match Rust ToolProgressPayload
                 addIpcLog("IN", "tool_progress", payload.message)
+            },
+            // A10 IPC 1.7: workflow group progress events
+            onWorkflowGroupStatus = { payload ->
+                _uiState.value = _uiState.value.copy(workflowGroupStatus = payload)
+                addIpcLog(
+                    "←", "agent_workflow_status",
+                    "gid=${payload.group_id.take(8)} state=${payload.state} step=${payload.step}/${payload.total_steps}"
+                )
+                // Clear status when workflow reaches terminal state
+                if (payload.state == "complete" || payload.state == "failed") {
+                    val terminalMsg = Message(
+                        id = "workflow-${payload.group_id.take(8)}",
+                        sender = "System",
+                        text = if (payload.state == "complete")
+                            "✅ Workflow complete (${payload.total_steps} steps)"
+                        else
+                            "❌ Workflow failed at step ${payload.step}/${payload.total_steps}",
+                        isFromUser = false,
+                        type = com.agentcore.model.MessageType.SYSTEM
+                    )
+                    _uiState.value = _uiState.value.copy(messages = _uiState.value.messages + terminalMsg)
+                }
             }
         )
     }
@@ -1013,6 +1042,65 @@ class ChatViewModel(
             }
             ChatIntent.ToggleSearch -> {
                 _uiState.value = _uiState.value.copy(showSearch = !_uiState.value.showSearch)
+            }
+            // A10 IPC 1.7: run a multi-step AgentGroup workflow
+            is ChatIntent.RunWorkflow -> {
+                addIpcLog("→", "run_workflow", "steps=${intent.payload.steps.size}")
+                scope.launch {
+                    val cmd = IpcCommand.RunWorkflow(intent.payload)
+                    when (mode) {
+                        ConnectionMode.STDIO -> stdioExecutor.sendCommand(cmd)
+                        ConnectionMode.UNIX_SOCKET -> unixSocketExecutor.sendCommand(cmd)
+                        ConnectionMode.IPC -> client.sendCommand(cmd)
+                        else -> {}
+                    }
+                }
+            }
+            ChatIntent.ToggleWorkflowDialog -> {
+                _uiState.value = _uiState.value.copy(showWorkflowDialog = !_uiState.value.showWorkflowDialog)
+            }
+            ChatIntent.ToggleCreateToolDialog -> {
+                _uiState.value = _uiState.value.copy(showCreateToolDialog = !_uiState.value.showCreateToolDialog)
+            }
+            // A12: Enhanced KV Store
+            ChatIntent.ToggleMemoryPanel -> {
+                val opening = !_uiState.value.showMemoryPanel
+                _uiState.value = _uiState.value.copy(showMemoryPanel = opening)
+                if (opening) {
+                    _uiState.value.currentSessionId?.let { sid ->
+                        scope.launch {
+                            val cmd = IpcCommand.ListMemory(ListMemoryPayload(sid))
+                            when (mode) {
+                                ConnectionMode.STDIO -> stdioExecutor.sendCommand(cmd)
+                                ConnectionMode.UNIX_SOCKET -> unixSocketExecutor.sendCommand(cmd)
+                                ConnectionMode.IPC -> client.sendCommand(cmd)
+                                else -> {}
+                            }
+                        }
+                    }
+                }
+            }
+            is ChatIntent.LoadMemory -> {
+                scope.launch {
+                    val cmd = IpcCommand.ListMemory(ListMemoryPayload(intent.sessionId))
+                    when (mode) {
+                        ConnectionMode.STDIO -> stdioExecutor.sendCommand(cmd)
+                        ConnectionMode.UNIX_SOCKET -> unixSocketExecutor.sendCommand(cmd)
+                        ConnectionMode.IPC -> client.sendCommand(cmd)
+                        else -> {}
+                    }
+                }
+            }
+            is ChatIntent.DeleteMemoryKey -> {
+                scope.launch {
+                    val cmd = IpcCommand.DeleteMemory(DeleteMemoryPayload(intent.sessionId, intent.key))
+                    when (mode) {
+                        ConnectionMode.STDIO -> stdioExecutor.sendCommand(cmd)
+                        ConnectionMode.UNIX_SOCKET -> unixSocketExecutor.sendCommand(cmd)
+                        ConnectionMode.IPC -> client.sendCommand(cmd)
+                        else -> {}
+                    }
+                }
             }
         }
     }

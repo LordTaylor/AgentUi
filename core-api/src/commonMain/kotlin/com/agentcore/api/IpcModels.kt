@@ -258,6 +258,21 @@ sealed class IpcCommand {
     @Serializable
     @SerialName("list_skills")
     class ListSkills : IpcCommand()
+
+    // A10: Run a multi-step AgentGroup workflow.
+    @Serializable
+    @SerialName("run_workflow")
+    data class RunWorkflow(val payload: RunWorkflowPayload) : IpcCommand()
+
+    // A12: List all remembered facts for a session.
+    @Serializable
+    @SerialName("list_memory")
+    data class ListMemory(val payload: ListMemoryPayload) : IpcCommand()
+
+    // A12: Delete a single fact from a session's memory.
+    @Serializable
+    @SerialName("delete_memory")
+    data class DeleteMemory(val payload: DeleteMemoryPayload) : IpcCommand()
 }
 
 @Serializable
@@ -629,6 +644,16 @@ sealed class IpcEvent {
     @Serializable
     @SerialName("skills_list")
     data class SkillsList(val payload: SkillListPayload) : IpcEvent()
+
+    // A10: AgentGroup workflow progress event.
+    @Serializable
+    @SerialName("agent_workflow_status")
+    data class AgentWorkflowStatus(val payload: AgentWorkflowStatusPayload) : IpcEvent()
+
+    // A12: Response to list_memory / delete_memory — full facts map for a session.
+    @Serializable
+    @SerialName("memory_list")
+    data class MemoryList(val payload: MemoryListPayload) : IpcEvent()
 }
 
 @Serializable
@@ -706,7 +731,9 @@ data class ToolCallPayload(
 data class ToolResultPayload(
     val id: String,
     val result: String,
-    val error: String? = null
+    val error: String? = null,
+    /** Sprint C: semantic error bucket — null for successes. */
+    val error_category: String? = null
 )
 
 @Serializable
@@ -1004,3 +1031,55 @@ data class SubAgentResultPayload(
 // B13 fix payloads — subagents_list (Rust returns ids: List<String>, not full objects)
 @Serializable
 data class SubAgentsListPayload(val count: Int, val ids: List<String>)
+
+// A10: AgentGroup workflow status event payload.
+@Serializable
+data class AgentWorkflowStatusPayload(
+    val group_id: String,
+    /// "running" | "recovering" | "complete" | "failed"
+    val state: String,
+    val step: Int,
+    val total_steps: Int,
+    val active_agents: List<String> = emptyList()
+)
+
+// A10: RunWorkflow command payload.
+@Serializable
+data class RunWorkflowPayload(
+    val steps: List<WorkflowStepDef>,
+    val backend: String? = null
+)
+
+// A12: KV Store command payloads.
+@Serializable
+data class ListMemoryPayload(val session_id: String)
+
+@Serializable
+data class DeleteMemoryPayload(val session_id: String, val key: String)
+
+// A12: MemoryList event payload — all facts for one session.
+@Serializable
+data class MemoryListPayload(
+    val session_id: String,
+    val facts: Map<String, String> = emptyMap()
+)
+
+@Serializable
+sealed class WorkflowStepDef {
+    @Serializable @SerialName("sequential")
+    data class Sequential(val tasks: List<WorkflowTaskDef>) : WorkflowStepDef()
+    @Serializable @SerialName("parallel")
+    data class Parallel(val tasks: List<WorkflowTaskDef>) : WorkflowStepDef()
+    @Serializable @SerialName("conditional")
+    data class Conditional(val primary: WorkflowTaskDef, val fallback: WorkflowTaskDef? = null) : WorkflowStepDef()
+}
+
+@Serializable
+data class WorkflowTaskDef(
+    val task: String,
+    val role: String = "base",
+    val backend: String? = null,
+    val inherit_context: Boolean = false,
+    /** Sprint B: optional max input-token budget for this sub-agent. */
+    val token_budget: Int? = null
+)

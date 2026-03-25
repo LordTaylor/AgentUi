@@ -82,54 +82,53 @@ fun ChatBubble(
         modifier = Modifier
             .fillMaxWidth()
             .padding(
-                top = if (isGrouped) 1.dp else 6.dp, 
+                top = if (isGrouped) 1.dp else 12.dp, 
                 bottom = 1.dp,
-                start = if (!msg.isFromUser && msg.agentId != null) 32.dp else 0.dp
+                start = if (!msg.isFromUser) 8.dp else 48.dp,
+                end = if (msg.isFromUser) 8.dp else 48.dp
             ),
         horizontalAlignment = if (msg.isFromUser) Alignment.End else Alignment.Start
     ) {
         if (!isGrouped) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = if (msg.isFromUser) Arrangement.End else Arrangement.Start
             ) {
-                val senderColor = if (msg.isFromUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
-                val agentId = msg.agentId
-                if (!msg.isFromUser && agentId != null) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        shape = RoundedCornerShape(4.dp),
-                        modifier = Modifier.padding(end = 6.dp)
-                    ) {
-                        Text(
-                            text = agentId.take(4).uppercase(),
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    }
+                if (!msg.isFromUser) {
+                    ChatAvatar(sender = msg.sender, isUser = false, agentId = msg.agentId)
+                    Spacer(modifier = Modifier.width(8.dp))
                 }
+                
                 Text(
                     text = msg.sender,
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                    color = senderColor
+                    color = if (msg.isFromUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
                 )
+                
+                if (msg.isFromUser) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    ChatAvatar(sender = msg.sender, isUser = true)
+                }
             }
         }
 
+        val bubbleShape = RoundedCornerShape(
+            topStart = if (isGrouped && !msg.isFromUser) 4.dp else 20.dp,
+            topEnd = if (isGrouped && msg.isFromUser) 4.dp else 20.dp,
+            bottomStart = 20.dp,
+            bottomEnd = 20.dp
+        )
+
         Surface(
-            shape = RoundedCornerShape(
-                topStart = if (isGrouped && !msg.isFromUser) 8.dp else 24.dp,
-                topEnd = if (isGrouped && msg.isFromUser) 8.dp else 24.dp,
-                bottomStart = 24.dp,
-                bottomEnd = 24.dp
-            ),
+            shape = bubbleShape,
             color = if (msg.isFromUser) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) 
                     else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-            border = if (!msg.isFromUser) BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)) else null,
-            tonalElevation = 0.dp,
-            modifier = Modifier.padding(horizontal = 8.dp)
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.05f)),
+            modifier = Modifier.padding(
+                start = if (!msg.isFromUser && isGrouped) 40.dp else 0.dp,
+                end = if (msg.isFromUser && isGrouped) 40.dp else 0.dp
+            )
         ) {
             Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
                 val content = msg.extraContent

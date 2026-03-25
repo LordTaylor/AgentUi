@@ -149,6 +149,19 @@ fun ChatMainScreen(mode: ConnectionMode) {
         sessionFolders = state.sessionFolders,
         onMoveToFolder = { sessionId, folderName ->
             viewModel.onIntent(ChatIntent.MoveSessionToFolder(sessionId, folderName), scope, mode)
+        },
+        // A10 IPC 1.7 — AgentGroup workflow
+        workflowGroupStatus = state.workflowGroupStatus,
+        showWorkflowDialog = state.showWorkflowDialog,
+        showCreateToolDialog = state.showCreateToolDialog,
+        // A12: Enhanced KV Store
+        memoryFacts = state.memoryFacts,
+        showMemoryPanel = state.showMemoryPanel,
+        onToggleMemoryPanel = { viewModel.onIntent(ChatIntent.ToggleMemoryPanel, scope, mode) },
+        onDeleteMemoryKey = { key ->
+            state.currentSessionId?.let { sid ->
+                viewModel.onIntent(ChatIntent.DeleteMemoryKey(sid, key), scope, mode)
+            }
         }
     )
 

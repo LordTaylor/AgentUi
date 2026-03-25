@@ -63,7 +63,7 @@ fun SessionItem(
                     .offset(x = (-8).dp)
                     .width(3.dp)
                     .height(20.dp)
-                    .clip(RoundedCornerShape(end = 2.dp))
+                    .clip(RoundedCornerShape(topEnd = 2.dp, bottomEnd = 2.dp))
                     .background(
                         Brush.verticalGradient(
                             listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)

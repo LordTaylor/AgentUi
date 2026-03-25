@@ -123,9 +123,14 @@ fun ChatArea(
                     }
                 } else {
                     itemsIndexed(filteredMessages, key = { _, msg -> msg.id }) { index, msg ->
+                        val isGrouped = index > 0 && run {
+                            val prev = filteredMessages[index - 1]
+                            val timeDiff = msg.timestamp - prev.timestamp
+                            prev.sender == msg.sender && timeDiff < 300000 // 5 minutes in ms
+                        }
                         ChatBubble(
                             msg = msg,
-                            isGrouped = index > 0 && filteredMessages[index - 1].sender == msg.sender,
+                            isGrouped = isGrouped,
                             fontSize = chatFontSize,
                             codeFontSize = codeFontSize,
                             onFork = { onFork(index) },

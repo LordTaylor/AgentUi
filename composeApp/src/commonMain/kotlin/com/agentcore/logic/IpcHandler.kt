@@ -53,7 +53,9 @@ object IpcHandler {
         onSubAgentThought: (agentId: String, text: String) -> Unit = { _, _ -> },
         onToolProgress: (ToolProgressPayload) -> Unit = {},
         onSkillsUpdate: (List<SkillInfo>) -> Unit = {},
-        onSessionsUpdate: (List<SessionInfo>) -> Unit = {}
+        onSessionsUpdate: (List<SessionInfo>) -> Unit = {},
+        // A10: AgentGroup workflow progress events.
+        onWorkflowGroupStatus: (AgentWorkflowStatusPayload) -> Unit = {}
     ) {
         when (event) {
             is IpcEvent.SessionsList -> onSessionsUpdate(event.payload.sessions)
@@ -277,6 +279,7 @@ object IpcHandler {
                 )
             }
             is IpcEvent.SkillsList -> onSkillsUpdate(event.payload.skills)
+            is IpcEvent.AgentWorkflowStatus -> onWorkflowGroupStatus(event.payload)
             else -> {}
         }
     }

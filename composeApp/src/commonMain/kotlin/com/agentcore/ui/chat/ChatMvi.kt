@@ -52,7 +52,14 @@ data class ChatUiState(
     val tokenHistory: List<UsagePayload> = emptyList(),
     val showTokenAnalytics: Boolean = false,
     val loadingModelName: String? = null,
-    val modelLoadingProgress: Float? = null
+    val modelLoadingProgress: Float? = null,
+    // A10 IPC 1.7: live AgentGroup workflow progress (null when no workflow is running)
+    val workflowGroupStatus: AgentWorkflowStatusPayload? = null,
+    val showWorkflowDialog: Boolean = false,
+    val showCreateToolDialog: Boolean = false,
+    // A12: Enhanced KV Store
+    val memoryFacts: Map<String, String> = emptyMap(),
+    val showMemoryPanel: Boolean = false
 )
 
 sealed class ChatIntent {
@@ -116,4 +123,12 @@ sealed class ChatIntent {
     object ClearToolOutput : ChatIntent()
     object ToggleTokenAnalytics : ChatIntent()
     object ToggleSearch : ChatIntent()
+    // A10 IPC 1.7: run a multi-step AgentGroup workflow
+    data class RunWorkflow(val payload: RunWorkflowPayload) : ChatIntent()
+    object ToggleWorkflowDialog : ChatIntent()
+    object ToggleCreateToolDialog : ChatIntent()
+    // A12: Enhanced KV Store
+    data class LoadMemory(val sessionId: String) : ChatIntent()
+    data class DeleteMemoryKey(val sessionId: String, val key: String) : ChatIntent()
+    object ToggleMemoryPanel : ChatIntent()
 }

@@ -120,6 +120,15 @@ fun MainScreen(
     sessionFolders: Map<String, String> = emptyMap(),
     onMoveToFolder: (String, String?) -> Unit = { _, _ -> },
     showSearch: Boolean = false,
+    // A10 IPC 1.7
+    workflowGroupStatus: com.agentcore.api.AgentWorkflowStatusPayload? = null,
+    showWorkflowDialog: Boolean = false,
+    showCreateToolDialog: Boolean = false,
+    // A12: Enhanced KV Store
+    memoryFacts: Map<String, String> = emptyMap(),
+    showMemoryPanel: Boolean = false,
+    onToggleMemoryPanel: () -> Unit = {},
+    onDeleteMemoryKey: (String) -> Unit = {},
     onIntent: (ChatIntent, kotlinx.coroutines.CoroutineScope, com.agentcore.shared.ConnectionMode) -> Unit = { _, _, _ -> }
 ) {
     val sidebarVisible = uiSettings.sidebarVisible
@@ -140,7 +149,6 @@ fun MainScreen(
     val listState = rememberLazyListState()
     var selectedFilePath by remember { mutableStateOf<String?>(null) }
     var selectedImages = remember { mutableStateListOf<String>() }
-    var showCreateToolDialog by remember { mutableStateOf(false) }
     var newToolName by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
     val searchFocusRequester = remember { FocusRequester() }
@@ -229,7 +237,9 @@ fun MainScreen(
                     showTokenAnalytics = showTokenAnalytics,
                     onToggleTokenAnalytics = onToggleTokenAnalytics,
                     developerMode = uiSettings.developerMode,
-                    onToggleDeveloperMode = { onUpdateUiSettings(uiSettings.copy(developerMode = !uiSettings.developerMode)) }
+                    onToggleDeveloperMode = { onUpdateUiSettings(uiSettings.copy(developerMode = !uiSettings.developerMode)) },
+                    onToggleWorkflowDialog = { onIntent(ChatIntent.ToggleWorkflowDialog, scope, mode) },
+                    onToggleMemoryPanel = onToggleMemoryPanel
                 )
 
                 HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
@@ -262,7 +272,6 @@ fun MainScreen(
                                 modifier = Modifier
                                     .width(260.dp)
                                     .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
-                            )
                             )
                             VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                         }
@@ -308,6 +317,12 @@ fun MainScreen(
                             showScrollToBottom = showScrollButton,
                             searchFocusRequester = searchFocusRequester,
                             modifier = Modifier.weight(1f)
+                        )
+
+                        // A10 IPC 1.7: live workflow progress bar (visible while workflow runs)
+                        AgentGroupWorkflowPanel(
+                            status = workflowGroupStatus,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
                         )
 
                         ToolOutputPanel(
@@ -364,7 +379,7 @@ fun MainScreen(
                         onReloadTools = onReloadTools,
                         onReloadSkills = onReloadSkills,
                         onDeleteTool = onDeleteTool,
-                        onCreateTool = { showCreateToolDialog = true },
+                        onCreateTool = { onIntent(ChatIntent.ToggleCreateToolDialog, scope, mode) },
                         sessionStats = sessionStats,
                         logs = logs,
                         scratchpadContent = scratchpadContent,
@@ -388,7 +403,7 @@ fun MainScreen(
 
         if (showCreateToolDialog) {
             AlertDialog(
-                onDismissRequest = { showCreateToolDialog = false },
+                onDismissRequest = { onIntent(ChatIntent.ToggleCreateToolDialog, scope, mode) },
                 title = { Text("Create New Tool") },
                 text = {
                     Column {
@@ -403,14 +418,14 @@ fun MainScreen(
                 confirmButton = {
                     Button(onClick = {
                         onIntent(ChatIntent.CreateTool(newToolName, ""), scope, mode)
-                        showCreateToolDialog = false
+                        onIntent(ChatIntent.ToggleCreateToolDialog, scope, mode)
                         newToolName = ""
                     }) {
                         Text("Create")
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showCreateToolDialog = false }) {
+                    TextButton(onClick = { onIntent(ChatIntent.ToggleCreateToolDialog, scope, mode) }) {
                         Text("Cancel")
                     }
                 }
@@ -436,6 +451,33 @@ fun MainScreen(
                 history = tokenHistory,
                 onDismiss = onToggleTokenAnalytics
             )
+        }
+
+        // A10 IPC 1.7: workflow builder dialog
+        if (showWorkflowDialog) {
+            WorkflowRunDialog(
+                onIntent = onIntent,
+                scope = scope,
+                mode = mode,
+                onDismiss = { onIntent(ChatIntent.ToggleWorkflowDialog, scope, mode) }
+            )
+        }
+
+        // A12: Memory panel overlay
+        if (showMemoryPanel) {
+            androidx.compose.ui.window.Dialog(onDismissRequest = onToggleMemoryPanel) {
+                MemoryPanel(
+                    sessionId = currentSessionId,
+                    facts = memoryFacts,
+                    onRefresh = {
+                        val sid = currentSessionId
+                        if (sid != null) onIntent(ChatIntent.LoadMemory(sid), scope, mode)
+                    },
+                    onDeleteKey = onDeleteMemoryKey,
+                    onClose = onToggleMemoryPanel,
+                    modifier = Modifier.fillMaxWidth(0.5f)
+                )
+            }
         }
     }
 }

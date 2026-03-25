@@ -45,6 +45,7 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor)
+            implementation(libs.kotlinx.datetime)
         }
         val commonTest by getting {
             dependencies {

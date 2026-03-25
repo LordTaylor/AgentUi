@@ -41,6 +41,8 @@ fun MainTopBar(
     onToggleTokenAnalytics: () -> Unit = {},
     developerMode: Boolean = true,
     onToggleDeveloperMode: () -> Unit = {},
+    onToggleWorkflowDialog: () -> Unit = {},
+    onToggleMemoryPanel: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var searchText by remember { mutableStateOf("") }
@@ -253,6 +255,16 @@ fun MainTopBar(
                             contentDescription = "Token Analytics",
                             tint = if (showTokenAnalytics) MaterialTheme.colorScheme.primary else Color.Gray
                         )
+                    }
+                }
+                AppTooltip("Uruchom Workflow Agentów (A10)") {
+                    IconButton(onClick = onToggleWorkflowDialog) {
+                        Icon(Icons.Default.Hub, contentDescription = "Agent Workflow", tint = Color.Gray)
+                    }
+                }
+                AppTooltip("Pamięć Agenta (A12)") {
+                    IconButton(onClick = onToggleMemoryPanel) {
+                        Icon(Icons.Default.Storage, contentDescription = "Agent Memory", tint = Color.Gray)
                     }
                 }
             }

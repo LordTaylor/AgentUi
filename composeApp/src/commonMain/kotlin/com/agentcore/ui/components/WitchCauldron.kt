@@ -285,7 +285,7 @@ private fun DrawScope.drawPixelBubbles(
         val bx = centerX + (bubbleRandom.nextInt(spread * 2) - spread)
         val by = liquidY - (p * 60 * scale).toInt()
 
-        val alpha = (1f - p).pow(0.7f)
+        val alpha = (1f - p).coerceAtLeast(0f).pow(0.7f)
         val bubbleBaseColor = liquidColor
         val bubbleColor = Color(
             red = (bubbleBaseColor.red * 0.8f + 0.2f).coerceAtMost(1f),
@@ -338,7 +338,8 @@ private fun DrawScope.drawPixelPowerStream(gridSize: Int, pixelSize: Float, alph
     // Szeroki strumień (dopasowany do wlotu kociołka)
     val streamWidth = (52 * scale).toInt()
     
-    for (dy in 0..(liquidY)) {
+    if (liquidY <= 0) return
+    for (dy in 0..liquidY) {
         val y = liquidY - dy
         val a = alpha * (1f - dy.toFloat() / liquidY)
         
