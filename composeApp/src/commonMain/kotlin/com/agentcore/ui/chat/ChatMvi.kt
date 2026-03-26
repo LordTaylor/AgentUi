@@ -119,6 +119,7 @@ sealed class ChatIntent {
     object ExportSession : ChatIntent()
     data class PasteToInput(val text: String) : ChatIntent()
     data class MoveSessionToFolder(val sessionId: String, val folderName: String?) : ChatIntent()
+    data class RenameSession(val sessionId: String, val title: String) : ChatIntent()
     object ToggleToolOutput : ChatIntent()
     object ClearToolOutput : ChatIntent()
     object ToggleTokenAnalytics : ChatIntent()

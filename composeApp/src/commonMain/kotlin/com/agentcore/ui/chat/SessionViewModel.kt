@@ -45,6 +45,7 @@ class SessionViewModel(
             is ChatIntent.SummarizeContext     -> summarizeContext(intent, scope, mode)
             is ChatIntent.UpdateHistorySearch  -> update { copy(historySearchText = intent.query) }
             is ChatIntent.MoveSessionToFolder  -> moveToFolder(intent)
+            is ChatIntent.RenameSession        -> renameSession(intent, scope, mode)
             is ChatIntent.LoadMemory           -> scope.launch { sendCmd(IpcCommand.ListMemory(ListMemoryPayload(intent.sessionId)), mode) }
             is ChatIntent.DeleteMemoryKey      -> scope.launch { sendCmd(IpcCommand.DeleteMemory(DeleteMemoryPayload(intent.sessionId, intent.key)), mode) }
             ChatIntent.ToggleMemoryPanel       -> toggleMemory(scope, mode)
@@ -117,6 +118,14 @@ class SessionViewModel(
             if (mode == ConnectionMode.IPC) client.summarizeContext(intent.sessionId)
             update { copy(isSummarizing = false) }
         }
+    }
+
+    private fun renameSession(intent: ChatIntent.RenameSession, scope: CoroutineScope, mode: ConnectionMode) {
+        // Optimistic local update first
+        update { copy(sessions = sessions.map { s -> if (s.id == intent.sessionId) s.copy(title = intent.title) else s }) }
+        saveSessionCache()
+        scope.launch { sendCmd(IpcCommand.RenameSession(RenameSessionPayload(intent.sessionId, intent.title)), mode) }
+        log("→", "rename_session", intent.title.take(20))
     }
 
     private fun moveToFolder(intent: ChatIntent.MoveSessionToFolder) {

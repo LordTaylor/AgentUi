@@ -154,6 +154,10 @@ sealed class IpcCommand {
     data class SetSystemPrompt(val payload: SetSystemPromptPayload) : IpcCommand()
 
     @Serializable
+    @SerialName("rename_session")
+    data class RenameSession(val payload: RenameSessionPayload) : IpcCommand()
+
+    @Serializable
     @SerialName("tag_session")
     data class TagSession(val payload: TagSessionPayload) : IpcCommand()
 
@@ -329,6 +333,8 @@ data class ForkSessionPayload(val session_id: String, val from_message_idx: Int)
 @Serializable
 data class SetSystemPromptPayload(val session_id: String, val prompt: String)
 
+@Serializable
+data class RenameSessionPayload(val session_id: String, val title: String)
 @Serializable
 data class TagSessionPayload(val session_id: String, val tags: List<String>)
 

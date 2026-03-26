@@ -7,7 +7,7 @@ import com.agentcore.model.Message
 import com.agentcore.model.MessageType
 import com.agentcore.shared.*
 import com.agentcore.ui.MainScreen
-import com.agentcore.ui.components.CauldronState
+import com.agentcore.ui.components.cauldron.CauldronState
 import com.agentcore.ui.components.HumanInputDialog
 import com.agentcore.ui.components.ProviderDialog
 import com.agentcore.ui.components.SettingsDialog
@@ -96,6 +96,7 @@ fun ChatMainScreen(mode: ConnectionMode) {
         onToggleSettings = { viewModel.onIntent(ChatIntent.ToggleSettings, scope, mode) },
         onSessionDelete = { id -> viewModel.onIntent(ChatIntent.DeleteSession(id), scope, mode) },
         onSessionPrune = { id -> viewModel.onIntent(ChatIntent.PruneSession(id), scope, mode) },
+        onSessionRename = { id, title -> viewModel.onIntent(ChatIntent.RenameSession(id, title), scope, mode) },
         onClearChat = { viewModel.onIntent(ChatIntent.ClearChat, scope, mode) },
         onCancel = {
             viewModel.onIntent(ChatIntent.CancelAction, scope, mode)

@@ -61,8 +61,8 @@ fun SessionItem(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .offset(x = (-8).dp)
-                    .width(3.dp)
-                    .height(20.dp)
+                    .width(5.dp)
+                    .height(32.dp)
                     .clip(RoundedCornerShape(topEnd = 2.dp, bottomEnd = 2.dp))
                     .background(
                         Brush.verticalGradient(
@@ -78,7 +78,7 @@ fun SessionItem(
             Icon(
                 imageVector = roleIcon,
                 contentDescription = null,
-                modifier = Modifier.size(14.dp),
+                modifier = Modifier.size(16.dp),
                 tint = if (isActive) MaterialTheme.colorScheme.primary else Color.Gray.copy(alpha = 0.6f)
             )
             
@@ -87,7 +87,7 @@ fun SessionItem(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = session.title ?: session.id.take(8),
-                    fontSize = 12.sp,
+                    fontSize = 13.sp,
                     fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
                     color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,

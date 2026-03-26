@@ -32,6 +32,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.Shadow
 import com.agentcore.model.Message
 import com.agentcore.ui.chat.ChatIntent
+import com.agentcore.ui.components.cauldron.CauldronState
+import com.agentcore.ui.components.cauldron.WitchCauldron
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.lazy.rememberLazyListState

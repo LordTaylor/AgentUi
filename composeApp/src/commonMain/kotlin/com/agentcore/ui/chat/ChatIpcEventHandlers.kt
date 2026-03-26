@@ -32,7 +32,11 @@ class ChatIpcEventHandlers(
     private var messageStartTime = 0L
 
     fun handle(event: IpcEvent) {
-        if (event is IpcEvent.Status) log("←", "status_raw", "state=${event.payload.state} agent=${event.agentId}")
+        if (event is IpcEvent.Status)     log("←", "status_raw",  "state=${event.payload.state} agent=${event.agentId}")
+        if (event is IpcEvent.ToolCall)   log("←", "tool_call",   "${event.payload.tool}(${event.payload.id.take(6)})")
+        if (event is IpcEvent.ToolResult) log("←", "tool_result", "id=${event.payload.id.take(6)} len=${event.payload.result.length}")
+        if (event is IpcEvent.MessageEnd) log("←", "message_end", "in=${event.payload.usage?.input_tokens} out=${event.payload.usage?.output_tokens}")
+        if (event is IpcEvent.Stats)      log("←", "stats",       "ctx=${event.payload["context_window_tokens"]}/${event.payload["context_window_limit"]} iter=${event.payload["agent_iterations"]}")
 
         // A12: memory list handled directly before IpcHandler routing
         if (event is IpcEvent.MemoryList) { update { copy(memoryFacts = event.payload.facts) }; return }

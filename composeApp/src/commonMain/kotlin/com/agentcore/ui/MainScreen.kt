@@ -32,6 +32,8 @@ import com.agentcore.model.MessageType
 import com.agentcore.shared.ConnectionMode
 import com.agentcore.ui.chat.ChatIntent
 import com.agentcore.ui.components.*
+import com.agentcore.ui.components.cauldron.CauldronState
+import com.agentcore.ui.components.cauldron.WitchCauldron
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -78,6 +80,7 @@ fun MainScreen(
     onToggleSettings: () -> Unit,
     onSessionDelete: (String) -> Unit,
     onSessionPrune: (String) -> Unit,
+    onSessionRename: (String, String) -> Unit = { _, _ -> },
     activeFilters: List<String> = emptyList(),
     onToggleFilter: (String) -> Unit = {},
     historySearchText: String = "",
@@ -273,6 +276,7 @@ fun MainScreen(
                                 onNewSession = onNewSession,
                                 sessionFolders = sessionFolders,
                                 onMoveToFolder = onMoveToFolder,
+                                onSessionRename = onSessionRename,
                                 modifier = Modifier
                                     .width(260.dp)
                                     .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))

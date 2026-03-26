@@ -26,9 +26,13 @@ import androidx.compose.material3.surfaceColorAtElevation
  */
 @Composable
 fun BottomStatusBar(tokenHistory: List<UsagePayload>, lastIpc: String, currentModel: String) {
-    val inTokens = tokenHistory.sumOf { it.input_tokens.toLong() }
+    val inTokens  = tokenHistory.sumOf { it.input_tokens.toLong() }
     val outTokens = tokenHistory.sumOf { it.output_tokens.toLong() }
-    val msgCount = tokenHistory.size
+    val msgCount  = tokenHistory.size
+    // Latest context window size (input_tokens of last message ≈ total context sent)
+    val lastCtx   = tokenHistory.lastOrNull()?.input_tokens ?: 0
+    // Tokens generated in the last reply
+    val lastOut   = tokenHistory.lastOrNull()?.output_tokens ?: 0
 
     Surface(
         color = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
@@ -64,11 +68,13 @@ fun BottomStatusBar(tokenHistory: List<UsagePayload>, lastIpc: String, currentMo
 
             VerticalDivider(modifier = Modifier.height(14.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
 
-            // Middle: Cumulative token counts
+            // Middle: Cumulative totals + per-message context/delta
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 LabelValue("SENT", "$inTokens", Color.Gray)
                 LabelValue("RECV", "$outTokens", Color.Gray)
                 if (msgCount > 0) LabelValue("MSGS", "$msgCount", Color.Gray)
+                if (lastCtx > 0) LabelValue("CTX",  "$lastCtx",  Color(0xFF7CB9E8))
+                if (lastOut > 0) LabelValue("+OUT",  "$lastOut",  Color(0xFF7BC67E))
             }
 
             Spacer(modifier = Modifier.weight(1f))
