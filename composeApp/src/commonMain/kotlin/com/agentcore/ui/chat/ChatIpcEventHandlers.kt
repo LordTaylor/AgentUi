@@ -42,6 +42,8 @@ class ChatIpcEventHandlers(
         if (event is IpcEvent.MemoryList) { update { copy(memoryFacts = event.payload.facts) }; return }
 
         if (event is IpcEvent.MessageStart) messageStartTime = System.currentTimeMillis()
+        // Fallback: if MessageStart wasn't received, start timer on first TextDelta
+        if (event is IpcEvent.TextDelta && messageStartTime == 0L) messageStartTime = System.currentTimeMillis()
 
         IpcHandler.handleIpcEvent(
             event                  = event,
@@ -102,13 +104,13 @@ class ChatIpcEventHandlers(
 
         if (event is IpcEvent.MessageEnd) {
             val elapsed = System.currentTimeMillis() - messageStartTime
-            if (elapsed > 300) {
+            if (elapsed in 100L..600_000L) {
                 val lastAgentMsg = st.messages.lastOrNull { !it.isFromUser && it.type == MessageType.TEXT }
                 if (lastAgentMsg != null) {
                     val outputTokens = event.payload.usage?.output_tokens?.toFloat()
                         ?: (lastAgentMsg.text.length / 4.0f)
                     val tps = outputTokens / (elapsed / 1000f)
-                    if (tps > 0.1f) {
+                    if (tps > 0.05f) {
                         val msgs = st.messages.toMutableList()
                         val idx = msgs.indexOfLast { it.id == lastAgentMsg.id }
                         if (idx >= 0) {
@@ -118,6 +120,7 @@ class ChatIpcEventHandlers(
                     }
                 }
             }
+            messageStartTime = 0L  // reset for next message
         }
     }
 

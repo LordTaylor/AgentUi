@@ -12,6 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.sin
 
 enum class CauldronState {
     IDLE, SENDING, RECEIVING, THINKING, LOADING
@@ -84,6 +86,14 @@ fun WitchCauldron(
             repeatMode = RepeatMode.Restart
         )
     )
+    // Gentle idle breathing — subtle squash even when not bouncing
+    val idleBreath by transition.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(c.IDLE_BREATH_DURATION, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        )
+    )
 
     val palette = if (isSystemInDarkTheme()) CauldronBodyPalette.DARK else CauldronBodyPalette.LIGHT
 
@@ -93,10 +103,21 @@ fun WitchCauldron(
         if (pixelSize < c.SCALE_MIN) return@Canvas
 
         val bounceY = bounceOffset.toInt()
-        val liquidY = (gridSize / 2 - 24 * scale + bounceY).toInt()
+        val liquidY = (gridSize / 2 - c.LIQUID_Y_OFFSET_MULT * scale + bounceY).toInt()
         val liquidColor = liquidColors[state] ?: Color(0xFF1B5E20)
-        val offset1 = (kotlin.math.sin(fireTime * PI * 2.0) * 8 * scale).toInt()
-        val offset2 = (kotlin.math.sin(fireTime * PI * 2.5) * 8 * scale).toInt()
+        val offset1 = (kotlin.math.sin(fireTime * PI * c.FIRE_SWAY_FREQ_1) * c.FIRE_SWAY_AMPLITUDE * scale).toInt()
+        val offset2 = (kotlin.math.sin(fireTime * PI * c.FIRE_SWAY_FREQ_2) * c.FIRE_SWAY_AMPLITUDE * scale).toInt()
+
+        // Squash-and-stretch factor:
+        // • Bounce squash: apex of bounce (bounceOffset most negative) → body widens
+        // • Idle breath: gentle sine wave squash every ~1.8s
+        val bounceSquash = if (c.BOUNCE_OFFSET_THINKING > 0f)
+            abs(bounceOffset) / c.BOUNCE_OFFSET_THINKING else 0f
+        val breathSquash = sin(idleBreath * PI.toFloat())
+        val squash = 1f + bounceSquash * c.SQUASH_MAX + breathSquash * c.IDLE_SQUASH_AMOUNT
+
+        // Fire height: tiny ember at rest (0.18), shoots up with bounce apex (1.0)
+        val fireHeightMult = c.FIRE_HEIGHT_BASE + bounceSquash * (1f - c.FIRE_HEIGHT_BASE)
 
         val steamIntensity = when (state) {
             CauldronState.IDLE      -> 0.6f
@@ -114,13 +135,13 @@ fun WitchCauldron(
         }
 
         // Draw order: back fire → liquid → bubbles → state effects → steam → cauldron → spoon → front fire
-        drawPixelFire(gridSize, pixelSize, fireFrame, offset1, scale, 0.82f, fireTime)
+        drawPixelFire(gridSize, pixelSize, fireFrame, offset1, scale, c.FIRE_BACK_VERT_POS,  fireTime, fireHeightMult)
         drawBubblingLiquid(gridSize, pixelSize, liquidY, liquidColor, scale, fireTime, bounceOffset)
         drawPixelBubbles(gridSize, pixelSize, bubbleProgress, density, scale, liquidY, liquidColor)
         if (state == CauldronState.SENDING)   drawPixelIngredients(gridSize, pixelSize, ingredientProgress, scale, liquidY)
         if (state == CauldronState.RECEIVING) drawPixelPowerStream(gridSize, pixelSize, pulseAlpha, scale, liquidY)
         drawSteam(gridSize, pixelSize, fireTime, scale, liquidY, steamIntensity)
-        drawPixelCauldronBase(gridSize, pixelSize, bounceY, scale, palette)
-        drawPixelFire(gridSize, pixelSize, fireFrame, offset2, scale, 0.86f, fireTime)
+        drawPixelCauldronBase(gridSize, pixelSize, bounceY, scale, palette, squash)
+        drawPixelFire(gridSize, pixelSize, fireFrame, offset2, scale, c.FIRE_FRONT_VERT_POS, fireTime, fireHeightMult)
     }
 }

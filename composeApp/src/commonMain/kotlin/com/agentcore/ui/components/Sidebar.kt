@@ -13,9 +13,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -43,6 +46,9 @@ fun Sidebar(
     onMoveToFolder: (String, String?) -> Unit = { _, _ -> },
     onSessionTag: (String, List<String>) -> Unit = { _, _ -> },
     onSessionRename: (String, String) -> Unit = { _, _ -> },
+    pinnedSessions: Set<String> = emptySet(),
+    onSessionPin: (String) -> Unit = {},
+    onSessionExport: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxHeight()) {
@@ -121,7 +127,13 @@ fun Sidebar(
                 else sessions.filter { s -> activeFilters.all { f -> s.tags?.contains(f) == true } }
             }
 
-            val sessionsByFolder = filteredSessions.groupBy { sessionFolders[it.id] }
+            // Pinned sessions always appear first in their own "Przypięte" group
+            val pinnedList = filteredSessions.filter { pinnedSessions.contains(it.id) }
+            val unpinnedByFolder = filteredSessions.filter { !pinnedSessions.contains(it.id) }.groupBy { sessionFolders[it.id] }
+            val sessionsByFolder: Map<String?, List<SessionInfo>> = buildMap {
+                if (pinnedList.isNotEmpty()) put("📌 Przypięte", pinnedList)
+                putAll(unpinnedByFolder)
+            }
             
             if (filteredSessions.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -143,19 +155,21 @@ fun Sidebar(
                         items(sessionsInFolder, key = { it.id }) { session ->
                             SessionItem(
                                 session = session,
+                                isPinned = pinnedSessions.contains(session.id),
                                 onSelect = { onSessionSelect(session.id) },
                                 onDelete = { onSessionDelete(session.id) },
                                 onPrune = { onSessionPrune(session.id) },
                                 onTag = { onSessionTag(session.id, (session.tags ?: emptyList()) + "tag") },
                                 onRename = { newTitle -> onSessionRename(session.id, newTitle) },
+                                onPin = { onSessionPin(session.id) },
+                                onExport = { onSessionExport(session.id) },
                                 onMove = {
+                                    val availableFolders = sessionFolders.values
+                                        .distinct().filterNotNull().sorted()
                                     val current = sessionFolders[session.id]
-                                    val next = when(current) {
-                                        null -> "Project A"
-                                        "Project A" -> "Research"
-                                        "Research" -> "Archive"
-                                        else -> null
-                                    }
+                                    val idx = availableFolders.indexOf(current)
+                                    val next = if (current == null) availableFolders.firstOrNull()
+                                               else availableFolders.getOrNull(idx + 1)
                                     onMoveToFolder(session.id, next)
                                 }
                             )
@@ -196,15 +210,64 @@ private fun FolderHeader(name: String) {
 @Composable
 private fun SessionItem(
     session: SessionInfo,
+    isPinned: Boolean = false,
     onSelect: () -> Unit,
     onDelete: () -> Unit,
     onPrune: () -> Unit,
     onTag: () -> Unit,
     onRename: (String) -> Unit,
+    onPin: () -> Unit = {},
+    onExport: () -> Unit = {},
     onMove: () -> Unit
 ) {
     var isEditing by remember { mutableStateOf(false) }
     var editText by remember(session.id) { mutableStateOf(session.title ?: "") }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    val focusRequester = remember { FocusRequester() }
+
+    // Auto-focus text field when entering edit mode
+    LaunchedEffect(isEditing) {
+        if (isEditing) {
+            runCatching { focusRequester.requestFocus() }
+        }
+    }
+
+    fun commitRename() {
+        runCatching { focusManager.clearFocus() }
+        val trimmed = editText.trim()
+        if (trimmed.isNotEmpty()) onRename(trimmed)
+        isEditing = false
+    }
+
+    fun cancelEdit() {
+        runCatching { focusManager.clearFocus() }
+        isEditing = false
+    }
+
+    // Confirm delete dialog
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Usuń sesję", fontSize = 14.sp, fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "Czy na pewno chcesz usunąć \"${session.title ?: session.id.take(8)}\"?\nTej operacji nie można cofnąć.",
+                    fontSize = 13.sp
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showDeleteConfirm = false; onDelete() }) {
+                    Text("Usuń", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("Anuluj")
+                }
+            }
+        )
+    }
 
     Column {
         Row(
@@ -227,14 +290,14 @@ private fun SessionItem(
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
+                            .focusRequester(focusRequester)
                             .onKeyEvent { e ->
                                 when {
                                     e.type == KeyEventType.KeyDown && e.key == Key.Enter -> {
-                                        if (editText.isNotBlank()) onRename(editText.trim())
-                                        isEditing = false; true
+                                        commitRename(); true
                                     }
                                     e.type == KeyEventType.KeyDown && e.key == Key.Escape -> {
-                                        isEditing = false; true
+                                        cancelEdit(); true
                                     }
                                     else -> false
                                 }
@@ -284,15 +347,7 @@ private fun SessionItem(
             Row {
                 AppTooltip(if (isEditing) "Zatwierdź nazwę (Enter)" else "Zmień nazwę (dwuklik)") {
                     IconButton(
-                        onClick = {
-                            if (isEditing) {
-                                if (editText.isNotBlank()) onRename(editText.trim())
-                                isEditing = false
-                            } else {
-                                editText = session.title ?: ""
-                                isEditing = true
-                            }
-                        },
+                        onClick = { if (isEditing) commitRename() else { editText = session.title ?: ""; isEditing = true } },
                         modifier = Modifier.size(24.dp)
                     ) {
                         Icon(
@@ -300,6 +355,19 @@ private fun SessionItem(
                             null, Modifier.size(12.dp),
                             if (isEditing) MaterialTheme.colorScheme.primary else Color.Gray.copy(alpha = 0.4f)
                         )
+                    }
+                }
+                AppTooltip(if (isPinned) "Odepnij sesję" else "Przypnij sesję na górze") {
+                    IconButton(onClick = onPin, modifier = Modifier.size(24.dp)) {
+                        Text(
+                            text = if (isPinned) "📌" else "📍",
+                            fontSize = 10.sp
+                        )
+                    }
+                }
+                AppTooltip("Eksportuj sesję (.md)") {
+                    IconButton(onClick = onExport, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.Share, null, Modifier.size(12.dp), Color.Gray.copy(alpha = 0.4f))
                     }
                 }
                 AppTooltip("Zmień folder") {
@@ -313,7 +381,7 @@ private fun SessionItem(
                     }
                 }
                 AppTooltip("Usuń sesję") {
-                    IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
+                    IconButton(onClick = { showDeleteConfirm = true }, modifier = Modifier.size(24.dp)) {
                         Icon(Icons.Default.Delete, null, Modifier.size(12.dp), Color.Gray.copy(alpha = 0.5f))
                     }
                 }

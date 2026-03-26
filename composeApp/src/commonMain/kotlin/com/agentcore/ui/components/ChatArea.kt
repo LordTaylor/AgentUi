@@ -139,15 +139,20 @@ fun ChatArea(
                             val timeDiff = msg.timestamp - prev.timestamp
                             prev.sender == msg.sender && timeDiff < 300000 // 5 minutes in ms
                         }
+                        val isLastAgentMsg = !msg.isFromUser &&
+                            index == filteredMessages.lastIndex &&
+                            statusState == "THINKING"
                         ChatBubble(
                             msg = msg,
                             isGrouped = isGrouped,
+                            isStreaming = isLastAgentMsg,
                             fontSize = chatFontSize,
                             codeFontSize = codeFontSize,
                             onFork = { onFork(index) },
                             onRetry = { onSendMessage(msg.text, emptyList()) },
+                            onEdit = { text -> onIntent(ChatIntent.PasteToInput(text), scope, mode) },
                             onRunCode = { code -> onIntent(ChatIntent.PasteToInput(code), scope, mode) },
-                            onRunInTerminal = { code -> 
+                            onRunInTerminal = { code ->
                                 onSendMessage("/bash $code", emptyList())
                             }
                         )

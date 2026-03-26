@@ -1,5 +1,5 @@
-// Draws the cauldron body with cartoon outline, rounded handles, highlights, rivets,
-// and the animated stirring spoon that rotates around the liquid surface.
+// Draws the cauldron body with squash-and-stretch, cartoon outline, rounded handles,
+// highlights, rivets, cute splayed feet, and the animated stirring spoon.
 package com.agentcore.ui.components.cauldron
 
 import androidx.compose.ui.graphics.Color
@@ -12,60 +12,109 @@ internal fun DrawScope.drawPixelCauldronBase(
     bounceY: Int,
     scale: Float,
     palette: CauldronBodyPalette,
+    squash: Float = 1.0f,   // 1.0 = normal, >1 = squashed (wider X, shorter Y)
 ) {
     val c = WitchCauldronConstants
     val centerX = gridSize / 2
     val centerY = gridSize / 2 + (c.CAULDRON_CENTER_Y_OFFSET * scale).toInt() + bounceY
 
     drawLegs(centerX, centerY, scale, pixelSize, palette.outline, palette.body)
-    drawBody(centerX, centerY, scale, pixelSize, palette.outline, palette.body)
+    drawBody(centerX, centerY, scale, pixelSize, palette.outline, palette.body, squash)
     drawRim(centerX, centerY, scale, pixelSize, palette.outline, palette.body, palette.rim)
     drawHandles(centerX, centerY, scale, pixelSize, palette.outline, palette.body)
     drawHighlightAndRivets(centerX, centerY, scale, pixelSize, palette)
 }
+
+// ── Cute splayed legs with rounded feet ──────────────────────────────────────
 
 private fun DrawScope.drawLegs(
     cx: Int, cy: Int, scale: Float, pixelSize: Float,
     outline: Color, fill: Color
 ) {
     val c = WitchCauldronConstants
-    val legW = (c.LEG_WIDTH_MULT * scale).toInt().coerceAtLeast(c.LEG_WIDTH_MIN)
-    val legX = (c.LEG_POS_X_MULT * scale).toInt()
-    val yStart = (c.LEG_Y_START_MULT * scale).toInt()
-    val yEnd = (c.LEG_Y_END_MULT * scale).toInt()
+    val legHalfW   = ((c.LEG_WIDTH_MULT * scale) / 2f).toInt().coerceAtLeast(c.LEG_WIDTH_MIN)
+    val legX       = (c.LEG_POS_X_MULT * scale).toInt()
+    val yStart     = (c.LEG_Y_START_MULT * scale).toInt()
+    val yEnd       = (c.LEG_Y_END_MULT * scale).toInt()
+    val legHeight  = (yEnd - yStart).coerceAtLeast(1)
+    val footH      = (c.LEG_FOOT_HEIGHT_MULT * scale).toInt().coerceAtLeast(2)
+    val footExtra  = (c.LEG_FOOT_EXTRA_HALF_WIDTH * scale).toInt().coerceAtLeast(1)
+    val totalSplay = (c.LEG_SPLAY_PIXELS * scale).toInt().coerceAtLeast(1)
 
-    for (side in listOf(-legX, legX)) {
-        for (dx in -legW / 2 - 1..legW / 2 + 1) for (dy in yStart - 1..yEnd + 1) {
-            drawPixel(cx + side + dx, cy + dy, outline, pixelSize)
+    for (sign in listOf(-1, 1)) {
+        val baseCx = cx + sign * legX
+
+        // Draw leg column by column (row by row)
+        for (dy in yStart..yEnd) {
+            val progress  = (dy - yStart).toFloat() / legHeight
+            // Outward splay: bottom of leg is pushed outward — gives cute "planted" stance
+            val splay     = (sign * progress * totalSplay).toInt()
+            // Foot zone: gradually widens near the bottom
+            val inFoot    = dy > yEnd - footH
+            val footProg  = if (inFoot) (dy - (yEnd - footH)).toFloat() / footH else 0f
+            val halfW     = legHalfW + (footExtra * footProg).toInt()
+
+            for (dx in -(halfW + 1)..(halfW + 1)) {
+                drawPixel(baseCx + splay + dx, cy + dy, outline, pixelSize)
+            }
+            for (dx in -halfW..halfW) {
+                drawPixel(baseCx + splay + dx, cy + dy, fill, pixelSize)
+            }
         }
-        for (dx in -legW / 2..legW / 2) for (dy in yStart..yEnd) {
-            drawPixel(cx + side + dx, cy + dy, fill, pixelSize)
+
+        // Rounded bottom cap — semicircle below each foot for that cute cartoon look
+        val splayFull = sign * totalSplay
+        val footCx    = baseCx + splayFull
+        val footCy    = cy + yEnd
+        val capR      = legHalfW + footExtra
+        val capRSq    = capR * capR
+        val capOutSq  = (capR + 1) * (capR + 1)
+
+        for (dy in 0..capR + 1) for (dx in -(capR + 1)..(capR + 1)) {
+            if (dx * dx + dy * dy < capOutSq) drawPixel(footCx + dx, footCy + dy, outline, pixelSize)
         }
+        for (dy in 0..capR) for (dx in -capR..capR) {
+            if (dx * dx + dy * dy < capRSq) drawPixel(footCx + dx, footCy + dy, fill, pixelSize)
+        }
+
+        // Tiny shine dot on each foot — makes them look shiny/cute
+        drawPixel(footCx - (capR / 2), footCy + 1, Color.White.copy(alpha = 0.35f), pixelSize)
     }
 }
 
+// ── Squash-and-stretch body ───────────────────────────────────────────────────
+
 private fun DrawScope.drawBody(
     cx: Int, cy: Int, scale: Float, pixelSize: Float,
-    outline: Color, fill: Color
+    outline: Color, fill: Color,
+    squash: Float = 1.0f
 ) {
     val c = WitchCauldronConstants
-    val radius = c.CAULDRON_RADIUS_MULT * scale
+    val radius        = c.CAULDRON_RADIUS_MULT * scale
     val outlineRadius = radius + c.CAULDRON_OUTLINE_EXTRA * scale
-    val outlineRSq = outlineRadius * outlineRadius
-    val radiusSq = radius * radius
-    val yScale = c.CAULDRON_ELLIPSE_Y_SCALE
+    val outlineRSq    = outlineRadius * outlineRadius
+    val radiusSq      = radius * radius
+    val baseYScale    = c.CAULDRON_ELLIPSE_Y_SCALE
     val dyMin = (c.CAULDRON_DIY_MIN_MULT * scale).toInt()
     val dyMax = (c.CAULDRON_DIY_MAX_MULT * scale).toInt()
     val dxMin = (c.CAULDRON_DX_MIN_MULT * scale).toInt()
     val dxMax = (c.CAULDRON_DX_MAX_MULT * scale).toInt()
 
+    // Squash: invSquashX shrinks the effective dx → body appears wider
+    // squashYScale increases effective dy scaling → body appears shorter
+    val extra      = (squash - 1f).coerceAtLeast(0f)
+    val invSquashX = 1f / (1f + extra * 0.55f)
+    val squashYSc  = baseYScale * (1f + extra * 0.42f)
+
     for (dy in dyMin - 2..dyMax + 2) for (dx in dxMin - 2..dxMax + 2) {
-        val dist = dx * dx + (dy * yScale) * (dy * yScale)
-        if (dist < outlineRSq) drawPixel(cx + dx, cy + dy, outline, pixelSize)
+        val ndx = dx * invSquashX
+        val ndy = dy * squashYSc
+        if (ndx * ndx + ndy * ndy < outlineRSq) drawPixel(cx + dx, cy + dy, outline, pixelSize)
     }
     for (dy in dyMin..dyMax) for (dx in dxMin..dxMax) {
-        val dist = dx * dx + (dy * yScale) * (dy * yScale)
-        if (dist < radiusSq) drawPixel(cx + dx, cy + dy, fill, pixelSize)
+        val ndx = dx * invSquashX
+        val ndy = dy * squashYSc
+        if (ndx * ndx + ndy * ndy < radiusSq) drawPixel(cx + dx, cy + dy, fill, pixelSize)
     }
 
     // Reflection highlight
@@ -95,7 +144,6 @@ private fun DrawScope.drawRim(
     for (dx in dxMin..dxMax) for (dy in dyMin..dyMax) {
         drawPixel(cx + dx, cy + dy, fill, pixelSize)
     }
-    // Rim highlight strip (top edge)
     for (dx in dxMin..dxMax) {
         drawPixel(cx + dx, cy + dyMin, highlight, pixelSize)
     }
@@ -108,16 +156,15 @@ private fun DrawScope.drawHandles(
     val c = WitchCauldronConstants
     val offsetX = (c.HANDLE_OFFSET_X_MULT * scale).toInt()
     val offsetY = (c.HANDLE_OFFSET_Y_MULT * scale).toInt()
-    val r = (c.HANDLE_RADIUS * scale).toInt().coerceAtLeast(2)
-    val rSq = r * r
-    val rOutSq = (r + 1) * (r + 1)
+    val r       = (c.HANDLE_RADIUS * scale).toInt().coerceAtLeast(2)
+    val rSq     = r * r
+    val rOutSq  = (r + 1) * (r + 1)
 
     for (side in listOf(-offsetX, offsetX)) {
         val hx = cx + side
         val hy = cy + offsetY
         for (dx in -r - 1..r + 1) for (dy in -r - 1..r + 1) {
-            val d = dx * dx + dy * dy
-            if (d < rOutSq) drawPixel(hx + dx, hy + dy, outline, pixelSize)
+            if (dx * dx + dy * dy < rOutSq) drawPixel(hx + dx, hy + dy, outline, pixelSize)
         }
         for (dx in -r..r) for (dy in -r..r) {
             if (dx * dx + dy * dy < rSq) drawPixel(hx + dx, hy + dy, fill, pixelSize)
@@ -154,37 +201,29 @@ internal fun DrawScope.drawPixelSpoon(
     val c = WitchCauldronConstants
     val pivotX = gridSize / 2
     val pivotY = liquidY + bounceY
-    val handleColor = palette.spoonHandle
-    val bowlFill = palette.spoonBowl
-    val bowlOutline = palette.spoonBowlOutline
+    val handleColor  = palette.spoonHandle
+    val bowlFill     = palette.spoonBowl
+    val bowlOutline  = palette.spoonBowlOutline
 
     val sinA = sin(angle.toDouble()).toFloat()
     val cosA = cos(angle.toDouble()).toFloat()
 
-    // Handle: line from pivot outward
     val len = (c.SPOON_HANDLE_LENGTH * scale).toInt().coerceAtLeast(4)
     for (t in 0..len) {
-        drawPixel(
-            (pivotX + sinA * t).toInt(),
-            (pivotY - cosA * t).toInt(),
-            handleColor, pixelSize
-        )
+        drawPixel((pivotX + sinA * t).toInt(), (pivotY - cosA * t).toInt(), handleColor, pixelSize)
     }
 
-    // Bowl (circle) at handle tip
     val tipX = (pivotX + sinA * len).toInt()
     val tipY = (pivotY - cosA * len).toInt()
-    val r = (c.SPOON_BOWL_RADIUS * scale).toInt().coerceAtLeast(1)
-    val rSq = r * r
+    val r    = (c.SPOON_BOWL_RADIUS * scale).toInt().coerceAtLeast(1)
+    val rSq  = r * r
     val rOutSq = (r + 1) * (r + 1)
 
     for (dx in -r - 1..r + 1) for (dy in -r - 1..r + 1) {
-        val d = dx * dx + dy * dy
-        if (d < rOutSq) drawPixel(tipX + dx, tipY + dy, bowlOutline, pixelSize)
+        if (dx * dx + dy * dy < rOutSq) drawPixel(tipX + dx, tipY + dy, bowlOutline, pixelSize)
     }
     for (dx in -r..r) for (dy in -r..r) {
         if (dx * dx + dy * dy < rSq) drawPixel(tipX + dx, tipY + dy, bowlFill, pixelSize)
     }
-    // Tiny highlight on bowl
     drawPixel(tipX - 1, tipY - 1, Color.White.copy(alpha = 0.7f), pixelSize)
 }

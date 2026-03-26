@@ -122,6 +122,9 @@ fun MainScreen(
     onToggleTokenAnalytics: () -> Unit = {},
     sessionFolders: Map<String, String> = emptyMap(),
     onMoveToFolder: (String, String?) -> Unit = { _, _ -> },
+    pinnedSessions: Set<String> = emptySet(),
+    onSessionPin: (String) -> Unit = {},
+    onSessionExport: (String) -> Unit = {},
     showSearch: Boolean = false,
     // A10 IPC 1.7
     workflowGroupStatus: com.agentcore.api.AgentWorkflowStatusPayload? = null,
@@ -200,9 +203,10 @@ fun MainScreen(
                 activeTab = activeTab,
                 onTabSelect = { tab ->
                     activeTab = tab
-                    // History tab toggles the session sidebar
-                    if (tab == "History") {
-                        onUpdateUiSettings(uiSettings.copy(sidebarVisible = !sidebarVisible))
+                    when (tab) {
+                        "History" -> onUpdateUiSettings(uiSettings.copy(sidebarVisible = !sidebarVisible))
+                        "Library" -> onUpdateUiSettings(uiSettings.copy(showSkills = !uiSettings.showSkills))
+                        "Files"   -> onUpdateUiSettings(uiSettings.copy(showFiles = !uiSettings.showFiles))
                     }
                 },
                 onNewSession = onNewSession
@@ -215,13 +219,7 @@ fun MainScreen(
                 MainTopBar(
                     projectName = "DigitalArchitect",
                     onSearch = { /* TODO */ },
-                    onToggleLeftSidebar = { onUpdateUiSettings(uiSettings.copy(sidebarVisible = !sidebarVisible)) },
-                    onToggleRightSidebar = { onUpdateUiSettings(uiSettings.copy(showFiles = !uiSettings.showFiles)) },
                     onToggleProviderDialog = onToggleProviderDialog,
-                    isLeftSidebarVisible = sidebarVisible,
-                    isRightSidebarVisible = uiSettings.showFiles,
-                    isSkillsVisible = uiSettings.showSkills,
-                    onToggleSkills = { onUpdateUiSettings(uiSettings.copy(showSkills = !uiSettings.showSkills)) },
                     autoAccept = uiSettings.autoAccept,
                     onToggleAutoAccept = { showAutoAcceptDialog = true },
                     onQuickConnect = { backend ->
@@ -277,6 +275,9 @@ fun MainScreen(
                                 sessionFolders = sessionFolders,
                                 onMoveToFolder = onMoveToFolder,
                                 onSessionRename = onSessionRename,
+                                pinnedSessions = pinnedSessions,
+                                onSessionPin = onSessionPin,
+                                onSessionExport = onSessionExport,
                                 modifier = Modifier
                                     .width(260.dp)
                                     .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
@@ -416,7 +417,7 @@ fun MainScreen(
                 }
 
                 // ── Status Bar ───────────────────────────────────────────────
-                BottomStatusBar(tokenHistory, ipcLogs.lastOrNull() ?: "CONNECTED", currentModelName)
+                BottomStatusBar(tokenHistory, ipcLogs.lastOrNull() ?: "CONNECTED", currentModelName, sessionStats)
             }
         }
 

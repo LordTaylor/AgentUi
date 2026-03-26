@@ -46,6 +46,7 @@ class SessionViewModel(
             is ChatIntent.UpdateHistorySearch  -> update { copy(historySearchText = intent.query) }
             is ChatIntent.MoveSessionToFolder  -> moveToFolder(intent)
             is ChatIntent.RenameSession        -> renameSession(intent, scope, mode)
+            is ChatIntent.PinSession           -> pinSession(intent)
             is ChatIntent.LoadMemory           -> scope.launch { sendCmd(IpcCommand.ListMemory(ListMemoryPayload(intent.sessionId)), mode) }
             is ChatIntent.DeleteMemoryKey      -> scope.launch { sendCmd(IpcCommand.DeleteMemory(DeleteMemoryPayload(intent.sessionId, intent.key)), mode) }
             ChatIntent.ToggleMemoryPanel       -> toggleMemory(scope, mode)
@@ -56,7 +57,24 @@ class SessionViewModel(
     private fun selectSession(intent: ChatIntent.SelectSession, scope: CoroutineScope, mode: ConnectionMode) {
         log("→", "get_session", intent.id.take(8))
         val cachedMsgs = cachedData.sessionMessages[intent.id] ?: emptyList()
-        update { copy(currentSessionId = intent.id, messages = cachedMsgs) }
+        // Save current input as draft for the session we're leaving
+        val oldId = st.currentSessionId
+        val currentInput = st.inputText
+        val newDrafts = st.sessionDrafts.toMutableMap()
+        if (oldId != null) {
+            if (currentInput.isNotBlank()) newDrafts[oldId] = currentInput
+            else newDrafts.remove(oldId)
+        }
+        // Restore draft for the session we're switching to
+        val restoredDraft = newDrafts[intent.id] ?: ""
+        update {
+            copy(
+                currentSessionId = intent.id,
+                messages = cachedMsgs,
+                inputText = restoredDraft,
+                sessionDrafts = newDrafts
+            )
+        }
         scope.launch {
             if (mode == ConnectionMode.IPC) client.sendCommand(IpcCommand.GetSession(GetSessionPayload(intent.id)))
         }
@@ -135,6 +153,13 @@ class SessionViewModel(
         saveSessionCache()
     }
 
+    private fun pinSession(intent: ChatIntent.PinSession) {
+        val pinned = st.pinnedSessions.toMutableSet()
+        if (pinned.contains(intent.id)) pinned.remove(intent.id) else pinned.add(intent.id)
+        update { copy(pinnedSessions = pinned) }
+        saveSessionCache()
+    }
+
     private fun toggleMemory(scope: CoroutineScope, mode: ConnectionMode) {
         val opening = !st.showMemoryPanel
         update { copy(showMemoryPanel = opening) }
@@ -175,7 +200,8 @@ class SessionViewModel(
         val sid = st.currentSessionId ?: return
         val snapshot = cachedData.copy(
             sessions = st.sessions,
-            sessionMessages = cachedData.sessionMessages.toMutableMap().also { it[sid] = st.messages }
+            sessionMessages = cachedData.sessionMessages.toMutableMap().also { it[sid] = st.messages },
+            pinnedSessions = st.pinnedSessions
         )
         cachedData = snapshot
         saveJob?.cancel()
@@ -189,7 +215,7 @@ class SessionViewModel(
     fun loadCache() {
         sessionCache.load(SessionCache.serializer())?.let { cache ->
             cachedData = cache
-            update { copy(sessions = cache.sessions, sessionFolders = cache.sessionFolders) }
+            update { copy(sessions = cache.sessions, sessionFolders = cache.sessionFolders, pinnedSessions = cache.pinnedSessions) }
         }
     }
 }

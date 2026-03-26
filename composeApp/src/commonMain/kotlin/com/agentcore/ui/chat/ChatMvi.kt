@@ -47,6 +47,8 @@ data class ChatUiState(
     val historyIndex: Int? = null,
     val draftMessage: String = "",
     val sessionFolders: Map<String, String> = emptyMap(), // sessionId -> folderName
+    val sessionDrafts: Map<String, String> = emptyMap(), // sessionId -> unsent draft text
+    val pinnedSessions: Set<String> = emptySet(),
     val toolOutput: List<String> = emptyList(),
     val showToolOutput: Boolean = false,
     val tokenHistory: List<UsagePayload> = emptyList(),
@@ -119,6 +121,7 @@ sealed class ChatIntent {
     object ExportSession : ChatIntent()
     data class PasteToInput(val text: String) : ChatIntent()
     data class MoveSessionToFolder(val sessionId: String, val folderName: String?) : ChatIntent()
+    data class PinSession(val id: String) : ChatIntent()
     data class RenameSession(val sessionId: String, val title: String) : ChatIntent()
     object ToggleToolOutput : ChatIntent()
     object ClearToolOutput : ChatIntent()

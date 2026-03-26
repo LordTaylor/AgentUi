@@ -11,19 +11,42 @@ internal object WitchCauldronConstants {
     const val SCALE_MIN = 0.1f
 
     // === Animation Durations (ms) ===
-    const val ANIM_FIRE_FRAME_DURATION = 600
-    const val ANIM_FIRE_TIME_DURATION = 4000
-    const val ANIM_BOUNCE_DURATION = 400
+    const val ANIM_FIRE_FRAME_DURATION = 500           // faster flicker
+    const val ANIM_FIRE_TIME_DURATION = 3500
+    const val ANIM_BOUNCE_DURATION = 340               // snappier bounce
     const val ANIM_BUBBLE_PROGRESS_DURATION = 12000
     const val ANIM_INGREDIENT_PROGRESS_DURATION = 3000
     const val ANIM_PULSE_ALPHA_DURATION = 1200
     const val ANIM_SPOON_DURATION = 2000
+    const val IDLE_BREATH_DURATION = 1800              // gentle breathing squash cycle
 
     // === Animation Values ===
     const val FIRE_FRAME_MAX = 7
-    const val BOUNCE_OFFSET_THINKING = 10f
+    const val BOUNCE_OFFSET_THINKING = 13f             // bigger bounce → more squash
     const val PULSE_ALPHA_MIN = 0.4f
     const val PULSE_ALPHA_MAX = 0.9f
+
+    // === Squash & Stretch ===
+    const val SQUASH_MAX = 0.24f         // max squash factor at apex of bounce
+    const val IDLE_SQUASH_AMOUNT = 0.04f // subtle idle breathing squash amplitude
+
+    // === Fire Height (bounce-driven) ===
+    // Fire is tiny at rest; shoots up to full height at bounce apex.
+    const val FIRE_HEIGHT_BASE = 0.18f   // minimum fire when cauldron is not bouncing
+
+    // === Fire Position (vertical, as fraction of gridSize; higher value = lower on screen) ===
+    const val FIRE_BACK_VERT_POS  = 0.86f  // back fire layer (drawn behind cauldron body)
+    const val FIRE_FRONT_VERT_POS = 0.90f  // front fire layer (drawn in front of cauldron body)
+
+    // === Fire Sway (horizontal oscillation of the two fire offsets) ===
+    const val FIRE_SWAY_AMPLITUDE = 8f     // max pixel sway of each fire layer
+    const val FIRE_SWAY_FREQ_1    = 2.0    // sway frequency multiplier for back fire
+    const val FIRE_SWAY_FREQ_2    = 2.5    // sway frequency multiplier for front fire
+
+    // === Liquid Position ===
+    // liquidY = gridSize/2 - LIQUID_Y_OFFSET_MULT * scale + bounceY
+    // Increase to move liquid (and bubbles/steam) lower inside the cauldron.
+    const val LIQUID_Y_OFFSET_MULT = 24f
 
     // === Bubble Density by State ===
     const val BUBBLE_DENSITY_IDLE = 4
@@ -32,46 +55,57 @@ internal object WitchCauldronConstants {
     const val BUBBLE_DENSITY_THINKING = 8
     const val BUBBLE_DENSITY_LOADING = 16
 
-    // === Fire Rendering ===
+    // === Fire Rendering (cartoon upgrade) ===
     const val FIRE_FRAME_COUNT = 4
     const val FIRE_HALF_WIDTH_MULT = 48
-    const val FIRE_INTENSITY_EXPONENT = 1.2f
+    const val FIRE_INTENSITY_EXPONENT = 2.5f           // was 1.2f — sharper pointed cartoon tips
     const val FIRE_NOISE_FREQ_1 = 12.0
     const val FIRE_NOISE_DX_FACTOR_1 = 0.3
-    const val FIRE_NOISE_AMPLITUDE_1 = 0.4f
+    const val FIRE_NOISE_AMPLITUDE_1 = 0.45f
     const val FIRE_NOISE_FREQ_2 = 5.0
     const val FIRE_NOISE_DX_FACTOR_2 = 0.5
-    const val FIRE_NOISE_AMPLITUDE_2 = 0.3f
+    const val FIRE_NOISE_AMPLITUDE_2 = 0.35f
     const val FIRE_NOISE_DX_FACTOR_3 = 0.8
     const val FIRE_NOISE_AMPLITUDE_3 = 0.3f
     const val FIRE_LICK_FREQ = 6.0
-    const val FIRE_LICK_DY_FACTOR = 0.2
-    const val FIRE_LICK_DX_FACTOR = 0.1
-    const val FIRE_LICK_AMPLITUDE = 2.5
-    const val FIRE_FICKER_MULTIPLIER = 2f
-    const val FIRE_BASE_INTENSITY_OFFSET = 0.3f
+    const val FIRE_LICK_DY_FACTOR = 0.25
+    const val FIRE_LICK_DX_FACTOR = 0.12
+    const val FIRE_LICK_AMPLITUDE = 3.2                // was 2.5 — more tongue sway
+    const val FIRE_FICKER_MULTIPLIER = 2.5f            // was 2f — more flicker
+    const val FIRE_BASE_INTENSITY_OFFSET = 0.25f
     const val FIRE_NOISE_HEIGHT_OFFSET = 1.2f
-    const val FIRE_LAYER_1_ALPHA = 0.4f
-    const val FIRE_LAYER_1_HEIGHT_BASE = 14f
-    const val FIRE_LAYER_1_HEIGHT_MULT = 1.2f
-    const val FIRE_LAYER_2_HEIGHT_BASE = 10f
-    const val FIRE_LAYER_2_HEIGHT_MULT = 1.0f
-    const val FIRE_LAYER_3_HEIGHT_BASE = 6f
-    const val FIRE_LAYER_3_HEIGHT_MULT = 0.9f
+
+    // 5-layer cartoon fire (outer/tallest → inner/hottest)
+    const val FIRE_LAYER_1_ALPHA = 0.7f                // deep red outer silhouette
+    const val FIRE_LAYER_1_HEIGHT_BASE = 22f           // was 14 — taller outer flame
+    const val FIRE_LAYER_1_HEIGHT_MULT = 1.4f
+    const val FIRE_LAYER_2_HEIGHT_BASE = 15f           // was 10
+    const val FIRE_LAYER_2_HEIGHT_MULT = 1.1f
+    const val FIRE_LAYER_3_HEIGHT_BASE = 9f            // was 6
+    const val FIRE_LAYER_3_HEIGHT_MULT = 0.95f
+    const val FIRE_LAYER_4_HEIGHT_BASE = 5f            // yellow inner
+    const val FIRE_LAYER_4_HEIGHT_MULT = 0.85f
+    const val FIRE_LAYER_5_HEIGHT_BASE = 2.5f          // white-hot core
+    const val FIRE_LAYER_5_HEIGHT_MULT = 0.75f
 
     // === Cauldron Geometry ===
     const val CAULDRON_CENTER_Y_OFFSET = 8
     const val LEG_WIDTH_MULT = 10
     const val LEG_WIDTH_MIN = 3
     const val LEG_POS_X_MULT = 22
-    const val LEG_Y_START_MULT = 22
-    const val LEG_Y_END_MULT = 36
+    const val LEG_Y_START_MULT = 26
+    const val LEG_Y_END_MULT = 42
+    // Cute feet additions
+    const val LEG_FOOT_HEIGHT_MULT = 5    // rows at bottom that form the "foot"
+    const val LEG_FOOT_EXTRA_HALF_WIDTH = 3  // extra half-width of foot cap vs leg body
+    const val LEG_SPLAY_PIXELS = 3f       // total outward splay over full leg height
+
     const val CAULDRON_RADIUS_MULT = 42
     const val CAULDRON_DIY_MIN_MULT = -26
     const val CAULDRON_DIY_MAX_MULT = 34
     const val CAULDRON_DX_MIN_MULT = -46
     const val CAULDRON_DX_MAX_MULT = 46
-    const val CAULDRON_ELLIPSE_Y_SCALE = 0.95f  // rounder: was 1.2f
+    const val CAULDRON_ELLIPSE_Y_SCALE = 0.95f
     const val CAULDRON_RIM_DX_MIN_MULT = -42
     const val CAULDRON_RIM_DX_MAX_MULT = 42
     const val CAULDRON_RIM_DY_MIN_MULT = -30
@@ -80,18 +114,14 @@ internal object WitchCauldronConstants {
     const val CAULDRON_REFLECT_DX_OFFSET = -22
     const val CAULDRON_REFLECT_DY_OFFSET = -10
     const val CAULDRON_REFLECT_ALPHA = 0.2f
-    // Cartoon outline width (pixels added to radius for black border)
     const val CAULDRON_OUTLINE_EXTRA = 2f
-    // Handles (ears) on sides of rim
     const val HANDLE_OFFSET_X_MULT = 44
     const val HANDLE_OFFSET_Y_MULT = -26
     const val HANDLE_RADIUS = 5f
-    // Highlight stripe on upper-left belly
     const val HIGHLIGHT_DX = -24
     const val HIGHLIGHT_DY = -10
     const val HIGHLIGHT_W = 3
     const val HIGHLIGHT_H = 5
-    // Rivet positions (dx, dy) relative to cauldron center
     val RIVET_POSITIONS = listOf(Pair(-20, 5), Pair(0, 15), Pair(20, 5))
 
     // === Liquid Rendering ===

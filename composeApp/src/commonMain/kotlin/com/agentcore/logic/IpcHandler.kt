@@ -7,10 +7,32 @@ import com.agentcore.model.MessageType
 import com.agentcore.shared.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 object IpcHandler {
     private var idCounter = 0
+
+    /** Formats tool args as a compact human-readable string instead of raw JSON.
+     *  Single-arg tools show just the value; multi-arg tools show key=value pairs.
+     *  Long values are truncated at 80 chars. */
+    private fun formatToolArgs(args: JsonElement): String {
+        if (args !is JsonObject || args.isEmpty()) return ""
+        val entries = args.entries.toList()
+        return if (entries.size == 1) {
+            // Single argument: show just the value (no key noise)
+            val v = entries[0].value
+            val raw = if (v is JsonPrimitive) v.content else v.toString()
+            raw.take(80) + if (raw.length > 80) "…" else ""
+        } else {
+            entries.take(3).joinToString(", ") { (k, v) ->
+                val raw = if (v is JsonPrimitive) v.content else v.toString()
+                val short = raw.take(50) + if (raw.length > 50) "…" else ""
+                "$k=$short"
+            }
+        }
+    }
 
     fun nextId(prefix: String): String {
         return "$prefix-${System.currentTimeMillis()}-${idCounter++}"
@@ -129,14 +151,14 @@ object IpcHandler {
                 val agentId = event.agentId
                 if (agentId != null) {
                     // Sub-agent tool call: goes to console log with full details
-                    onSubAgentLog(agentId, "tool_call", "⚙️ ${event.payload.tool}(${event.payload.args})")
+                    onSubAgentLog(agentId, "tool_call", "⚙️ ${event.payload.tool}(${formatToolArgs(event.payload.args)})")
                     return
                 }
                 onMessageAdded(
                     Message(
                         id = "tool-${event.payload.id}",
                         sender = "Tool",
-                        text = "⚙️ ${event.payload.tool}(${event.payload.args})",
+                        text = "⚙️ ${event.payload.tool}(${formatToolArgs(event.payload.args)})",
                         isFromUser = false,
                         type = MessageType.ACTION
                     )

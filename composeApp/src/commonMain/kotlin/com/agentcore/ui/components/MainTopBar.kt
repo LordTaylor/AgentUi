@@ -17,18 +17,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.scale
 
+// Responsive breakpoints (dp widths of the TopBar itself)
+private val BP_WIDE   = 1000.dp  // show everything
+private val BP_MEDIUM = 750.dp   // hide Pro badge + quick-connect shortcuts
+private val BP_NARROW = 580.dp   // also collapse Dev Mode label + hide debug dump
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainTopBar(
     projectName: String,
     onSearch: (String) -> Unit,
-    onToggleLeftSidebar: () -> Unit,
-    onToggleRightSidebar: () -> Unit,
     onToggleProviderDialog: () -> Unit,
-    isLeftSidebarVisible: Boolean,
-    isRightSidebarVisible: Boolean,
-    isSkillsVisible: Boolean,
-    onToggleSkills: () -> Unit,
     autoAccept: Boolean,
     onToggleAutoAccept: () -> Unit,
     onQuickConnect: (String) -> Unit,
@@ -49,244 +48,283 @@ fun MainTopBar(
     var searchText by remember { mutableStateOf("") }
 
     Surface(
-        modifier = modifier.fillMaxWidth().height(64.dp),
+        modifier = modifier.fillMaxWidth().height(56.dp),
         color = MaterialTheme.colorScheme.background,
         tonalElevation = 1.dp
     ) {
-        Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = projectName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val availableWidth = maxWidth
+            val isWide   = availableWidth >= BP_WIDE
+            val isMedium = availableWidth >= BP_MEDIUM
+            val isNarrow = availableWidth < BP_NARROW
+
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // ── LEFT: Title (fixed, non-shrinking) ──────────────────────
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.wrapContentWidth()
                 ) {
                     Text(
-                        "Pro Workspace",
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                        fontSize = 10.sp,
+                        text = projectName,
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        color = MaterialTheme.colorScheme.onBackground,
+                        maxLines = 1
                     )
-                }
-            }
-
-            // Search Bar
-            Surface(
-                modifier = Modifier
-                    .width(400.dp)
-                    .height(36.dp),
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.Search,
-                        contentDescription = "Search",
-                        modifier = Modifier.size(16.dp),
-                        tint = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    BasicTextField(
-                        value = searchText,
-                        onValueChange = { 
-                            searchText = it
-                            onSearch(it)
-                        },
-                        modifier = Modifier.weight(1f),
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
-                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                        decorationBox = { innerTextField ->
-                            if (searchText.isEmpty()) {
-                                Text("Search project...", color = Color.Gray, fontSize = 13.sp)
-                            }
-                            innerTextField()
-                        }
-                    )
-                }
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                AppTooltip("Zalecane: Zarządzaj dostawcami i modelami") {
-                    IconButton(onClick = onToggleProviderDialog, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Cloud, "Providers", modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
-                    }
-                }
-                
-                Spacer(modifier = Modifier.width(4.dp))
-
-                // Quick Provider Buttons
-                AppTooltip("Szybkie połączenie z Ollama") {
-                    IconButton(onClick = { onQuickConnect("ollama") }, modifier = Modifier.size(28.dp)) {
-                        Icon(Icons.Default.Bolt, "Ollama", modifier = Modifier.size(16.dp), tint = Color.Gray)
-                    }
-                }
-                AppTooltip("Szybkie połączenie z LM Studio") {
-                    IconButton(onClick = { onQuickConnect("lmstudio") }, modifier = Modifier.size(28.dp)) {
-                        Icon(Icons.Default.Terminal, "LM Studio", modifier = Modifier.size(16.dp), tint = Color.Gray)
-                    }
-                }
-                
-                VerticalDivider(modifier = Modifier.height(24.dp).padding(horizontal = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-
-                // Auto-Accept Toggle
-                AppTooltip(if (autoAccept) "Automatyczne zatwierdzanie narzędzi (OSZCZĘDZA CZAS)" else "Ręczne zatwierdzanie narzędzi (BEZPIECZNIEJSZE)") {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (autoAccept) Icons.Default.VerifiedUser else Icons.Default.Shield,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = if (autoAccept) MaterialTheme.colorScheme.primary else Color.Gray
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Switch(
-                            checked = autoAccept,
-                            onCheckedChange = { onToggleAutoAccept() },
-                            modifier = Modifier.scale(0.6f)
-                        )
-                    }
-                }
-
-                // Developer Mode Toggle
-                AppTooltip(if (developerMode) "Dev: widoczne kroki agenta" else "Clean: tylko rozmowa") {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .background(
-                                if (developerMode) MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f)
-                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                RoundedCornerShape(20.dp)
+                    if (isWide) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                        ) {
+                            Text(
+                                "Pro",
+                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp),
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (developerMode) Icons.Default.BugReport else Icons.Default.Visibility,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = if (developerMode) MaterialTheme.colorScheme.secondary else Color.Gray
-                        )
-                        Spacer(Modifier.width(3.dp))
-                        Text(
-                            text = if (developerMode) "DEV" else "CLEAN",
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (developerMode) MaterialTheme.colorScheme.secondary else Color.Gray
-                        )
-                        Switch(
-                            checked = developerMode,
-                            onCheckedChange = { onToggleDeveloperMode() },
-                            modifier = Modifier.scale(0.6f)
-                        )
-                        if (developerMode) {
-                            IconButton(onClick = onOpenDevOptions, modifier = Modifier.size(20.dp)) {
-                                Icon(Icons.Default.Settings, "Opcje trybu dev", Modifier.size(12.dp),
-                                    MaterialTheme.colorScheme.secondary.copy(alpha = 0.6f))
-                            }
                         }
                     }
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                AppTooltip("Przełącz motyw Jasny/Ciemny") {
-                    IconButton(onClick = onToggleTheme) {
+                // ── CENTER: Search bar — grows/shrinks with window ───────────
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)                    // takes all available space
+                        .widthIn(min = 80.dp, max = 420.dp)
+                        .height(32.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Icon(
-                            imageVector = if (themeMode == "LIGHT") Icons.Default.DarkMode else Icons.Default.LightMode,
-                            contentDescription = "Toggle Theme",
+                            Icons.Default.Search,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
                             tint = Color.Gray
                         )
-                    }
-                }
-                AppTooltip("Zapisz logi diagnostyczne") {
-                    IconButton(onClick = onDumpDebugLog) {
-                        Icon(Icons.Default.BugReport, contentDescription = "Dump Debug Log", tint = Color.Gray)
-                    }
-                }
-                AppTooltip("Powiadomienia") {
-                    IconButton(onClick = {}) {
-                        Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = Color.Gray)
-                    }
-                }
-                AppTooltip("Lista sesji (Cmd+B)") {
-                    IconButton(onClick = onToggleLeftSidebar) {
-                        Icon(
-                            Icons.Default.Dashboard,
-                            contentDescription = "Toggle Sessions",
-                            tint = if (isLeftSidebarVisible) MaterialTheme.colorScheme.primary else Color.Gray
+                        Spacer(modifier = Modifier.width(6.dp))
+                        BasicTextField(
+                            value = searchText,
+                            onValueChange = { searchText = it; onSearch(it) },
+                            modifier = Modifier.weight(1f),
+                            textStyle = MaterialTheme.typography.bodySmall.copy(
+                                color = MaterialTheme.colorScheme.onSurface
+                            ),
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                            singleLine = true,
+                            decorationBox = { inner ->
+                                if (searchText.isEmpty()) {
+                                    Text("Szukaj...", color = Color.Gray, fontSize = 12.sp)
+                                }
+                                inner()
+                            }
                         )
                     }
                 }
-                AppTooltip("Biblioteka Skilli (Narzędzia)") {
-                    IconButton(onClick = onToggleSkills) {
-                        Icon(
-                            Icons.Default.MenuBook,
-                            contentDescription = "Toggle Skills",
-                            tint = if (isSkillsVisible) MaterialTheme.colorScheme.primary else Color.Gray
-                        )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // ── RIGHT: Actions — items hidden progressively on resize ───
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    // Providers (always visible — primary action)
+                    AppTooltip("Zarządzaj dostawcami i modelami") {
+                        IconButton(onClick = onToggleProviderDialog, modifier = Modifier.size(32.dp)) {
+                            Icon(
+                                Icons.Default.Cloud, "Providers",
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
-                }
-                AppTooltip("Eksplorator plików") {
-                    IconButton(onClick = onToggleRightSidebar) {
-                        Icon(
-                            Icons.Default.VerticalSplit,
-                            contentDescription = "Toggle File Tree",
-                            tint = if (isRightSidebarVisible) MaterialTheme.colorScheme.primary else Color.Gray
-                        )
+
+                    // Quick connects — only on medium+ width
+                    if (isMedium) {
+                        AppTooltip("Szybkie połączenie z Ollama") {
+                            IconButton(onClick = { onQuickConnect("ollama") }, modifier = Modifier.size(26.dp)) {
+                                Icon(Icons.Default.Bolt, "Ollama", modifier = Modifier.size(14.dp), tint = Color.Gray)
+                            }
+                        }
+                        AppTooltip("Szybkie połączenie z LM Studio") {
+                            IconButton(onClick = { onQuickConnect("lmstudio") }, modifier = Modifier.size(26.dp)) {
+                                Icon(Icons.Default.Terminal, "LM Studio", modifier = Modifier.size(14.dp), tint = Color.Gray)
+                            }
+                        }
                     }
-                }
-                
-                VerticalDivider(modifier = Modifier.height(24.dp).padding(horizontal = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-                
-                AppTooltip("Tool Output Live-Stream") {
-                    IconButton(onClick = onToggleToolOutput) {
-                        Icon(
-                            Icons.Default.Terminal,
-                            contentDescription = "Tool Output",
-                            tint = if (showToolOutput) Color.Green else Color.Gray
-                        )
+
+                    VerticalDivider(
+                        modifier = Modifier.height(20.dp).padding(horizontal = 2.dp),
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                    )
+
+                    // Auto-Accept toggle (always visible)
+                    AppTooltip(
+                        if (autoAccept) "Auto-approve: WŁĄCZONE (szybciej)"
+                        else "Auto-approve: WYŁĄCZONE (bezpieczniej)"
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                    RoundedCornerShape(20.dp)
+                                )
+                                .padding(horizontal = 6.dp, vertical = 1.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (autoAccept) Icons.Default.VerifiedUser else Icons.Default.Shield,
+                                contentDescription = null,
+                                modifier = Modifier.size(13.dp),
+                                tint = if (autoAccept) MaterialTheme.colorScheme.primary else Color.Gray
+                            )
+                            Switch(
+                                checked = autoAccept,
+                                onCheckedChange = { onToggleAutoAccept() },
+                                modifier = Modifier.scale(0.55f)
+                            )
+                        }
                     }
-                }
-                
-                AppTooltip("Token Usage Analytics") {
-                    IconButton(onClick = onToggleTokenAnalytics) {
-                        Icon(
-                            Icons.Default.BarChart,
-                            contentDescription = "Token Analytics",
-                            tint = if (showTokenAnalytics) MaterialTheme.colorScheme.primary else Color.Gray
-                        )
+
+                    // Dev mode toggle — label hidden on narrow
+                    AppTooltip(if (developerMode) "Dev: widoczne kroki agenta" else "Clean: tylko rozmowa") {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .background(
+                                    if (developerMode) MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f)
+                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                    RoundedCornerShape(20.dp)
+                                )
+                                .padding(horizontal = 6.dp, vertical = 1.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (developerMode) Icons.Default.BugReport else Icons.Default.Visibility,
+                                contentDescription = null,
+                                modifier = Modifier.size(13.dp),
+                                tint = if (developerMode) MaterialTheme.colorScheme.secondary else Color.Gray
+                            )
+                            if (!isNarrow) {
+                                Spacer(Modifier.width(2.dp))
+                                Text(
+                                    text = if (developerMode) "DEV" else "CLEAN",
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (developerMode) MaterialTheme.colorScheme.secondary else Color.Gray
+                                )
+                            }
+                            Switch(
+                                checked = developerMode,
+                                onCheckedChange = { onToggleDeveloperMode() },
+                                modifier = Modifier.scale(0.55f)
+                            )
+                            if (developerMode && !isNarrow) {
+                                IconButton(onClick = onOpenDevOptions, modifier = Modifier.size(18.dp)) {
+                                    Icon(
+                                        Icons.Default.Settings, "Opcje trybu dev",
+                                        Modifier.size(11.dp),
+                                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.6f)
+                                    )
+                                }
+                            }
+                        }
                     }
-                }
-                AppTooltip("Uruchom Workflow Agentów (A10)") {
-                    IconButton(onClick = onToggleWorkflowDialog) {
-                        Icon(Icons.Default.Hub, contentDescription = "Agent Workflow", tint = Color.Gray)
+
+                    VerticalDivider(
+                        modifier = Modifier.height(20.dp).padding(horizontal = 2.dp),
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                    )
+
+                    // Theme toggle (always visible)
+                    AppTooltip("Przełącz motyw Jasny/Ciemny") {
+                        IconButton(onClick = onToggleTheme, modifier = Modifier.size(32.dp)) {
+                            Icon(
+                                imageVector = if (themeMode == "LIGHT") Icons.Default.DarkMode else Icons.Default.LightMode,
+                                contentDescription = "Toggle Theme",
+                                modifier = Modifier.size(18.dp),
+                                tint = Color.Gray
+                            )
+                        }
                     }
-                }
-                AppTooltip("Pamięć Agenta (A12)") {
-                    IconButton(onClick = onToggleMemoryPanel) {
-                        Icon(Icons.Default.Storage, contentDescription = "Agent Memory", tint = Color.Gray)
+
+                    // Debug dump — hidden on narrow
+                    if (!isNarrow) {
+                        AppTooltip("Zapisz logi diagnostyczne") {
+                            IconButton(onClick = onDumpDebugLog, modifier = Modifier.size(32.dp)) {
+                                Icon(
+                                    Icons.Default.BugReport, "Dump Debug Log",
+                                    modifier = Modifier.size(18.dp), tint = Color.Gray
+                                )
+                            }
+                        }
+                    }
+
+                    VerticalDivider(
+                        modifier = Modifier.height(20.dp).padding(horizontal = 2.dp),
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                    )
+
+                    // Tool output (always)
+                    AppTooltip("Tool Output Live-Stream") {
+                        IconButton(onClick = onToggleToolOutput, modifier = Modifier.size(32.dp)) {
+                            Icon(
+                                Icons.Default.Terminal, "Tool Output",
+                                modifier = Modifier.size(18.dp),
+                                tint = if (showToolOutput) Color(0xFF4CAF50) else Color.Gray
+                            )
+                        }
+                    }
+
+                    // Analytics — medium+ only
+                    if (isMedium) {
+                        AppTooltip("Token Usage Analytics") {
+                            IconButton(onClick = onToggleTokenAnalytics, modifier = Modifier.size(32.dp)) {
+                                Icon(
+                                    Icons.Default.BarChart, "Token Analytics",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = if (showTokenAnalytics) MaterialTheme.colorScheme.primary else Color.Gray
+                                )
+                            }
+                        }
+                    }
+
+                    // Workflow (always)
+                    AppTooltip("Uruchom Workflow Agentów") {
+                        IconButton(onClick = onToggleWorkflowDialog, modifier = Modifier.size(32.dp)) {
+                            Icon(
+                                Icons.Default.Hub, "Agent Workflow",
+                                modifier = Modifier.size(18.dp), tint = Color.Gray
+                            )
+                        }
+                    }
+
+                    // Memory (always)
+                    AppTooltip("Pamięć Agenta") {
+                        IconButton(onClick = onToggleMemoryPanel, modifier = Modifier.size(32.dp)) {
+                            Icon(
+                                Icons.Default.Storage, "Agent Memory",
+                                modifier = Modifier.size(18.dp), tint = Color.Gray
+                            )
+                        }
                     }
                 }
             }
         }
     }
 }
-
-// End of file

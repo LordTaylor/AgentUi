@@ -2,11 +2,18 @@ package com.agentcore.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
@@ -35,29 +42,65 @@ fun ChatBubble(
     isGrouped: Boolean = false,
     fontSize: Float = 14f,
     codeFontSize: Float = 13f,
+    isStreaming: Boolean = false,
     onFork: () -> Unit = {},
     onRetry: () -> Unit = {},
+    onEdit: (String) -> Unit = {},
     onRunCode: (String) -> Unit = {},
     onRunInTerminal: (String) -> Unit = {}
 ) {
-    if (msg.type == MessageType.SYSTEM) {
+    if (msg.type == MessageType.ERROR) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 4.dp, horizontal = 24.dp),
-            contentAlignment = Alignment.Center
+                .padding(vertical = 4.dp, horizontal = 16.dp),
+            contentAlignment = Alignment.CenterStart
         ) {
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = Color.Transparent,
-                border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.2f))
+                color = Color(0xFFFF5252).copy(alpha = 0.08f),
+                border = BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.4f))
             ) {
-                Text(
-                    text = msg.text,
-                    style = MaterialTheme.typography.labelSmall.copy(fontStyle = FontStyle.Italic),
-                    color = Color.Gray.copy(alpha = 0.5f),
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                )
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("⚠️", fontSize = 12.sp)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = msg.text,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFFFF5252),
+                        fontSize = 12.sp
+                    )
+                }
+            }
+        }
+        return
+    }
+
+    if (msg.type == MessageType.SYSTEM) {
+        if (msg.sender == "Thought") {
+            ThinkingBubble(text = msg.text)
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp, horizontal = 24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color.Transparent,
+                    border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.2f))
+                ) {
+                    Text(
+                        text = msg.text,
+                        style = MaterialTheme.typography.labelSmall.copy(fontStyle = FontStyle.Italic),
+                        color = Color.Gray.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
             }
         }
         return
@@ -146,6 +189,15 @@ fun ChatBubble(
                 }
 
                 val text = msg.text
+                val cursorAlpha by if (isStreaming) {
+                    rememberInfiniteTransition(label = "cursor").animateFloat(
+                        initialValue = 1f, targetValue = 0f,
+                        animationSpec = infiniteRepeatable(tween(500), RepeatMode.Reverse),
+                        label = "cursorAlpha"
+                    )
+                } else {
+                    androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0f) }
+                }
                 SelectionContainer {
                     if (text.contains("```") && !msg.isFromUser) {
                         Markdown(
@@ -156,24 +208,25 @@ fun ChatBubble(
                             )
                         )
                     } else {
-                        // Simple LaTeX-like styling for $ ... $
+                        // LaTeX-like styling for $expr$ — regex matches $non-space content$
+                        // Safe: won't match currency like $100 (requires closing $)
                         val primaryColor = MaterialTheme.colorScheme.primary
                         val annotatedText = remember(text, primaryColor) {
                             val builder = AnnotatedString.Builder()
-                            val parts = text.split("$")
-                            parts.forEachIndexed { index, part ->
-                                if (index % 2 == 1 && part.isNotEmpty()) {
-                                    builder.pushStyle(androidx.compose.ui.text.SpanStyle(
-                                        fontStyle = FontStyle.Italic,
-                                        fontWeight = FontWeight.Bold,
-                                        color = primaryColor
-                                    ))
-                                    builder.append(part)
-                                    builder.pop()
-                                } else {
-                                    builder.append(part)
-                                }
+                            val mathRegex = Regex("""\$([^\s$][^$]*)\$""")
+                            var last = 0
+                            for (match in mathRegex.findAll(text)) {
+                                builder.append(text.substring(last, match.range.first))
+                                builder.pushStyle(androidx.compose.ui.text.SpanStyle(
+                                    fontStyle = FontStyle.Italic,
+                                    fontWeight = FontWeight.Bold,
+                                    color = primaryColor
+                                ))
+                                builder.append(match.groupValues[1])
+                                builder.pop()
+                                last = match.range.last + 1
                             }
+                            builder.append(text.substring(last))
                             builder.toAnnotatedString()
                         }
                         Text(
@@ -181,6 +234,13 @@ fun ChatBubble(
                             style = MaterialTheme.typography.bodyMedium.copy(fontSize = fontSize.sp),
                             lineHeight = (fontSize * 1.4f).sp
                         )
+                        if (isStreaming) {
+                            Text(
+                                text = "▋",
+                                fontSize = fontSize.sp,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = cursorAlpha)
+                            )
+                        }
                     }
                 }
 
@@ -189,6 +249,20 @@ fun ChatBubble(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (msg.isFromUser) {
+                        AppTooltip("Edytuj wiadomość") {
+                            IconButton(
+                                onClick = { onEdit(msg.text) },
+                                modifier = Modifier.size(20.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(12.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
                         AppTooltip("Powtórz to zapytanie") {
                             IconButton(
                                 onClick = onRetry,
@@ -251,6 +325,55 @@ fun ChatBubble(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThinkingBubble(text: String) {
+    var expanded by remember { mutableStateOf(false) }
+    val cleanText = text.removePrefix("💭 ").trim()
+    val preview = if (cleanText.length > 60) cleanText.take(60) + "…" else cleanText
+
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = Color(0xFF7C4DFF).copy(alpha = 0.06f),
+        border = BorderStroke(1.dp, Color(0xFF7C4DFF).copy(alpha = 0.2f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 3.dp, horizontal = 32.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .clickable { expanded = !expanded }
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("🧠", fontSize = 11.sp)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = if (expanded) "Myślenie" else preview,
+                    fontSize = 11.sp,
+                    fontStyle = FontStyle.Italic,
+                    color = Color(0xFF9C6FFF),
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = if (expanded) "▲" else "▼",
+                    fontSize = 9.sp,
+                    color = Color(0xFF9C6FFF).copy(alpha = 0.6f)
+                )
+            }
+            if (expanded) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = cleanText,
+                    fontSize = 11.sp,
+                    fontStyle = FontStyle.Italic,
+                    color = Color(0xFF9C6FFF).copy(alpha = 0.8f),
+                    lineHeight = 16.sp
+                )
             }
         }
     }

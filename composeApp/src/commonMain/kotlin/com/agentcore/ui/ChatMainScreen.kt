@@ -151,6 +151,9 @@ fun ChatMainScreen(mode: ConnectionMode) {
         onMoveToFolder = { sessionId, folderName ->
             viewModel.onIntent(ChatIntent.MoveSessionToFolder(sessionId, folderName), scope, mode)
         },
+        pinnedSessions = state.pinnedSessions,
+        onSessionPin = { id -> viewModel.onIntent(ChatIntent.PinSession(id), scope, mode) },
+        onSessionExport = { viewModel.onIntent(ChatIntent.ExportSession, scope, mode) },
         // A10 IPC 1.7 — AgentGroup workflow
         workflowGroupStatus = state.workflowGroupStatus,
         showWorkflowDialog = state.showWorkflowDialog,

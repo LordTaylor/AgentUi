@@ -20,6 +20,15 @@ import androidx.compose.runtime.*
 import kotlinx.serialization.json.*
 import com.agentcore.api.SkillInfo
 
+private val EXAMPLE_SKILLS = listOf(
+    SkillInfo("ex-1", "Code Review",      "Analizuje kod i sugeruje ulepszenia: wydajność, bezpieczeństwo, czytelność.",   "builtin"),
+    SkillInfo("ex-2", "Git Assistant",    "Pomaga z Git: commity, PR, rozwiązywanie konfliktów, cherry-pick.",              "builtin"),
+    SkillInfo("ex-3", "Test Writer",      "Generuje testy jednostkowe i integracyjne dla podanego kodu Kotlin/Rust.",       "builtin"),
+    SkillInfo("ex-4", "Dokumentacja",     "Tworzy dokumentację API, README i KDoc/rustdoc do modułów.",                    "builtin"),
+    SkillInfo("ex-5", "Debugger",         "Analizuje błędy i stack trace, proponuje poprawki krok po kroku.",               "builtin"),
+    SkillInfo("ex-6", "Refactoring",      "Restrukturyzuje kod wg DRY/SOLID: wydziela funkcje, upraszcza logikę.",         "builtin"),
+)
+
 @Composable
 fun StatsDashboard(stats: JsonObject) {
     Card(
@@ -116,13 +125,33 @@ fun SkillLibrary(
                     )
                 }
             } else {
-                items(skills) { skill ->
-                    SkillCard(
-                        name = skill.name,
-                        description = skill.description,
-                        isTool = false,
-                        onDelete = null // For now, can't delete skills via UI
-                    )
+                if (skills.isEmpty()) {
+                    item {
+                        Text(
+                            "Przykładowe wbudowane skille",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                    }
+                    items(EXAMPLE_SKILLS) { skill ->
+                        SkillCard(
+                            name = skill.name,
+                            description = skill.description,
+                            isTool = false,
+                            isExample = true,
+                            onDelete = null
+                        )
+                    }
+                } else {
+                    items(skills) { skill ->
+                        SkillCard(
+                            name = skill.name,
+                            description = skill.description,
+                            isTool = false,
+                            onDelete = null
+                        )
+                    }
                 }
             }
         }
@@ -160,6 +189,7 @@ private fun SkillCard(
     description: String,
     isTool: Boolean,
     needsApproval: Boolean = false,
+    isExample: Boolean = false,
     onDelete: (() -> Unit)? = null
 ) {
     Surface(
@@ -179,6 +209,15 @@ private fun SkillCard(
                     Spacer(modifier = Modifier.width(8.dp))
                     Badge(containerColor = Color.Red.copy(alpha = 0.2f), contentColor = Color.Red) {
                         Text("PAUSE", fontSize = 9.sp)
+                    }
+                }
+                if (isExample) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Badge(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    ) {
+                        Text("PRZYKŁAD", fontSize = 9.sp)
                     }
                 }
                 

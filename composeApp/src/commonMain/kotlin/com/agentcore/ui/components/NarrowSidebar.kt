@@ -65,9 +65,10 @@ fun NarrowSidebar(
 
                 // Navigation Tabs
                 NavIcon(Icons.Default.Chat, "Chat", activeTab == "Chat") { onTabSelect("Chat") }
-                NavIcon(Icons.Default.History, "History", activeTab == "History") { onTabSelect("History") }
-                NavIcon(Icons.Default.AutoStories, "Library", activeTab == "Library") { onTabSelect("Library") }
-                NavIcon(Icons.Default.Science, "Models", activeTab == "Models") { onTabSelect("Models") }
+                NavIcon(Icons.Default.History, "Historia sesji", activeTab == "History") { onTabSelect("History") }
+                NavIcon(Icons.Default.AutoStories, "Biblioteka Skills", activeTab == "Library") { onTabSelect("Library") }
+                NavIcon(Icons.Default.FolderOpen, "Eksplorator plików", activeTab == "Files") { onTabSelect("Files") }
+                NavIcon(Icons.Default.Science, "Modele", activeTab == "Models") { onTabSelect("Models") }
             }
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
