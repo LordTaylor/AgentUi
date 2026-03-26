@@ -18,4 +18,5 @@ data class Message(
     val extraContent: String? = null,
     val timestamp: Long = System.currentTimeMillis(),
     val agentId: String? = null,
+    val tokensPerSec: Float? = null,
 )

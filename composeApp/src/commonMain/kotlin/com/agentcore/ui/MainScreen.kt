@@ -183,6 +183,9 @@ fun MainScreen(
         if (!sidebarVisible && activeTab == "History") activeTab = "Chat"
     }
 
+    var showAutoAcceptDialog by remember { mutableStateOf(false) }
+    var showDevOptionsDialog by remember { mutableStateOf(false) }
+
     Surface(
         modifier = Modifier.fillMaxSize()
             .onPreviewKeyEvent { event -> handleKeyboardShortcut(event, shortcuts) },
@@ -209,7 +212,7 @@ fun MainScreen(
                 MainTopBar(
                     projectName = "DigitalArchitect",
                     onSearch = { /* TODO */ },
-                    onToggleLeftSidebar = { onUpdateUiSettings(uiSettings.copy(sidebarVisible = !uiSettings.sidebarVisible)) },
+                    onToggleLeftSidebar = { onUpdateUiSettings(uiSettings.copy(sidebarVisible = !sidebarVisible)) },
                     onToggleRightSidebar = { onUpdateUiSettings(uiSettings.copy(showFiles = !uiSettings.showFiles)) },
                     onToggleProviderDialog = onToggleProviderDialog,
                     isLeftSidebarVisible = sidebarVisible,
@@ -217,7 +220,7 @@ fun MainScreen(
                     isSkillsVisible = uiSettings.showSkills,
                     onToggleSkills = { onUpdateUiSettings(uiSettings.copy(showSkills = !uiSettings.showSkills)) },
                     autoAccept = uiSettings.autoAccept,
-                    onToggleAutoAccept = { onUpdateUiSettings(uiSettings.copy(autoAccept = !uiSettings.autoAccept)) },
+                    onToggleAutoAccept = { showAutoAcceptDialog = true },
                     onQuickConnect = { backend ->
                         val model = when(backend) {
                             "ollama" -> "llama3"
@@ -238,6 +241,7 @@ fun MainScreen(
                     onToggleTokenAnalytics = onToggleTokenAnalytics,
                     developerMode = uiSettings.developerMode,
                     onToggleDeveloperMode = { onUpdateUiSettings(uiSettings.copy(developerMode = !uiSettings.developerMode)) },
+                    onOpenDevOptions = { showDevOptionsDialog = true },
                     onToggleWorkflowDialog = { onIntent(ChatIntent.ToggleWorkflowDialog, scope, mode) },
                     onToggleMemoryPanel = onToggleMemoryPanel
                 )
@@ -285,12 +289,23 @@ fun MainScreen(
                             onRestartAgent = onRestartAgent
                         )
 
-                        val filteredMessages = remember(messages, messageSearchQuery, uiSettings.developerMode) {
+                        val filteredMessages = remember(messages, messageSearchQuery, uiSettings.developerMode, uiSettings.devModeOptions) {
                             val base = if (messageSearchQuery.isBlank()) messages
                             else messages.filter { it.text.contains(messageSearchQuery, ignoreCase = true) }
-                            
-                            if (uiSettings.developerMode) base
-                            else base.filter { it.type == MessageType.TEXT || it.type == MessageType.ERROR }
+
+                            if (uiSettings.developerMode) {
+                                val opts = uiSettings.devModeOptions
+                                base.filter { msg ->
+                                    when {
+                                        msg.type == MessageType.ACTION -> opts.showToolCalls
+                                        msg.sender == "Thought"       -> opts.showThoughts
+                                        msg.agentId != null           -> opts.showSubAgentMessages
+                                        else                          -> true
+                                    }
+                                }
+                            } else {
+                                base.filter { it.type == MessageType.TEXT || it.type == MessageType.ERROR }
+                            }
                         }
 
                         // ── Chat Area ──────────────────────────────────────────────────
@@ -397,8 +412,28 @@ fun MainScreen(
                 }
 
                 // ── Status Bar ───────────────────────────────────────────────
-                BottomStatusBar(sessionStats, ipcLogs.lastOrNull() ?: "CONNECTED", currentModelName)
+                BottomStatusBar(tokenHistory, ipcLogs.lastOrNull() ?: "CONNECTED", currentModelName)
             }
+        }
+
+        if (showDevOptionsDialog) {
+            ChatDisplaySettingsDialog(
+                options = uiSettings.devModeOptions,
+                onDismiss = { showDevOptionsDialog = false },
+                onApply = { opts -> onUpdateUiSettings(uiSettings.copy(devModeOptions = opts)) }
+            )
+        }
+
+        if (showAutoAcceptDialog) {
+            AutoAcceptDialog(
+                currentAutoAccept = uiSettings.autoAccept,
+                currentBypassAll = uiSettings.bypassAllPermissions,
+                onDismiss = { showAutoAcceptDialog = false },
+                onConfirm = { auto, bypass ->
+                    onUpdateUiSettings(uiSettings.copy(autoAccept = auto, bypassAllPermissions = bypass))
+                    showAutoAcceptDialog = false
+                }
+            )
         }
 
         if (showCreateToolDialog) {

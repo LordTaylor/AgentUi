@@ -41,6 +41,7 @@ fun MainTopBar(
     onToggleTokenAnalytics: () -> Unit = {},
     developerMode: Boolean = true,
     onToggleDeveloperMode: () -> Unit = {},
+    onOpenDevOptions: () -> Unit = {},
     onToggleWorkflowDialog: () -> Unit = {},
     onToggleMemoryPanel: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -164,26 +165,42 @@ fun MainTopBar(
                     }
                 }
 
-                // Developer Mode Toggle (Option 4)
-                AppTooltip(if (developerMode) "Tryb Deweloperski: Pełna transparentność (wszystkie kroki agenta)" else "Tryb Skrócony: Tylko najważniejsze informacje i wyniki") {
+                // Developer Mode Toggle
+                AppTooltip(if (developerMode) "Dev: widoczne kroki agenta" else "Clean: tylko rozmowa") {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
+                            .background(
+                                if (developerMode) MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f)
+                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                RoundedCornerShape(20.dp)
+                            )
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     ) {
                         Icon(
-                            imageVector = if (developerMode) Icons.Default.Code else Icons.Default.Chat,
+                            imageVector = if (developerMode) Icons.Default.BugReport else Icons.Default.Visibility,
                             contentDescription = null,
                             modifier = Modifier.size(14.dp),
                             tint = if (developerMode) MaterialTheme.colorScheme.secondary else Color.Gray
                         )
-                        Spacer(Modifier.width(4.dp))
+                        Spacer(Modifier.width(3.dp))
+                        Text(
+                            text = if (developerMode) "DEV" else "CLEAN",
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (developerMode) MaterialTheme.colorScheme.secondary else Color.Gray
+                        )
                         Switch(
                             checked = developerMode,
                             onCheckedChange = { onToggleDeveloperMode() },
                             modifier = Modifier.scale(0.6f)
                         )
+                        if (developerMode) {
+                            IconButton(onClick = onOpenDevOptions, modifier = Modifier.size(20.dp)) {
+                                Icon(Icons.Default.Settings, "Opcje trybu dev", Modifier.size(12.dp),
+                                    MaterialTheme.colorScheme.secondary.copy(alpha = 0.6f))
+                            }
+                        }
                     }
                 }
 

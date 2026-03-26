@@ -120,6 +120,13 @@ compose.desktop {
     }
 }
 
+// Alias desktopRun to the default run task provided by the Compose plugin
+tasks.register("desktopRun") {
+    group = "compose desktop"
+    description = "Alias for the 'run' task"
+    dependsOn("run")
+}
+
 // Explicitly set mainClass for the run task as a fallback
 tasks.withType<JavaExec>().configureEach {
     if (name == "run" || name == "desktopRun") {

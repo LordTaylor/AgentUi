@@ -1,21 +1,28 @@
 package com.agentcore.ui.components
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -52,8 +59,10 @@ fun ChatArea(
     loadingModelName: String? = null,
     modifier: Modifier = Modifier
 ) {
-    val isAtBottom by remember { 
-        derivedStateOf { 
+    var autoScroll by remember { mutableStateOf(true) }
+
+    val isAtBottom by remember {
+        derivedStateOf {
             val layoutInfo = listState.layoutInfo
             val visibleItems = layoutInfo.visibleItemsInfo
             if (visibleItems.isEmpty()) true
@@ -65,7 +74,7 @@ fun ChatArea(
     }
 
     androidx.compose.runtime.LaunchedEffect(filteredMessages.size, statusState) {
-        if (isAtBottom) {
+        if (autoScroll && isAtBottom) {
             val lastIdx = (filteredMessages.size + if (statusState == "THINKING") 1 else 0) - 1
             if (lastIdx >= 0) {
                 listState.animateScrollToItem(lastIdx)
@@ -147,6 +156,41 @@ fun ChatArea(
                         }
                     }
                 }
+            }
+        }
+
+        // Auto-scroll toggle buttons — top-left corner
+        Row(
+            modifier = Modifier.align(Alignment.TopStart).padding(start = 8.dp, top = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val activeColor = MaterialTheme.colorScheme.primary
+            val inactiveColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+            IconButton(
+                onClick = { autoScroll = false },
+                modifier = Modifier.size(28.dp)
+                    .background(
+                        if (!autoScroll) activeColor.copy(alpha = 0.18f) else Color.Transparent,
+                        CircleShape
+                    )
+            ) {
+                Icon(Icons.Default.Pause, "Stop auto-scroll", Modifier.size(14.dp),
+                    tint = if (!autoScroll) activeColor else inactiveColor)
+            }
+            IconButton(
+                onClick = {
+                    autoScroll = true
+                    scope.launch { listState.animateScrollToItem(messages.size) }
+                },
+                modifier = Modifier.size(28.dp)
+                    .background(
+                        if (autoScroll) activeColor.copy(alpha = 0.18f) else Color.Transparent,
+                        CircleShape
+                    )
+            ) {
+                Icon(Icons.Default.PlayArrow, "Start auto-scroll", Modifier.size(14.dp),
+                    tint = if (autoScroll) activeColor else inactiveColor)
             }
         }
 

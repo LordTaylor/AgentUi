@@ -210,7 +210,16 @@ fun ChatBubble(
                         fontSize = 9.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                     )
-                    
+
+                    if (!msg.isFromUser && msg.type == MessageType.TEXT && msg.tokensPerSec != null) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "%.1f tok/s".format(msg.tokensPerSec),
+                            fontSize = 8.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+                        )
+                    }
+
                     if (!msg.isFromUser && msg.type != MessageType.ACTION) {
                         Spacer(modifier = Modifier.width(10.dp))
                         AppTooltip("Kopiuj wiadomość") {

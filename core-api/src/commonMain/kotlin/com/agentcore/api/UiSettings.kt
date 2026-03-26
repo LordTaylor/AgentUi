@@ -28,6 +28,14 @@ data class SavedProviderConfig(
 )
 
 @Serializable
+data class DevModeOptions(
+    val showToolCalls: Boolean = true,
+    val showToolOutput: Boolean = false,
+    val showThoughts: Boolean = true,
+    val showSubAgentMessages: Boolean = false
+)
+
+@Serializable
 data class UiSettings(
     val sidebarVisible: Boolean = true,
     val sidePanelWidth: Float = 400f,
@@ -44,6 +52,7 @@ data class UiSettings(
     val showOrchestrator: Boolean = false,
     val workingDir: String = "",
     val autoAccept: Boolean = false,
+    val bypassAllPermissions: Boolean = false, // UNSAFE
     val themeMode: String = "DARK", // "LIGHT", "DARK", "SYSTEM"
     val developerMode: Boolean = true,
     val cauldronGridSize: Int = 128,
@@ -52,5 +61,7 @@ data class UiSettings(
     /** Per-provider configs keyed by backend name (lmstudio, ollama, claude, openai, google, huggingface) */
     val providerConfigs: Map<String, ProviderConfig> = emptyMap(),
     /** Saved named configurations keyed by backend name */
-    val savedProviderConfigs: Map<String, List<SavedProviderConfig>> = emptyMap()
+    val savedProviderConfigs: Map<String, List<SavedProviderConfig>> = emptyMap(),
+    val devModeOptions: DevModeOptions = DevModeOptions(),
+    val parallelToolsHint: Boolean = true
 )
