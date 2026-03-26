@@ -35,8 +35,8 @@ internal object WitchCauldronConstants {
     const val FIRE_HEIGHT_BASE = 0.18f   // minimum fire when cauldron is not bouncing
 
     // === Fire Position (vertical, as fraction of gridSize; higher value = lower on screen) ===
-    const val FIRE_BACK_VERT_POS  = 0.86f  // back fire layer (drawn behind cauldron body)
-    const val FIRE_FRONT_VERT_POS = 0.90f  // front fire layer (drawn in front of cauldron body)
+    const val FIRE_BACK_VERT_POS  = 0.96f  // back fire layer (drawn behind cauldron body)
+    const val FIRE_FRONT_VERT_POS = 1f  // front fire layer (drawn in front of cauldron body)
 
     // === Fire Sway (horizontal oscillation of the two fire offsets) ===
     const val FIRE_SWAY_AMPLITUDE = 8f     // max pixel sway of each fire layer
@@ -57,7 +57,7 @@ internal object WitchCauldronConstants {
 
     // === Fire Rendering (cartoon upgrade) ===
     const val FIRE_FRAME_COUNT = 4
-    const val FIRE_HALF_WIDTH_MULT = 48
+    const val FIRE_HALF_WIDTH_MULT = 30
     const val FIRE_INTENSITY_EXPONENT = 2.5f           // was 1.2f — sharper pointed cartoon tips
     const val FIRE_NOISE_FREQ_1 = 12.0
     const val FIRE_NOISE_DX_FACTOR_1 = 0.3
