@@ -63,5 +63,47 @@ data class UiSettings(
     /** Saved named configurations keyed by backend name */
     val savedProviderConfigs: Map<String, List<SavedProviderConfig>> = emptyMap(),
     val devModeOptions: DevModeOptions = DevModeOptions(),
-    val parallelToolsHint: Boolean = true
+    val parallelToolsHint: Boolean = true,
+    /** ReAct mode: agent emits Thought: blocks before each tool call. */
+    val reactMode: Boolean = false,
+    /** Backend Health Dashboard panel visible in right side panel. */
+    val showBackendHealth: Boolean = false,
+    /** Session Archive Browser panel (reads ~/.agentcore/sessions/archive/). */
+    val showArchiveBrowser: Boolean = false,
+    /** Hook Management panel (reads ~/.agentcore/hooks/). */
+    val showHookManager: Boolean = false,
+    /** Advanced Prompt Library panel with pre-defined system prompts. */
+    val showPromptLibrary: Boolean = false,
+    /** Inline Tool Editor: edit Python tool files from ~/.agentcore/tools/. */
+    val showToolEditor: Boolean = false,
+    /** Scheduler Panel: create one-shot and cron scheduled tasks. */
+    val showScheduler: Boolean = false,
+    /** Pinned Context Panel: files always included in agent messages. */
+    val showPinnedContext: Boolean = false,
+    /** Prometheus Metrics panel (GET /metrics from backend). */
+    val showMetrics: Boolean = false,
+    /** Local Model Manager: browse/pull Ollama models. */
+    val showLocalModels: Boolean = false,
+    /** Visual Session Timeline: Gantt-style message timing view. */
+    val showTimeline: Boolean = false,
+    /** Smart Context Pruning: identify and remove context bloat. */
+    val showContextPruning: Boolean = false,
+    /** Personality Lab: design and test agent personas. */
+    val showPersonalityLab: Boolean = false,
+    /** Multi-Agent Heatmap: token usage per agent visualization. */
+    val showHeatmap: Boolean = false,
+    /** Files pinned for permanent inclusion in agent context. */
+    val pinnedContextFiles: List<String> = emptyList()
+)
+
+/** Returns a copy with all right-side panel flags set to false. */
+fun UiSettings.withAllPanelsClosed(): UiSettings = copy(
+    showStats = false, showFiles = false, showSkills = false,
+    showLogs = false, showScratchpad = false, showTerminal = false,
+    showPluginManager = false, showWorkflowBuilder = false, showCanvas = false,
+    showHelp = false, showOrchestrator = false, showBackendHealth = false,
+    showArchiveBrowser = false, showHookManager = false, showPromptLibrary = false,
+    showToolEditor = false, showScheduler = false, showPinnedContext = false,
+    showMetrics = false, showLocalModels = false, showTimeline = false,
+    showContextPruning = false, showPersonalityLab = false, showHeatmap = false
 )

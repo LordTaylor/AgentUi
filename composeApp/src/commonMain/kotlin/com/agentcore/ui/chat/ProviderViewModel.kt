@@ -55,11 +55,6 @@ class ProviderViewModel(
             ChatIntent.ToggleWorkflowDialog        -> update { copy(showWorkflowDialog = !showWorkflowDialog) }
             ChatIntent.ToggleCreateToolDialog      -> update { copy(showCreateToolDialog = !showCreateToolDialog) }
             is ChatIntent.RunWorkflow              -> runWorkflow(intent, scope, mode)
-            ChatIntent.ReloadTools                 -> reloadTools(scope, mode)
-            ChatIntent.ReloadSkills                -> scope.launch { sendCmd(IpcCommand.ListSkills(), mode) }
-            is ChatIntent.CreateTool               -> createTool(intent, scope, mode)
-            is ChatIntent.DeleteTool               -> deleteTool(intent, scope, mode)
-            ChatIntent.RefreshStats                -> refreshStats(scope, mode)
             else                                   -> {}
         }
     }
@@ -185,48 +180,6 @@ class ProviderViewModel(
     private fun runWorkflow(intent: ChatIntent.RunWorkflow, scope: CoroutineScope, mode: ConnectionMode) {
         log("→", "run_workflow", "steps=${intent.payload.steps.size}")
         scope.launch { sendCmd(IpcCommand.RunWorkflow(intent.payload), mode) }
-    }
-
-    private fun reloadTools(scope: CoroutineScope, mode: ConnectionMode) {
-        scope.launch {
-            sendCmd(IpcCommand.ReloadTools(), mode)
-            if (mode == ConnectionMode.IPC) {
-                val tools = client.listTools()
-                update { copy(availableTools = tools) }
-            }
-        }
-    }
-
-    private fun createTool(intent: ChatIntent.CreateTool, scope: CoroutineScope, mode: ConnectionMode) {
-        log("→", "create_tool", intent.name)
-        scope.launch {
-            if (mode == ConnectionMode.IPC) {
-                client.createTool(intent.name, intent.template)
-                val tools = client.listTools()
-                update { copy(availableTools = tools) }
-            }
-        }
-    }
-
-    private fun deleteTool(intent: ChatIntent.DeleteTool, scope: CoroutineScope, mode: ConnectionMode) {
-        log("→", "delete_tool", intent.name)
-        scope.launch {
-            if (mode == ConnectionMode.IPC) {
-                client.deleteTool(intent.name)
-                val tools = client.listTools()
-                update { copy(availableTools = tools) }
-            }
-        }
-    }
-
-    private fun refreshStats(scope: CoroutineScope, mode: ConnectionMode) {
-        scope.launch {
-            when (mode) {
-                ConnectionMode.IPC   -> { val stats = client.getStats(); update { copy(sessionStats = stats) } }
-                ConnectionMode.STDIO -> stdioExecutor.sendCommand(IpcCommand.GetStats())
-                else                 -> {}
-            }
-        }
     }
 
     private suspend fun sendCmd(cmd: IpcCommand, mode: ConnectionMode) = when (mode) {

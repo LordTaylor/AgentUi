@@ -76,14 +76,31 @@ fun SettingsDialog(
                 )
 
                 Divider(modifier = Modifier.padding(vertical = 8.dp), color = Color.Gray.copy(alpha = 0.1f))
-                
+
+                Text("Agent Behaviour", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("ReAct Mode", style = MaterialTheme.typography.bodyMedium)
+                        Text("Pokaż wewnętrzne przemyślenia agenta (Thought: bloki)", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    }
+                    Switch(
+                        checked = uiSettings.reactMode,
+                        onCheckedChange = { onUpdateUiSettings(uiSettings.copy(reactMode = it)) }
+                    )
+                }
+
+                Divider(modifier = Modifier.padding(vertical = 8.dp), color = Color.Gray.copy(alpha = 0.1f))
+
                 Text("Chat Appearance", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-                
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Font Size: ${chatFontSize.toInt()}sp", modifier = Modifier.width(100.dp))
                     Slider(
                         value = chatFontSize,
-                        onValueChange = { 
+                        onValueChange = {
                             chatFontSize = it
                             onUpdateUiSettings(uiSettings.copy(chatFontSize = it))
                         },

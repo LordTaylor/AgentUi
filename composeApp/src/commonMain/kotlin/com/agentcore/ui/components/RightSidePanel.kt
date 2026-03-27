@@ -18,7 +18,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.agentcore.api.*
 import com.agentcore.api.UiSettings
+import com.agentcore.model.Message
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 
@@ -35,24 +38,38 @@ fun RightSidePanel(
     onReloadSkills: () -> Unit,
     onDeleteTool: (String) -> Unit,
     onCreateTool: () -> Unit,
+    onGetToolDetail: ((String) -> Unit)? = null,
     sessionStats: JsonObject?,
     logs: List<LogPayload>,
     scratchpadContent: String,
     onScratchpadUpdate: (String) -> Unit,
     terminalTraffic: List<TerminalTrafficPayload>,
     plugins: List<PluginMetadataPayload>,
+    onToggleTool: (String, Boolean) -> Unit = { _, _ -> },
     workflows: List<WorkflowStatusPayload>,
     canvasElements: List<CanvasElement>,
     agentGroup: AgentGroupPayload?,
     onUpdateUiSettings: (UiSettings) -> Unit,
     onStatsRefresh: () -> Unit,
     onSetWorkingDir: (String) -> Unit = {},
-    scope: kotlinx.coroutines.CoroutineScope? = null
+    scope: kotlinx.coroutines.CoroutineScope? = null,
+    backendHealth: Map<String, com.agentcore.api.PingResultPayload> = emptyMap(),
+    onLoadBackendHealth: () -> Unit = {},
+    currentSystemPrompt: String = "",
+    onSetSystemPrompt: (String) -> Unit = {},
+    messages: List<Message> = emptyList(),
+    scheduledTasks: List<ScheduledTaskInfo> = emptyList(),
+    onScheduleTask: (String, String?, String?) -> Unit = { _, _, _ -> },
+    agentServerUrl: String = "http://localhost:7700"
 ) {
-    val isAnyPanelVisible = uiSettings.showFiles || uiSettings.showSkills || uiSettings.showStats || 
-        uiSettings.showLogs || uiSettings.showScratchpad || uiSettings.showTerminal || 
-        uiSettings.showPluginManager || uiSettings.showWorkflowBuilder || uiSettings.showCanvas || 
-        uiSettings.showHelp || uiSettings.showOrchestrator
+    val isAnyPanelVisible = uiSettings.showFiles || uiSettings.showSkills || uiSettings.showStats ||
+        uiSettings.showLogs || uiSettings.showScratchpad || uiSettings.showTerminal ||
+        uiSettings.showPluginManager || uiSettings.showWorkflowBuilder || uiSettings.showCanvas ||
+        uiSettings.showHelp || uiSettings.showOrchestrator || uiSettings.showBackendHealth ||
+        uiSettings.showArchiveBrowser || uiSettings.showHookManager || uiSettings.showPromptLibrary ||
+        uiSettings.showToolEditor || uiSettings.showScheduler || uiSettings.showPinnedContext ||
+        uiSettings.showMetrics || uiSettings.showLocalModels || uiSettings.showTimeline ||
+        uiSettings.showContextPruning || uiSettings.showPersonalityLab || uiSettings.showHeatmap
 
     androidx.compose.animation.AnimatedVisibility(
         visible = isAnyPanelVisible,
@@ -85,40 +102,76 @@ fun RightSidePanel(
                     }
                 }
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    // File Tree
-                    if (uiSettings.showFiles) {
-                        FileTree(
+                    // Only one panel renders at a time — `when` guarantees exclusivity
+                    // even if multiple flags are somehow true (e.g. from old persisted settings).
+                    val close: (UiSettings) -> Unit = { onUpdateUiSettings(it.withAllPanelsClosed()) }
+                    when {
+                        uiSettings.showFiles -> FileTree(
                             rootPath = workingDir.ifEmpty { System.getProperty("user.home") ?: "" },
                             selectedFilePath = selectedFilePath,
                             onFileSelected = onFileSelected
                         )
-                    }
-                    // Skills Library
-                    if (uiSettings.showSkills) {
-                        SkillLibrary(
+                        uiSettings.showSkills -> SkillLibrary(
                             tools = availableTools,
                             skills = availableSkills,
-                            onReload = {
-                                onReloadTools()
-                                onReloadSkills()
-                            },
+                            onReload = { onReloadTools(); onReloadSkills() },
                             onCreateTool = onCreateTool,
-                            onDeleteTool = onDeleteTool
+                            onDeleteTool = onDeleteTool,
+                            onToolDetail = if (onGetToolDetail != null) {
+                                { tool -> tool["name"]?.jsonPrimitive?.contentOrNull?.let { onGetToolDetail(it) } }
+                            } else null
+                        )
+                        uiSettings.showStats -> StatsPanel(sessionStats) { close(uiSettings) }
+                        uiSettings.showLogs -> LogsPanel(logs) { close(uiSettings) }
+                        uiSettings.showScratchpad -> ScratchpadPanel(scratchpadContent, onScratchpadUpdate, { onScratchpadUpdate(it) }) { close(uiSettings) }
+                        uiSettings.showTerminal -> TerminalPanel(terminalTraffic) { close(uiSettings) }
+                        uiSettings.showPluginManager -> PluginManagerPanel(plugins, onToggleTool) { close(uiSettings) }
+                        uiSettings.showWorkflowBuilder -> WorkflowBuilderPanel(workflows) { close(uiSettings) }
+                        uiSettings.showCanvas -> CanvasPanel(canvasElements) { close(uiSettings) }
+                        uiSettings.showHelp -> HelpPanel { close(uiSettings) }
+                        uiSettings.showOrchestrator -> OrchestratorPanel(agentGroup) { close(uiSettings) }
+                        uiSettings.showBackendHealth -> BackendHealthPanel(
+                            backends = emptyList(),
+                            health = backendHealth,
+                            onPingAll = onLoadBackendHealth,
+                            onClose = { close(uiSettings) }
+                        )
+                        uiSettings.showArchiveBrowser -> SessionArchiveBrowser(onClose = { close(uiSettings) })
+                        uiSettings.showHookManager -> HookManagerPanel(onClose = { close(uiSettings) })
+                        uiSettings.showPromptLibrary -> PromptLibraryPanel(
+                            currentPrompt = currentSystemPrompt,
+                            onApply = { prompt -> onSetSystemPrompt(prompt); close(uiSettings) },
+                            onClose = { close(uiSettings) }
+                        )
+                        uiSettings.showToolEditor -> ToolEditorPanel(onClose = { close(uiSettings) })
+                        uiSettings.showScheduler -> SchedulerPanel(
+                            tasks = scheduledTasks,
+                            onSchedule = onScheduleTask,
+                            onClose = { close(uiSettings) }
+                        )
+                        uiSettings.showPinnedContext -> PinnedContextPanel(
+                            pinnedFiles = uiSettings.pinnedContextFiles,
+                            onAddFile = { f -> onUpdateUiSettings(uiSettings.copy(pinnedContextFiles = uiSettings.pinnedContextFiles + f)) },
+                            onRemoveFile = { f -> onUpdateUiSettings(uiSettings.copy(pinnedContextFiles = uiSettings.pinnedContextFiles - f)) },
+                            onClose = { close(uiSettings) }
+                        )
+                        uiSettings.showMetrics -> MetricsPanel(serverUrl = agentServerUrl, onClose = { close(uiSettings) })
+                        uiSettings.showLocalModels -> LocalModelManager(onClose = { close(uiSettings) })
+                        uiSettings.showTimeline -> SessionTimelinePanel(messages = messages, onClose = { close(uiSettings) })
+                        uiSettings.showContextPruning -> SmartContextPruning(messages = messages, onClose = { close(uiSettings) })
+                        uiSettings.showPersonalityLab -> PersonalityLab(
+                            currentPrompt = currentSystemPrompt,
+                            onApplyPersona = { prompt -> onSetSystemPrompt(prompt); close(uiSettings) },
+                            onClose = { close(uiSettings) }
+                        )
+                        uiSettings.showHeatmap -> MultiAgentHeatmap(
+                            messages = messages,
+                            agentGroup = agentGroup,
+                            onClose = { close(uiSettings) }
                         )
                     }
-                    
-                    // Overlays for other panels
-                    if (uiSettings.showStats) StatsPanel(sessionStats) { onUpdateUiSettings(uiSettings.copy(showStats = false)) }
-                    if (uiSettings.showLogs) LogsPanel(logs) { onUpdateUiSettings(uiSettings.copy(showLogs = false)) }
-                    if (uiSettings.showScratchpad) ScratchpadPanel(scratchpadContent, onScratchpadUpdate, { onScratchpadUpdate(it) }) { onUpdateUiSettings(uiSettings.copy(showScratchpad = false)) }
-                    if (uiSettings.showTerminal) TerminalPanel(terminalTraffic) { onUpdateUiSettings(uiSettings.copy(showTerminal = false)) }
-                    if (uiSettings.showPluginManager) PluginManagerPanel(plugins) { onUpdateUiSettings(uiSettings.copy(showPluginManager = false)) }
-                    if (uiSettings.showWorkflowBuilder) WorkflowBuilderPanel(workflows) { onUpdateUiSettings(uiSettings.copy(showWorkflowBuilder = false)) }
-                    if (uiSettings.showCanvas) CanvasPanel(canvasElements) { onUpdateUiSettings(uiSettings.copy(showCanvas = false)) }
-                    if (uiSettings.showHelp) HelpPanel { onUpdateUiSettings(uiSettings.copy(showHelp = false)) }
-                    if (uiSettings.showOrchestrator) OrchestratorPanel(agentGroup) { onUpdateUiSettings(uiSettings.copy(showOrchestrator = false)) }
 
-                    // File Preview Overlay
+                    // File Preview Overlay — shown on top of the active panel when a file is selected
                     if (selectedFilePath != null) {
                         FilePreviewPanel(
                             filePath = selectedFilePath,
@@ -148,88 +201,4 @@ fun RightSidePanel(
     }
 }
 
-// ── Panel Wrappers ──────────────────────────────────────────────────────────
-
-@Composable
-fun StatsPanel(stats: JsonObject?, onDismiss: () -> Unit) {
-    Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-        Row(modifier = Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.End) {
-            IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, contentDescription = "Close") }
-        }
-        stats?.let { StatsDashboard(it) }
-    }
-}
-
-@Composable
-fun LogsPanel(logs: List<LogPayload>, onDismiss: () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-        LogViewer(logs = logs, onClear = { /* logic */ })
-        IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-            Icon(Icons.Default.Close, null)
-        }
-    }
-}
-
-@Composable
-fun ScratchpadPanel(content: String, onUpdate: (String) -> Unit, onSaveRequest: (String) -> Unit, onDismiss: () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-        com.agentcore.ui.components.Scratchpad(content = content, onSave = { onSaveRequest(it) }, onRefresh = { /* logic */ })
-        IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-            Icon(Icons.Default.Close, null)
-        }
-    }
-}
-
-@Composable
-fun TerminalPanel(traffic: List<TerminalTrafficPayload>, onDismiss: () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-        TerminalViewer(traffic = traffic, onClear = { /* logic */ })
-        IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-            Icon(Icons.Default.Close, null)
-        }
-    }
-}
-
-@Composable
-fun PluginManagerPanel(plugins: List<PluginMetadataPayload>, onDismiss: () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-        PluginManager(plugins = plugins, onTogglePlugin = { _, _ -> }, onRefresh = { })
-        IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-            Icon(Icons.Default.Close, null)
-        }
-    }
-}
-
-@Composable
-fun WorkflowBuilderPanel(workflows: List<WorkflowStatusPayload>, onDismiss: () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-        WorkflowBuilder(workflows = workflows, onStartWorkflow = { }, onStopWorkflow = { }, onRefresh = { })
-        IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-            Icon(Icons.Default.Close, null)
-        }
-    }
-}
-
-@Composable
-fun CanvasPanel(elements: List<CanvasElement>, onDismiss: () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-        InteractiveCanvas(elements = elements, onClear = { }, onRefresh = { })
-        IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-            Icon(Icons.Default.Close, null)
-        }
-    }
-}
-
-@Composable
-fun HelpPanel(onDismiss: () -> Unit) {
-    HelpSystem(onClose = onDismiss, onTryExample = { })
-}
-
-@Composable
-fun OrchestratorPanel(group: AgentGroupPayload?, onDismiss: () -> Unit) {
-    AgentOrchestrator(
-        group = group,
-        onAssignTask = { _, _ -> },
-        onRefresh = { }
-    )
-}
+// Panel wrapper composables are in RightSidePanelWrappers.kt

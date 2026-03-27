@@ -1,33 +1,25 @@
+// Root sidebar composable: renders pinned/folder-grouped session history.
+// Delegates per-session row rendering to SessionItem (sidebar sub-package).
+// FolderHeader renders group labels; utility functions live in SessionItem.kt.
+
 package com.agentcore.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.*
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agentcore.api.SessionInfo
-import com.agentcore.ui.components.sidebar.HistoryGrouping
 import com.agentcore.ui.components.sidebar.SessionItem
-import com.agentcore.ui.components.sidebar.SidebarHeader
 
 @Composable
 fun Sidebar(
@@ -49,6 +41,7 @@ fun Sidebar(
     pinnedSessions: Set<String> = emptySet(),
     onSessionPin: (String) -> Unit = {},
     onSessionExport: (String) -> Unit = {},
+    onSessionCheckpoint: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxHeight()) {
@@ -134,7 +127,7 @@ fun Sidebar(
                 if (pinnedList.isNotEmpty()) put("📌 Przypięte", pinnedList)
                 putAll(unpinnedByFolder)
             }
-            
+
             if (filteredSessions.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
@@ -147,7 +140,7 @@ fun Sidebar(
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     for ((folderName, sessionsInFolder) in sessionsByFolder) {
                         val displayFolder = folderName ?: "Ogólne"
-                        
+
                         item(key = "folder-$displayFolder") {
                             FolderHeader(displayFolder)
                         }
@@ -155,6 +148,7 @@ fun Sidebar(
                         items(sessionsInFolder, key = { it.id }) { session ->
                             SessionItem(
                                 session = session,
+                                isActive = session.id == currentSessionId,
                                 isPinned = pinnedSessions.contains(session.id),
                                 onSelect = { onSessionSelect(session.id) },
                                 onDelete = { onSessionDelete(session.id) },
@@ -163,6 +157,7 @@ fun Sidebar(
                                 onRename = { newTitle -> onSessionRename(session.id, newTitle) },
                                 onPin = { onSessionPin(session.id) },
                                 onExport = { onSessionExport(session.id) },
+                                onCheckpoint = { onSessionCheckpoint(session.id) },
                                 onMove = {
                                     val availableFolders = sessionFolders.values
                                         .distinct().filterNotNull().sorted()
@@ -178,7 +173,6 @@ fun Sidebar(
                 }
             }
         }
-
     }
 }
 
@@ -205,196 +199,4 @@ private fun FolderHeader(name: String) {
             letterSpacing = 1.sp
         )
     }
-}
-
-@Composable
-private fun SessionItem(
-    session: SessionInfo,
-    isPinned: Boolean = false,
-    onSelect: () -> Unit,
-    onDelete: () -> Unit,
-    onPrune: () -> Unit,
-    onTag: () -> Unit,
-    onRename: (String) -> Unit,
-    onPin: () -> Unit = {},
-    onExport: () -> Unit = {},
-    onMove: () -> Unit
-) {
-    var isEditing by remember { mutableStateOf(false) }
-    var editText by remember(session.id) { mutableStateOf(session.title ?: "") }
-    var showDeleteConfirm by remember { mutableStateOf(false) }
-    val focusManager = LocalFocusManager.current
-    val focusRequester = remember { FocusRequester() }
-
-    // Auto-focus text field when entering edit mode
-    LaunchedEffect(isEditing) {
-        if (isEditing) {
-            runCatching { focusRequester.requestFocus() }
-        }
-    }
-
-    fun commitRename() {
-        runCatching { focusManager.clearFocus() }
-        val trimmed = editText.trim()
-        if (trimmed.isNotEmpty()) onRename(trimmed)
-        isEditing = false
-    }
-
-    fun cancelEdit() {
-        runCatching { focusManager.clearFocus() }
-        isEditing = false
-    }
-
-    // Confirm delete dialog
-    if (showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Usuń sesję", fontSize = 14.sp, fontWeight = FontWeight.Bold) },
-            text = {
-                Text(
-                    "Czy na pewno chcesz usunąć \"${session.title ?: session.id.take(8)}\"?\nTej operacji nie można cofnąć.",
-                    fontSize = 13.sp
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { showDeleteConfirm = false; onDelete() }) {
-                    Text("Usuń", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) {
-                    Text("Anuluj")
-                }
-            }
-        )
-    }
-
-    Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(enabled = !isEditing) { onSelect() }
-                .padding(vertical = 6.dp, horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                if (isEditing) {
-                    BasicTextField(
-                        value = editText,
-                        onValueChange = { editText = it },
-                        singleLine = true,
-                        textStyle = TextStyle(
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequester)
-                            .onKeyEvent { e ->
-                                when {
-                                    e.type == KeyEventType.KeyDown && e.key == Key.Enter -> {
-                                        commitRename(); true
-                                    }
-                                    e.type == KeyEventType.KeyDown && e.key == Key.Escape -> {
-                                        cancelEdit(); true
-                                    }
-                                    else -> false
-                                }
-                            }
-                    )
-                } else {
-                    Text(
-                        text = session.title ?: session.id.take(8),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.pointerInput(Unit) {
-                            detectTapGestures(onDoubleTap = {
-                                editText = session.title ?: ""
-                                isEditing = true
-                            })
-                        }
-                    )
-                }
-                Text(
-                    text = "${session.backend} · ${session.role} · ${session.message_count} msg",
-                    fontSize = 10.sp,
-                    color = Color.Gray,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (!session.tags.isNullOrEmpty()) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(3.dp), modifier = Modifier.padding(top = 2.dp)) {
-                        session.tags.forEach { tag ->
-                            Surface(
-                                color = Color.Gray.copy(alpha = 0.1f),
-                                shape = MaterialTheme.shapes.extraSmall
-                            ) {
-                                Text(
-                                    tag,
-                                    fontSize = 9.sp,
-                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
-                                    color = Color.Gray
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            Row {
-                AppTooltip(if (isEditing) "Zatwierdź nazwę (Enter)" else "Zmień nazwę (dwuklik)") {
-                    IconButton(
-                        onClick = { if (isEditing) commitRename() else { editText = session.title ?: ""; isEditing = true } },
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            if (isEditing) Icons.Default.Check else Icons.Default.Edit,
-                            null, Modifier.size(12.dp),
-                            if (isEditing) MaterialTheme.colorScheme.primary else Color.Gray.copy(alpha = 0.4f)
-                        )
-                    }
-                }
-                AppTooltip(if (isPinned) "Odepnij sesję" else "Przypnij sesję na górze") {
-                    IconButton(onClick = onPin, modifier = Modifier.size(24.dp)) {
-                        Text(
-                            text = if (isPinned) "📌" else "📍",
-                            fontSize = 10.sp
-                        )
-                    }
-                }
-                AppTooltip("Eksportuj sesję (.md)") {
-                    IconButton(onClick = onExport, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Share, null, Modifier.size(12.dp), Color.Gray.copy(alpha = 0.4f))
-                    }
-                }
-                AppTooltip("Zmień folder") {
-                    IconButton(onClick = onMove, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Folder, null, Modifier.size(12.dp), Color.Gray.copy(alpha = 0.4f))
-                    }
-                }
-                AppTooltip("Wyczyść historię") {
-                    IconButton(onClick = onPrune, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Clear, null, Modifier.size(12.dp), Color.Gray.copy(alpha = 0.4f))
-                    }
-                }
-                AppTooltip("Usuń sesję") {
-                    IconButton(onClick = { showDeleteConfirm = true }, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Delete, null, Modifier.size(12.dp), Color.Gray.copy(alpha = 0.5f))
-                    }
-                }
-            }
-        }
-        HorizontalDivider(
-            thickness = 0.5.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-            modifier = Modifier.padding(horizontal = 8.dp)
-        )
-    }
-}
-
-private fun shortenSidebarPath(path: String): String {
-    return path.split("/").takeLast(2).joinToString("/")
 }

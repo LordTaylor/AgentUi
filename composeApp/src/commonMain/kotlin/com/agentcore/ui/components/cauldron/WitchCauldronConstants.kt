@@ -11,7 +11,7 @@ internal object WitchCauldronConstants {
     const val SCALE_MIN = 0.1f
 
     // === Animation Durations (ms) ===
-    const val ANIM_FIRE_FRAME_DURATION = 500           // faster flicker
+    const val ANIM_FIRE_FRAME_DURATION = 700           // ~10fps stepped flicker (pixel art sweet spot)
     const val ANIM_FIRE_TIME_DURATION = 3500
     const val ANIM_BOUNCE_DURATION = 340               // snappier bounce
     const val ANIM_BUBBLE_PROGRESS_DURATION = 12000
@@ -133,11 +133,20 @@ internal object WitchCauldronConstants {
     const val LIQUID_WAVE_FREQ = 6.0
     const val LIQUID_WAVE_DX_FACTOR = 0.2
     const val LIQUID_WAVE_AMPLITUDE_BASE = 6
+    const val LIQUID_WAVE_DEFORM_FACTOR = 2.5f  // pow() exponent — sharper crests, rounder troughs
     const val LIQUID_CENTER_JUMP_THRESHOLD = 3
     const val LIQUID_CENTER_JUMP_MULTIPLIER = 1.8f
     const val LIQUID_EDGE_FACTOR_EXPONENT = 0.6f
     const val LIQUID_DEPTH_MULT = 8
     const val LIQUID_SURFACE_ALPHA = 0.9f
+    // Squash & Stretch liquid on bounce
+    const val LIQUID_SQUASH_FACTOR = 1.25f  // width multiplier at bounce apex
+    const val LIQUID_STRETCH_FACTOR = 0.75f // depth multiplier at bounce apex
+    // Ripple micro-waves on surface
+    const val LIQUID_RIPPLE_COUNT = 2
+    const val LIQUID_RIPPLE_SPEED_FACTOR = 2.5f
+    // Splash particles at surface boundary
+    const val LIQUID_SPLASH_DENSITY_DIVISOR = 7
 
     // === Bubble Rendering ===
     const val BUBBLE_SPREAD_MULT = 28
@@ -183,9 +192,15 @@ internal object WitchCauldronConstants {
     const val STEAM_ALPHA_MAX = 0.4f
 
     // === Spoon ===
-    const val SPOON_HANDLE_LENGTH = 18
+    const val SPOON_HANDLE_LENGTH = 22      // longer handle for better visibility
+    const val SPOON_BOWL_DEPTH = 10         // grid units bowl extends below pivot into liquid
     const val SPOON_BOWL_RADIUS = 3
     const val SPOON_BOWL_RADIUS_SQ = SPOON_BOWL_RADIUS * SPOON_BOWL_RADIUS
+    const val SPOON_STIR_ANGLE_MAX = 1.3f   // wider sweep (~74°) — from one side to the other
+
+    // === Tech Objects (RECEIVING/SENDING effects) ===
+    const val TECH_OBJ_COUNT_FALLING = 4    // objects falling into cauldron (RECEIVING)
+    const val TECH_OBJ_COUNT_EJECTING = 3   // objects ejected from cauldron (SENDING)
 
     // === Preview Dimensions ===
     const val PREVIEW_PADDING_DP = 16
@@ -216,9 +231,9 @@ data class CauldronBodyPalette(
             rim              = Color(0xFF9ECAE1),
             highlight        = Color(0xFF5A8EC0),
             rivet            = Color(0xFFAAD0F0),
-            spoonHandle      = Color(0xFFE8C060),
+            spoonHandle      = Color(0xFF5C2A08),  // dark brown — visible on any liquid color
             spoonBowl        = Color(0xFFD8D8D8),
-            spoonBowlOutline = Color(0xFF7BAFD4),
+            spoonBowlOutline = Color(0xFF3A1A04),
         )
         /** Charcoal cauldron — clearly visible on light UI backgrounds. */
         val LIGHT = CauldronBodyPalette(
@@ -227,9 +242,9 @@ data class CauldronBodyPalette(
             rim              = Color(0xFF555555),
             highlight        = Color(0xFF666666),
             rivet            = Color(0xFF888888),
-            spoonHandle      = Color(0xFF8B6914),
+            spoonHandle      = Color(0xFF4A1E06),  // dark brown
             spoonBowl        = Color(0xFFCCCCCC),
-            spoonBowlOutline = Color(0xFF555555),
+            spoonBowlOutline = Color(0xFF2A0E02),
         )
     }
 }

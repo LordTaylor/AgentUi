@@ -9,6 +9,7 @@ import com.agentcore.shared.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonPrimitive
 
 class SettingsViewModel(
     private val uiState: MutableState<ChatUiState>,
@@ -45,12 +46,22 @@ class SettingsViewModel(
     }
 
     private fun updateUiSettings(intent: ChatIntent.UpdateUiSettings, scope: CoroutineScope, mode: ConnectionMode) {
-        val oldAutoAccept = st.uiSettings.autoAccept
-        val oldBypass = st.uiSettings.bypassAllPermissions
+        val old = st.uiSettings
         update { copy(uiSettings = intent.settings) }
         settingsManager.save(intent.settings, UiSettings.serializer())
-        if (oldAutoAccept != intent.settings.autoAccept || oldBypass != intent.settings.bypassAllPermissions) {
+        if (old.autoAccept != intent.settings.autoAccept || old.bypassAllPermissions != intent.settings.bypassAllPermissions) {
             autoAcceptUseCase.sync(scope, mode, intent.settings.autoAccept, intent.settings.bypassAllPermissions)
+        }
+        if (old.reactMode != intent.settings.reactMode) {
+            scope.launch {
+                val cmd = IpcCommand.UpdateConfig(UpdateConfigPayload("react_mode", JsonPrimitive(intent.settings.reactMode)))
+                when (mode) {
+                    ConnectionMode.IPC         -> client.updateConfig("react_mode", JsonPrimitive(intent.settings.reactMode))
+                    ConnectionMode.STDIO       -> stdioExecutor.sendCommand(cmd)
+                    ConnectionMode.UNIX_SOCKET -> unixSocketExecutor.sendCommand(cmd)
+                    else                       -> {}
+                }
+            }
         }
     }
 

@@ -82,7 +82,7 @@ fun PluginItem(
             
             Switch(
                 checked = plugin.isEnabled,
-                onCheckedChange = { onTogglePlugin(plugin.id, it) },
+                onCheckedChange = { onTogglePlugin(plugin.name, it) },
                 thumbContent = if (plugin.isEnabled) {
                     { Icon(imageVector = Icons.Default.Info, contentDescription = null, modifier = Modifier.size(16.dp)) }
                 } else null

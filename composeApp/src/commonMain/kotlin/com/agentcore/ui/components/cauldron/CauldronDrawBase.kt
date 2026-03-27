@@ -188,42 +188,70 @@ private fun DrawScope.drawHighlightAndRivets(
 }
 
 // ── Animated stirring spoon ─────────────────────────────────────────────────
+// Two-pass rendering: call once with clipMinY=liquidY (bowl submerged, before liquid),
+// then once with clipMaxY=liquidY-1 (handle visible, after cauldron body).
 
 internal fun DrawScope.drawPixelSpoon(
     gridSize: Int,
     pixelSize: Float,
-    angle: Float,
+    angle: Float,           // pendulum angle in radians (negative = left, positive = right)
     scale: Float,
-    liquidY: Int,
-    bounceY: Int,
+    liquidY: Int,           // Y of liquid surface (already includes bounceY)
     palette: CauldronBodyPalette,
+    clipMinY: Int = Int.MIN_VALUE,  // draw only pixels where y >= clipMinY
+    clipMaxY: Int = Int.MAX_VALUE,  // draw only pixels where y <= clipMaxY
 ) {
     val c = WitchCauldronConstants
     val pivotX = gridSize / 2
-    val pivotY = liquidY + bounceY
-    val handleColor  = palette.spoonHandle
-    val bowlFill     = palette.spoonBowl
-    val bowlOutline  = palette.spoonBowlOutline
+    val pivotY = liquidY   // pivot sits at the liquid surface
 
     val sinA = sin(angle.toDouble()).toFloat()
     val cosA = cos(angle.toDouble()).toFloat()
 
+    // Handle: extends UPWARD from pivot (visible above liquid)
+    // 3-pixel thick: draw center + ±1 in the direction perpendicular to the handle axis
+    // Perpendicular to (sinA, -cosA) is (cosA, sinA)
     val len = (c.SPOON_HANDLE_LENGTH * scale).toInt().coerceAtLeast(4)
     for (t in 0..len) {
-        drawPixel((pivotX + sinA * t).toInt(), (pivotY - cosA * t).toInt(), handleColor, pixelSize)
+        val hx = pivotX + sinA * t
+        val hy = pivotY - cosA * t
+        for (w in -1..1) {
+            val px = (hx + cosA * w).toInt()
+            val py = (hy + sinA * w).toInt()
+            if (py in clipMinY..clipMaxY)
+                drawPixel(px, py, palette.spoonHandle, pixelSize)
+        }
     }
 
-    val tipX = (pivotX + sinA * len).toInt()
-    val tipY = (pivotY - cosA * len).toInt()
-    val r    = (c.SPOON_BOWL_RADIUS * scale).toInt().coerceAtLeast(1)
-    val rSq  = r * r
-    val rOutSq = (r + 1) * (r + 1)
+    // Bowl stem: extends DOWNWARD from pivot (submerged in liquid), also 3px thick
+    val bowlDepth = (c.SPOON_BOWL_DEPTH * scale).toInt().coerceAtLeast(2)
+    val bowlCx = (pivotX - sinA * bowlDepth).toInt()
+    val bowlCy = (pivotY + cosA * bowlDepth).toInt()
+    for (t in 1..bowlDepth) {
+        val sx = pivotX - sinA * t
+        val sy = pivotY + cosA * t
+        for (w in -1..1) {
+            val px = (sx + cosA * w).toInt()
+            val py = (sy + sinA * w).toInt()
+            if (py in clipMinY..clipMaxY)
+                drawPixel(px, py, palette.spoonHandle, pixelSize)
+        }
+    }
 
+    // Bowl circle at the deep end
+    val r      = (c.SPOON_BOWL_RADIUS * scale).toInt().coerceAtLeast(1)
+    val rSq    = r * r
+    val rOutSq = (r + 1) * (r + 1)
     for (dx in -r - 1..r + 1) for (dy in -r - 1..r + 1) {
-        if (dx * dx + dy * dy < rOutSq) drawPixel(tipX + dx, tipY + dy, bowlOutline, pixelSize)
+        val py = bowlCy + dy
+        if (dx * dx + dy * dy < rOutSq && py in clipMinY..clipMaxY)
+            drawPixel(bowlCx + dx, py, palette.spoonBowlOutline, pixelSize)
     }
     for (dx in -r..r) for (dy in -r..r) {
-        if (dx * dx + dy * dy < rSq) drawPixel(tipX + dx, tipY + dy, bowlFill, pixelSize)
+        val py = bowlCy + dy
+        if (dx * dx + dy * dy < rSq && py in clipMinY..clipMaxY)
+            drawPixel(bowlCx + dx, py, palette.spoonBowl, pixelSize)
     }
-    drawPixel(tipX - 1, tipY - 1, Color.White.copy(alpha = 0.7f), pixelSize)
+    if (bowlCy - 1 in clipMinY..clipMaxY)
+        drawPixel(bowlCx - 1, bowlCy - 1, Color.White.copy(alpha = 0.7f), pixelSize)
 }

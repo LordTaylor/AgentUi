@@ -17,6 +17,7 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.kotlinx.coroutines.swing)
                 implementation(libs.ktor.client.okhttp)
+                implementation(libs.pdfbox)
             }
         }
         val jvmTest by getting {
@@ -26,6 +27,7 @@ kotlin {
                 implementation(libs.mockk)
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.ktor.client.mock)
             }
         }
         commonMain.dependencies {
@@ -116,6 +118,48 @@ compose.desktop {
             packageName = "agent-core-ui"
             packageVersion = "1.0.0"
             appResourcesRootDir.set(packagingResourcesDir)
+
+            // Bundled JRE via jlink — eliminates "Java not found" on end-user machines.
+            // Modules are trimmed to only what AgentCore UI needs.
+            modules(
+                "java.base",
+                "java.desktop",
+                "java.logging",
+                "java.management",
+                "java.naming",
+                "java.net.http",
+                "java.prefs",
+                "java.rmi",
+                "java.scripting",
+                "java.security.jgss",
+                "java.sql",
+                "java.xml",
+                "jdk.unsupported"
+            )
+
+            macOS {
+                // Code signing: set AGENTCORE_SIGN_ID env var to activate
+                val signId = System.getenv("AGENTCORE_SIGN_ID")
+                if (!signId.isNullOrBlank()) {
+                    signing {
+                        sign.set(true)
+                        identity.set(signId)
+                    }
+                    notarization {
+                        appleID.set(System.getenv("AGENTCORE_APPLE_ID") ?: "")
+                        password.set(System.getenv("AGENTCORE_APP_SPECIFIC_PASSWORD") ?: "")
+                        teamID.set(System.getenv("AGENTCORE_TEAM_ID") ?: "")
+                    }
+                }
+            }
+            windows {
+                menu = true
+                menuGroup = "AgentCore"
+                perUserInstall = true
+            }
+            linux {
+                shortcut = true
+            }
         }
     }
 }

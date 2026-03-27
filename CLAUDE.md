@@ -126,7 +126,7 @@ Po wykonaniu każdego zadania zdefiniowanego w `docs/ROADMAP.md`, **obowiązkowo
 
 ## REGUŁA 10 — Rozmiar plików (czytelność dla AI i ludzi)
 
-**Maksymalny rozmiar pliku: ~150 linii kodu.**
+**Maksymalny rozmiar pliku: ~240 linii kodu.**
 Jeśli plik przekracza ten limit, podziel go na mniejsze moduły.
 
 ### Jak dzielić

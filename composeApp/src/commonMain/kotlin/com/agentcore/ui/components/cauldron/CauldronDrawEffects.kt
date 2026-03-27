@@ -1,4 +1,4 @@
-// State-driven effects: steam/smoke clouds, falling ingredients, power stream beam.
+// State-driven effects: steam/smoke clouds, falling tech-objects (RECEIVING), ejecting tech-objects (SENDING).
 package com.agentcore.ui.components.cauldron
 
 import androidx.compose.ui.graphics.Color
@@ -41,11 +41,85 @@ internal fun DrawScope.drawSteam(
             for (dx in -particleSize..particleSize) {
                 for (dy in -particleSize..particleSize) {
                     if (dx * dx + dy * dy <= particleSize * particleSize) {
-                        drawPixel(particleX.toInt() + dx, particleY + dy, steamColor, pixelSize)
+                        drawPixel(round(particleX).toInt() + dx, particleY + dy, steamColor, pixelSize)
                     }
                 }
             }
         }
+    }
+}
+
+// ── Tech-object pixel art ────────────────────────────────────────────────────
+// Each pattern is a list of strings where '#' = filled pixel, '_' = empty.
+
+private val TECH_PATTERNS = arrayOf(
+    // 0: MOUSE
+    arrayOf("_##_", "####", "#_##", "####", "_##_", "__#_"),
+    // 1: FLOPPY DISK
+    arrayOf("#####", "##__#", "#___#", "#####", "#####"),
+    // 2: PHONE
+    arrayOf("###", "#_#", "#_#", "###", "_#_"),
+    // 3: KEYBOARD
+    arrayOf("#####", "#_#_#", "#####"),
+)
+
+private val TECH_COLORS = arrayOf(
+    Color(0xFF00BFFF),   // blue — mouse
+    Color(0xFFFFD700),   // gold — floppy
+    Color(0xFF90EE90),   // green — phone
+    Color(0xFFFF6B35),   // orange — keyboard
+)
+
+private fun DrawScope.drawTechObject(type: Int, cx: Int, cy: Int, alpha: Float, pixelSize: Float) {
+    val pattern = TECH_PATTERNS[type % TECH_PATTERNS.size]
+    val color   = TECH_COLORS[type % TECH_COLORS.size].copy(alpha = alpha)
+    val rows    = pattern.size
+    val cols    = pattern[0].length
+    val ox      = cx - cols / 2
+    val oy      = cy - rows / 2
+    for (row in pattern.indices) {
+        for (col in pattern[row].indices) {
+            if (pattern[row][col] == '#') drawPixel(ox + col, oy + row, color, pixelSize)
+        }
+    }
+}
+
+// Objects falling INTO the cauldron (RECEIVING state)
+internal fun DrawScope.drawTechObjectsFalling(
+    gridSize: Int, pixelSize: Float, progress: Float, scale: Float, liquidY: Int
+) {
+    val c       = WitchCauldronConstants
+    val centerX = gridSize / 2
+    repeat(c.TECH_OBJ_COUNT_FALLING) { i ->
+        val rng   = kotlin.random.Random(i.toLong() * 777L)
+        val p     = (progress + i.toFloat() / c.TECH_OBJ_COUNT_FALLING) % 1.0f
+        val spreadX = rng.nextInt(50) - 25
+        val wobble  = (sin(p.toDouble() * 6.0 + i) * 3.0 * scale).toInt()
+        val objX    = centerX + spreadX + wobble
+        val objY    = (p * (liquidY + 4)).toInt()
+        val alpha   = (1f - p * 0.5f).coerceIn(0.3f, 1f)
+        if (objY < liquidY + 6) drawTechObject(i % TECH_PATTERNS.size, objX, objY, alpha, pixelSize)
+    }
+}
+
+// Objects ejected FROM the cauldron in parabolic arcs (SENDING state)
+internal fun DrawScope.drawTechObjectsEjecting(
+    gridSize: Int, pixelSize: Float, progress: Float, scale: Float, liquidY: Int
+) {
+    val c       = WitchCauldronConstants
+    val centerX = gridSize / 2
+    repeat(c.TECH_OBJ_COUNT_EJECTING) { i ->
+        val rng    = kotlin.random.Random(i.toLong() * 333L)
+        val p      = (progress + i.toFloat() / c.TECH_OBJ_COUNT_EJECTING) % 1.0f
+        val angle  = rng.nextFloat() * 2.4f - 1.2f      // spread ±69°
+        val speed  = 0.7f + rng.nextFloat() * 0.5f
+        val vx     = sin(angle.toDouble()).toFloat() * speed
+        val vy     = cos(angle.toDouble()).toFloat() * speed
+        val gravity = 1.2f * p * p
+        val objX   = (centerX + vx * p * 55f).toInt()
+        val objY   = (liquidY + (-vy * p * 65f + gravity * 55f)).toInt()
+        val alpha  = (1f - p).coerceAtLeast(0f)
+        if (alpha > 0.05f) drawTechObject((i + 1) % TECH_PATTERNS.size, objX, objY, alpha, pixelSize)
     }
 }
 

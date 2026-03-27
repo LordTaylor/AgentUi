@@ -50,6 +50,9 @@ class SessionViewModel(
             is ChatIntent.LoadMemory           -> scope.launch { sendCmd(IpcCommand.ListMemory(ListMemoryPayload(intent.sessionId)), mode) }
             is ChatIntent.DeleteMemoryKey      -> scope.launch { sendCmd(IpcCommand.DeleteMemory(DeleteMemoryPayload(intent.sessionId, intent.key)), mode) }
             ChatIntent.ToggleMemoryPanel       -> toggleMemory(scope, mode)
+            is ChatIntent.LoadCheckpoints      -> loadCheckpoints(intent, scope, mode)
+            is ChatIntent.RestoreCheckpoint    -> restoreCheckpoint(intent, scope, mode)
+            ChatIntent.DismissCheckpointDialog -> update { copy(showCheckpointDialog = false) }
             else                               -> {}
         }
     }
@@ -166,6 +169,27 @@ class SessionViewModel(
         if (opening) {
             st.currentSessionId?.let { sid ->
                 scope.launch { sendCmd(IpcCommand.ListMemory(ListMemoryPayload(sid)), mode) }
+            }
+        }
+    }
+
+    private fun loadCheckpoints(intent: ChatIntent.LoadCheckpoints, scope: CoroutineScope, mode: ConnectionMode) {
+        log("→", "list_checkpoints", intent.sessionId.take(8))
+        scope.launch {
+            val list = if (mode == ConnectionMode.IPC) client.listCheckpoints(intent.sessionId) else emptyList()
+            update { copy(checkpoints = list, showCheckpointDialog = list.isNotEmpty()) }
+            if (list.isEmpty()) log("←", "list_checkpoints", "none found")
+        }
+    }
+
+    private fun restoreCheckpoint(intent: ChatIntent.RestoreCheckpoint, scope: CoroutineScope, mode: ConnectionMode) {
+        log("→", "restore_checkpoint", "n=${intent.n}")
+        scope.launch {
+            val ok = if (mode == ConnectionMode.IPC) client.restoreCheckpoint(intent.sessionId, intent.n) else false
+            update { copy(showCheckpointDialog = false) }
+            if (ok) {
+                // Reload session after restore
+                sendCmd(IpcCommand.GetSession(GetSessionPayload(intent.sessionId)), mode)
             }
         }
     }

@@ -154,6 +154,7 @@ fun ChatMainScreen(mode: ConnectionMode) {
         pinnedSessions = state.pinnedSessions,
         onSessionPin = { id -> viewModel.onIntent(ChatIntent.PinSession(id), scope, mode) },
         onSessionExport = { viewModel.onIntent(ChatIntent.ExportSession, scope, mode) },
+        onSessionCheckpoint = { id -> viewModel.onIntent(ChatIntent.LoadCheckpoints(id), scope, mode) },
         // A10 IPC 1.7 — AgentGroup workflow
         workflowGroupStatus = state.workflowGroupStatus,
         showWorkflowDialog = state.showWorkflowDialog,
@@ -166,7 +167,14 @@ fun ChatMainScreen(mode: ConnectionMode) {
             state.currentSessionId?.let { sid ->
                 viewModel.onIntent(ChatIntent.DeleteMemoryKey(sid, key), scope, mode)
             }
-        }
+        },
+        selectedToolDetail = state.selectedToolDetail,
+        showCheckpointDialog = state.showCheckpointDialog,
+        checkpoints = state.checkpoints,
+        checkpointSessionId = state.currentSessionId ?: "",
+        backendHealth = state.backendHealth,
+        onLoadBackendHealth = { viewModel.onIntent(ChatIntent.LoadBackendHealth, scope, mode) },
+        currentSystemPrompt = state.currentSystemPrompt
     )
 
     if (state.showSettings) {
@@ -224,20 +232,20 @@ fun ChatMainScreen(mode: ConnectionMode) {
         )
     }
 
-    if (state.pendingHumanInput != null) {
+    state.pendingHumanInput?.let { humanInput ->
         HumanInputDialog(
-            request = state.pendingHumanInput!!,
+            request = humanInput,
             onRespond = { answer ->
                 viewModel.onIntent(ChatIntent.RespondHumanInput(answer), scope, mode)
             }
         )
     }
 
-    if (state.pendingPlan != null) {
+    state.pendingPlan?.let { plan ->
         com.agentcore.ui.components.PlanApprovalDialog(
-            plan = state.pendingPlan!!,
+            plan = plan,
             onResolve = { approved ->
-                viewModel.onIntent(ChatIntent.ResolvePlan(state.pendingPlan!!.plan_id, approved), scope, mode)
+                viewModel.onIntent(ChatIntent.ResolvePlan(plan.plan_id, approved), scope, mode)
             }
         )
     }

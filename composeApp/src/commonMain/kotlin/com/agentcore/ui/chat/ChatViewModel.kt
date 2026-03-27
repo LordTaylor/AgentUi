@@ -11,6 +11,7 @@ import com.agentcore.logic.IpcHandler
 import com.agentcore.shared.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.jsonPrimitive
@@ -31,8 +32,9 @@ class ChatViewModel(
     private var currentMode: ConnectionMode = ConnectionMode.STDIO
     private var lastRestartTime: Long = 0L
     private val incomingEventCounts = mutableMapOf<String, Int>()
-    private val logDateFmt = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US)
+    private val logDateFmt = java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
     private val autoAcceptUseCase by lazy { AutoAcceptUseCase(client, stdioExecutor, unixSocketExecutor) }
+    private var eventCollectionJob: Job? = null
 
     // ── Sub-ViewModels ─────────────────────────────────────────────────────────
     internal val sessionVM = SessionViewModel(_uiState, client, stdioExecutor, unixSocketExecutor, sessionCacheMgr, ::addIpcLog)
@@ -40,6 +42,8 @@ class ChatViewModel(
     private val messageVM = MessageViewModel(_uiState, client, stdioExecutor, unixSocketExecutor, cliExecutor, ::addIpcLog, sessionVM::saveSessionCache)
 
     private val providerVM = ProviderViewModel(_uiState, client, stdioExecutor, unixSocketExecutor, settingsManager, ::addIpcLog)
+
+    private val toolsHealthVM = ToolsHealthViewModel(_uiState, client, stdioExecutor, unixSocketExecutor, ::addIpcLog)
 
     private val settingsVM = SettingsViewModel(
         uiState             = _uiState,
@@ -88,8 +92,8 @@ class ChatViewModel(
         }
         sessionVM.loadCache()
 
-        scope.launch {
-            val handler: (IpcEvent) -> Unit = { ipcEventHandlers.handle(it) }
+        val handler: (IpcEvent) -> Unit = { ipcEventHandlers.handle(it) }
+        eventCollectionJob = scope.launch {
             when (mode) {
                 ConnectionMode.STDIO -> {
                     stdioExecutor.start()
@@ -117,12 +121,56 @@ class ChatViewModel(
         }
     }
 
+    fun clear() {
+        eventCollectionJob?.cancel()
+        eventCollectionJob = null
+    }
+
     // ── Intent routing ─────────────────────────────────────────────────────────
     fun onIntent(intent: ChatIntent, scope: CoroutineScope, mode: ConnectionMode) {
+        if (intent is ChatIntent.ExecuteSlashCommand) {
+            handleSlashCommand(intent.command, scope, mode)
+            return
+        }
         messageVM.handle(intent, scope, mode)
         sessionVM.handle(intent, scope, mode)
         providerVM.handle(intent, scope, mode)
+        toolsHealthVM.handle(intent, scope, mode)
         settingsVM.handle(intent, scope, mode)
+    }
+
+    // I36: Translate SlashCommand → existing ChatIntents.
+    private fun handleSlashCommand(
+        cmd: com.agentcore.ui.components.SlashCommand,
+        scope: CoroutineScope,
+        mode: ConnectionMode
+    ) {
+        when (cmd) {
+            is com.agentcore.ui.components.SlashCommand.Role ->
+                onIntent(ChatIntent.UpdateSettings(_uiState.value.currentBackend, cmd.name), scope, mode)
+            is com.agentcore.ui.components.SlashCommand.Backend ->
+                onIntent(ChatIntent.ActivateProvider(cmd.name, cmd.model.ifEmpty {
+                    _uiState.value.uiSettings.providerConfigs[cmd.name]?.model ?: ""
+                }), scope, mode)
+            is com.agentcore.ui.components.SlashCommand.SystemPrompt ->
+                onIntent(ChatIntent.SetSystemPrompt(cmd.prompt), scope, mode)
+            is com.agentcore.ui.components.SlashCommand.Bash ->
+                onIntent(ChatIntent.SendMessage("/bash ${cmd.cmd}"), scope, mode)
+            is com.agentcore.ui.components.SlashCommand.NewSession ->
+                onIntent(ChatIntent.NewSession, scope, mode)
+            is com.agentcore.ui.components.SlashCommand.Help -> {
+                val helpText = com.agentcore.ui.components.SlashCommandParser.helpText()
+                _uiState.value = _uiState.value.copy(
+                    messages = _uiState.value.messages + com.agentcore.model.Message(
+                        id = "help-${System.currentTimeMillis()}",
+                        sender = "System",
+                        text = "📋 Slash commands:\n$helpText",
+                        isFromUser = false,
+                        type = com.agentcore.model.MessageType.SYSTEM
+                    )
+                )
+            }
+        }
     }
 
     // ── Shared helpers ─────────────────────────────────────────────────────────
@@ -135,7 +183,7 @@ class ChatViewModel(
     private fun syncSessions() = sessionVM.syncSessions()
 
     private fun addIpcLog(direction: String, name: String, summary: String = "") {
-        val ts = logDateFmt.format(java.util.Date())
+        val ts = java.time.LocalTime.now().format(logDateFmt)
         val entry = "$ts  $direction  ${name.padEnd(22)}$summary".trimEnd()
         _uiState.value = _uiState.value.copy(
             ipcLogs = _uiState.value.ipcLogs.let { list ->

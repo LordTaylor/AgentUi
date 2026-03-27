@@ -2,8 +2,27 @@ package com.agentcore.ui.chat
 
 import com.agentcore.api.*
 import com.agentcore.model.Message
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+
+// I35: Sub-agent thread data — stored as JSON in Message.extraContent.
+@Serializable
+data class SubAgentMessage(
+    val type: String,
+    val text: String,
+    val timestamp: Long = 0L
+)
+
+@Serializable
+data class SubAgentThread(
+    val agentId: String,
+    val role: String = "",
+    val messages: List<SubAgentMessage> = emptyList(),
+    val done: Boolean = false,
+    val success: Boolean = false,
+    val summary: String = ""
+)
 
 data class ChatUiState(
     val messages: List<Message> = emptyList(),
@@ -59,9 +78,16 @@ data class ChatUiState(
     val workflowGroupStatus: AgentWorkflowStatusPayload? = null,
     val showWorkflowDialog: Boolean = false,
     val showCreateToolDialog: Boolean = false,
+    // Tool detail: JsonObject fetched via get_tool IPC; shown in ToolDetailDialog
+    val selectedToolDetail: JsonObject? = null,
+    // Checkpoint restore: list of checkpoint indices for the active session
+    val checkpoints: List<Int> = emptyList(),
+    val showCheckpointDialog: Boolean = false,
     // A12: Enhanced KV Store
     val memoryFacts: Map<String, String> = emptyMap(),
-    val showMemoryPanel: Boolean = false
+    val showMemoryPanel: Boolean = false,
+    // Backend Health Dashboard: last ping results per backend name
+    val backendHealth: Map<String, com.agentcore.api.PingResultPayload> = emptyMap()
 )
 
 sealed class ChatIntent {
@@ -110,6 +136,12 @@ sealed class ChatIntent {
     data class RestartProvider(val provider: String) : ChatIntent()
     data class CreateTool(val name: String, val template: String) : ChatIntent()
     data class DeleteTool(val name: String) : ChatIntent()
+    data class ToggleTool(val name: String, val enable: Boolean) : ChatIntent()
+    data class GetToolDetail(val name: String) : ChatIntent()
+    object DismissToolDetail : ChatIntent()
+    data class LoadCheckpoints(val sessionId: String) : ChatIntent()
+    data class RestoreCheckpoint(val sessionId: String, val n: Int) : ChatIntent()
+    object DismissCheckpointDialog : ChatIntent()
     data class UpdateSearchQuery(val query: String) : ChatIntent()
     data class ResolvePlan(val planId: String, val approved: Boolean) : ChatIntent()
     object RetryMessage : ChatIntent()
@@ -135,4 +167,8 @@ sealed class ChatIntent {
     data class LoadMemory(val sessionId: String) : ChatIntent()
     data class DeleteMemoryKey(val sessionId: String, val key: String) : ChatIntent()
     object ToggleMemoryPanel : ChatIntent()
+    // I36: Slash command execution
+    data class ExecuteSlashCommand(val command: com.agentcore.ui.components.SlashCommand) : ChatIntent()
+    /** Ping all available backends and update backendHealth in state. */
+    object LoadBackendHealth : ChatIntent()
 }

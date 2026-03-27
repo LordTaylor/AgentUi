@@ -80,10 +80,11 @@ fun WitchCauldron(
         )
     )
     val spoonAngle by transition.animateFloat(
-        initialValue = 0f, targetValue = (2 * PI).toFloat(),
+        initialValue = -c.SPOON_STIR_ANGLE_MAX,
+        targetValue  =  c.SPOON_STIR_ANGLE_MAX,
         animationSpec = infiniteRepeatable(
-            animation = tween(c.ANIM_SPOON_DURATION, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
+            animation = tween(c.ANIM_SPOON_DURATION, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
         )
     )
     // Gentle idle breathing — subtle squash even when not bouncing
@@ -126,22 +127,30 @@ fun WitchCauldron(
             CauldronState.THINKING  -> 1.7f
             CauldronState.LOADING   -> 2.0f
         }
-        val density = when (state) {
+        val baseDensity = when (state) {
             CauldronState.IDLE      -> c.BUBBLE_DENSITY_IDLE
             CauldronState.SENDING   -> c.BUBBLE_DENSITY_SENDING
             CauldronState.RECEIVING -> c.BUBBLE_DENSITY_RECEIVING
             CauldronState.THINKING  -> c.BUBBLE_DENSITY_THINKING
             CauldronState.LOADING   -> c.BUBBLE_DENSITY_LOADING
         }
+        // ±25% fluctuation driven by bubbleProgress — deterministic, no extra state
+        val densityFluctuate = (sin(bubbleProgress * PI * 3.7f) * 0.25f + 0.75f).toFloat()
+        val density = (baseDensity * densityFluctuate).toInt().coerceAtLeast(2)
 
-        // Draw order: back fire → liquid → bubbles → state effects → steam → cauldron → spoon → front fire
+        // Draw order: back fire → spoon-bowl (submerged) → liquid → bubbles →
+        //             state effects → steam → cauldron → spoon-handle → front fire
         drawPixelFire(gridSize, pixelSize, fireFrame, offset1, scale, c.FIRE_BACK_VERT_POS,  fireTime, fireHeightMult)
+        // Spoon bowl pass — drawn BEFORE liquid so the liquid covers it (looks submerged)
+        drawPixelSpoon(gridSize, pixelSize, spoonAngle, scale, liquidY, palette, clipMinY = liquidY)
         drawBubblingLiquid(gridSize, pixelSize, liquidY, liquidColor, scale, fireTime, bounceOffset)
         drawPixelBubbles(gridSize, pixelSize, bubbleProgress, density, scale, liquidY, liquidColor)
-        if (state == CauldronState.SENDING)   drawPixelIngredients(gridSize, pixelSize, ingredientProgress, scale, liquidY)
-        if (state == CauldronState.RECEIVING) drawPixelPowerStream(gridSize, pixelSize, pulseAlpha, scale, liquidY)
+        if (state == CauldronState.RECEIVING) drawTechObjectsFalling(gridSize, pixelSize, ingredientProgress, scale, liquidY)
+        if (state == CauldronState.SENDING)   drawTechObjectsEjecting(gridSize, pixelSize, ingredientProgress, scale, liquidY)
         drawSteam(gridSize, pixelSize, fireTime, scale, liquidY, steamIntensity)
         drawPixelCauldronBase(gridSize, pixelSize, bounceY, scale, palette, squash)
+        // Spoon handle pass — drawn AFTER cauldron body so the handle is visible above liquid
+        drawPixelSpoon(gridSize, pixelSize, spoonAngle, scale, liquidY, palette, clipMaxY = liquidY - 1)
         drawPixelFire(gridSize, pixelSize, fireFrame, offset2, scale, c.FIRE_FRONT_VERT_POS, fireTime, fireHeightMult)
     }
 }

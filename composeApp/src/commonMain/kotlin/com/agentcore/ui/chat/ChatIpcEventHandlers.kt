@@ -11,6 +11,7 @@ import com.agentcore.model.MessageType
 import com.agentcore.shared.StdioExecutor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -86,7 +87,10 @@ class ChatIpcEventHandlers(
                 if (idx >= 0) { msgs[idx] = msgs[idx].copy(text = msgs[idx].text + "\n" + delta.line); update { copy(messages = msgs) } }
                 update { copy(toolOutput = toolOutput + delta.line, showToolOutput = true) }
             },
-            onSubAgentDone         = { log("←", "sub_agent_done", "agent=${it.agent_id.take(8)} success=${it.success}") },
+            onSubAgentDone         = { payload ->
+                log("←", "sub_agent_done", "agent=${payload.agent_id.take(8)} success=${payload.success}")
+                updateSubAgentThread(payload.agent_id, done = true, success = payload.success, summary = payload.summary)
+            },
             onSessionStart         = { sessionId ->
                 if (st.currentSessionId != sessionId) {
                     update { copy(currentSessionId = sessionId) }
@@ -96,7 +100,10 @@ class ChatIpcEventHandlers(
                 }
             },
             onBackendReady         = { syncApprovalMode() },
-            onSubAgentLog          = { agentId, type, text -> log("←", "[sub:${agentId.take(6)}] $type", text.take(60)) },
+            onSubAgentLog          = { agentId, type, text ->
+                log("←", "[sub:${agentId.take(6)}] $type", text.take(60))
+                appendSubAgentMessage(agentId, type, text)
+            },
             onPlanReady            = { update { copy(pendingPlan = it) } },
             onToolProgress         = { log("IN", "tool_progress", it.message) },
             onWorkflowGroupStatus  = { onWorkflowGroupStatus(it) }
@@ -121,6 +128,43 @@ class ChatIpcEventHandlers(
                 }
             }
             messageStartTime = 0L  // reset for next message
+        }
+    }
+
+    // I35: Append a line to the sub-agent thread; create thread message if first event.
+    private fun appendSubAgentMessage(agentId: String, type: String, text: String) {
+        val msgs = st.messages.toMutableList()
+        val entry = SubAgentMessage(type = type, text = text, timestamp = System.currentTimeMillis())
+        val idx = msgs.indexOfFirst { it.type == MessageType.SUB_AGENT_THREAD && it.agentId == agentId }
+        if (idx < 0) {
+            val thread = SubAgentThread(agentId = agentId, messages = listOf(entry))
+            msgs.add(Message(
+                id = "sub-thread-$agentId",
+                sender = "SubAgent",
+                text = "",
+                isFromUser = false,
+                type = MessageType.SUB_AGENT_THREAD,
+                agentId = agentId,
+                extraContent = Json.encodeToString(thread)
+            ))
+        } else {
+            val existing = msgs[idx]
+            val thread = try { Json.decodeFromString<SubAgentThread>(existing.extraContent ?: "{}") }
+                         catch (_: Exception) { SubAgentThread(agentId = agentId) }
+            msgs[idx] = existing.copy(extraContent = Json.encodeToString(thread.copy(messages = thread.messages + entry)))
+        }
+        update { copy(messages = msgs) }
+    }
+
+    private fun updateSubAgentThread(agentId: String, done: Boolean, success: Boolean, summary: String) {
+        val msgs = st.messages.toMutableList()
+        val idx = msgs.indexOfFirst { it.type == MessageType.SUB_AGENT_THREAD && it.agentId == agentId }
+        if (idx >= 0) {
+            val existing = msgs[idx]
+            val thread = try { Json.decodeFromString<SubAgentThread>(existing.extraContent ?: "{}") }
+                         catch (_: Exception) { SubAgentThread(agentId = agentId) }
+            msgs[idx] = existing.copy(extraContent = Json.encodeToString(thread.copy(done = done, success = success, summary = summary)))
+            update { copy(messages = msgs) }
         }
     }
 

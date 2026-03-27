@@ -4,7 +4,9 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 enum class MessageType {
-    TEXT, ACTION, SYSTEM, ERROR
+    TEXT, ACTION, SYSTEM, ERROR,
+    /** I35: Collapsible sub-agent thread. extraContent holds JSON-encoded SubAgentThread. */
+    SUB_AGENT_THREAD
 }
 
 @Serializable

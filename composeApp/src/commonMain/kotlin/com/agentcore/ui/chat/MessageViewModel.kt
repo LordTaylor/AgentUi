@@ -181,23 +181,23 @@ class MessageViewModel(
         val sid = st.currentSessionId ?: return
         val messages = st.messages
         if (messages.isEmpty()) return
-        val baseDir = st.workingDir.ifEmpty { System.getProperty("user.home") ?: "." }
-        val file = java.io.File(java.io.File(baseDir, "Exports"), "session_${sid.take(8)}_${System.currentTimeMillis()}.md")
-        file.parentFile?.mkdirs()
+        val exportDir = java.io.File(st.workingDir.ifEmpty { System.getProperty("user.home") ?: "." }, "Exports")
+        exportDir.mkdirs()
+        val baseName = "session_${sid.take(8)}_${System.currentTimeMillis()}"
         try {
-            file.writeText(buildString {
-                appendLine("# Chat Session Export")
-                appendLine("Session ID: $sid")
-                appendLine("Date: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(java.util.Date())}")
-                appendLine("\n---\n")
-                messages.forEach { msg ->
-                    appendLine("### ${msg.sender}${if (msg.isFromUser) " (User)" else ""}")
-                    appendLine(msg.text)
-                    if (!msg.attachments.isNullOrEmpty()) appendLine("Attached: ${msg.attachments!!.size} image(s)")
-                    appendLine()
-                }
-            })
-            update { copy(messages = messages + Message(IpcHandler.nextId("export"), "System", "Session exported to: `${file.absolutePath}`", false, type = MessageType.SYSTEM)) }
+            val mdFile   = java.io.File(exportDir, "$baseName.md").also  { it.writeText(buildMarkdownExport(sid, messages)) }
+            val htmlFile = java.io.File(exportDir, "$baseName.html").also { it.writeText(buildHtmlExport(sid, messages)) }
+            val pdfFile  = buildPdfExport(sid, messages)?.let { bytes ->
+                java.io.File(exportDir, "$baseName.pdf").also { it.writeBytes(bytes) }
+            }
+            val pdfLine = pdfFile?.let { "\n- PDF:      `${it.absolutePath}`" } ?: ""
+            update {
+                copy(messages = messages + Message(
+                    IpcHandler.nextId("export"), "System",
+                    "Session exported:\n- Markdown: `${mdFile.absolutePath}`\n- HTML:     `${htmlFile.absolutePath}`$pdfLine",
+                    false, type = MessageType.SYSTEM
+                ))
+            }
         } catch (e: Exception) { log("←", "export_failed", e.message ?: "error") }
     }
 }

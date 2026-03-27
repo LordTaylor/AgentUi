@@ -1,48 +1,29 @@
+// Root screen composable: declares all parameters, manages local UI state,
+// and delegates layout to MainScreenContent and overlays to MainScreenDialogs.
+// Keyboard shortcuts are registered here via AppShortcuts + handleKeyboardShortcut.
+
 package com.agentcore.ui
 
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.key.*
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import kotlinx.coroutines.delay
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.animation.*
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.input.key.*
+import androidx.compose.ui.unit.dp
 import com.agentcore.api.*
 import com.agentcore.api.UiSettings
 import com.agentcore.model.Message
-import com.agentcore.model.MessageType
 import com.agentcore.shared.ConnectionMode
 import com.agentcore.ui.chat.ChatIntent
 import com.agentcore.ui.components.*
 import com.agentcore.ui.components.cauldron.CauldronState
-import com.agentcore.ui.components.cauldron.WitchCauldron
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.draw.clip
-import coil3.compose.AsyncImage
 import kotlinx.serialization.json.*
-import androidx.compose.ui.geometry.Offset // Added import for Offset
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -111,7 +92,7 @@ fun MainScreen(
     onUpdateSearchQuery: (String) -> Unit = {},
     onRetryMessage: () -> Unit = {},
     inputText: String = "",
-    pendingPlan: com.agentcore.api.PlanReadyPayload? = null,
+    pendingPlan: PlanReadyPayload? = null,
     onResolvePlan: (Boolean) -> Unit = {},
     toolOutput: List<String> = emptyList(),
     showToolOutput: Boolean = false,
@@ -125,47 +106,31 @@ fun MainScreen(
     pinnedSessions: Set<String> = emptySet(),
     onSessionPin: (String) -> Unit = {},
     onSessionExport: (String) -> Unit = {},
+    onSessionCheckpoint: (String) -> Unit = {},
     showSearch: Boolean = false,
-    // A10 IPC 1.7
-    workflowGroupStatus: com.agentcore.api.AgentWorkflowStatusPayload? = null,
+    workflowGroupStatus: AgentWorkflowStatusPayload? = null,
     showWorkflowDialog: Boolean = false,
     showCreateToolDialog: Boolean = false,
-    // A12: Enhanced KV Store
     memoryFacts: Map<String, String> = emptyMap(),
     showMemoryPanel: Boolean = false,
     onToggleMemoryPanel: () -> Unit = {},
     onDeleteMemoryKey: (String) -> Unit = {},
-    onIntent: (ChatIntent, kotlinx.coroutines.CoroutineScope, com.agentcore.shared.ConnectionMode) -> Unit = { _, _, _ -> }
+    selectedToolDetail: kotlinx.serialization.json.JsonObject? = null,
+    showCheckpointDialog: Boolean = false,
+    checkpoints: List<Int> = emptyList(),
+    checkpointSessionId: String = "",
+    backendHealth: Map<String, com.agentcore.api.PingResultPayload> = emptyMap(),
+    onLoadBackendHealth: () -> Unit = {},
+    currentSystemPrompt: String = "",
+    onIntent: (ChatIntent, CoroutineScope, ConnectionMode) -> Unit = { _, _, _ -> }
 ) {
-    val sidebarVisible = uiSettings.sidebarVisible
-    val sidePanelWidth = uiSettings.sidePanelWidth.dp
-
-    val showStats = uiSettings.showStats
-    val showFiles = uiSettings.showFiles
-    val showSkills = uiSettings.showSkills
-    val showLogs = uiSettings.showLogs
-    val showScratchpad = uiSettings.showScratchpad
-    val showTerminal = uiSettings.showTerminal
-    val showPluginManager = uiSettings.showPluginManager
-    val showWorkflowBuilder = uiSettings.showWorkflowBuilder
-    val showCanvas = uiSettings.showCanvas
-    val showHelp = uiSettings.showHelp
-    val showOrchestrator = uiSettings.showOrchestrator
-
     val listState = rememberLazyListState()
     var selectedFilePath by remember { mutableStateOf<String?>(null) }
-    var selectedImages = remember { mutableStateListOf<String>() }
+    val selectedImages = remember { mutableStateListOf<String>() }
     var newToolName by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
     val searchFocusRequester = remember { FocusRequester() }
-    // ipcLogExpanded is now a parameter
-    val showScrollButton by remember {
-        derivedStateOf {
-            listState.firstVisibleItemIndex > 0
-        }
-    }
-
-
+    val showScrollButton by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
     val isDisconnected = statusState.uppercase() in listOf("ERROR", "DISCONNECTED", "CONNECTION_FAILED", "CRASHED")
 
     val shortcuts = AppShortcuts(
@@ -174,21 +139,16 @@ fun MainScreen(
         onToggleSettings = onToggleSettings,
         onToggleSidebar = { onUpdateUiSettings(uiSettings.copy(sidebarVisible = !uiSettings.sidebarVisible)) },
         onFocusInput = { focusRequester.requestFocus() },
-        onFocusSearch = { 
+        onFocusSearch = {
             onIntent(ChatIntent.ToggleSearch, scope, mode)
-            scope.launch {
-                delay(100)
-                searchFocusRequester.requestFocus()
-            }
+            scope.launch { delay(100); searchFocusRequester.requestFocus() }
         }
     )
 
     var activeTab by remember { mutableStateOf("Chat") }
-    // Keep History tab highlight in sync with sidebar visibility
-    LaunchedEffect(sidebarVisible) {
-        if (!sidebarVisible && activeTab == "History") activeTab = "Chat"
+    LaunchedEffect(uiSettings.sidebarVisible) {
+        if (!uiSettings.sidebarVisible && activeTab == "History") activeTab = "Chat"
     }
-
     var showAutoAcceptDialog by remember { mutableStateOf(false) }
     var showDevOptionsDialog by remember { mutableStateOf(false) }
 
@@ -198,329 +158,126 @@ fun MainScreen(
         color = MaterialTheme.colorScheme.background
     ) {
         Row(modifier = Modifier.fillMaxSize()) {
-            // ── Fixed Narrow Sidebar ─────────────────────────────────────────
             NarrowSidebar(
                 activeTab = activeTab,
                 onTabSelect = { tab ->
                     activeTab = tab
+                    // Radio behaviour: opening a panel closes all others.
+                    // Clicking the already-open panel closes it.
+                    fun radio(isOpen: Boolean, open: com.agentcore.api.UiSettings.() -> com.agentcore.api.UiSettings) =
+                        onUpdateUiSettings(if (isOpen) uiSettings.withAllPanelsClosed() else uiSettings.withAllPanelsClosed().open())
                     when (tab) {
-                        "History" -> onUpdateUiSettings(uiSettings.copy(sidebarVisible = !sidebarVisible))
-                        "Library" -> onUpdateUiSettings(uiSettings.copy(showSkills = !uiSettings.showSkills))
-                        "Files"   -> onUpdateUiSettings(uiSettings.copy(showFiles = !uiSettings.showFiles))
+                        "History"    -> onUpdateUiSettings(uiSettings.copy(sidebarVisible = !uiSettings.sidebarVisible))
+                        "Library"    -> radio(uiSettings.showSkills)    { copy(showSkills = true) }
+                        "Files"      -> radio(uiSettings.showFiles)     { copy(showFiles = true) }
+                        "Health"     -> radio(uiSettings.showBackendHealth)  { copy(showBackendHealth = true) }
+                        "Archive"    -> radio(uiSettings.showArchiveBrowser) { copy(showArchiveBrowser = true) }
+                        "Hooks"      -> radio(uiSettings.showHookManager)    { copy(showHookManager = true) }
+                        "Prompts"    -> radio(uiSettings.showPromptLibrary)  { copy(showPromptLibrary = true) }
+                        "ToolEditor" -> radio(uiSettings.showToolEditor)     { copy(showToolEditor = true) }
+                        "Scheduler"  -> radio(uiSettings.showScheduler)      { copy(showScheduler = true) }
+                        "Pinned"     -> radio(uiSettings.showPinnedContext)  { copy(showPinnedContext = true) }
+                        "Metrics"    -> radio(uiSettings.showMetrics)        { copy(showMetrics = true) }
+                        "Personas"   -> radio(uiSettings.showPersonalityLab) { copy(showPersonalityLab = true) }
                     }
                 },
                 onNewSession = onNewSession
             )
-
             VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
 
-            Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                // ── Top Bar ──────────────────────────────────────────────────
-                MainTopBar(
-                    projectName = "DigitalArchitect",
-                    onSearch = { /* TODO */ },
-                    onToggleProviderDialog = onToggleProviderDialog,
-                    autoAccept = uiSettings.autoAccept,
-                    onToggleAutoAccept = { showAutoAcceptDialog = true },
-                    onQuickConnect = { backend ->
-                        val model = when(backend) {
-                            "ollama" -> "llama3"
-                            "lmstudio" -> ""
-                            else -> ""
-                        }
-                        onActivateProvider(backend, model)
-                    },
-                    onDumpDebugLog = onDumpDebugLog,
-                    themeMode = uiSettings.themeMode,
-                    onToggleTheme = {
-                        val newMode = if (uiSettings.themeMode == "LIGHT") "DARK" else "LIGHT"
-                        onUpdateUiSettings(uiSettings.copy(themeMode = newMode))
-                    },
-                    showToolOutput = showToolOutput,
-                    onToggleToolOutput = onToggleToolOutput,
-                    showTokenAnalytics = showTokenAnalytics,
-                    onToggleTokenAnalytics = onToggleTokenAnalytics,
-                    developerMode = uiSettings.developerMode,
-                    onToggleDeveloperMode = { onUpdateUiSettings(uiSettings.copy(developerMode = !uiSettings.developerMode)) },
-                    onOpenDevOptions = { showDevOptionsDialog = true },
-                    onToggleWorkflowDialog = { onIntent(ChatIntent.ToggleWorkflowDialog, scope, mode) },
-                    onToggleMemoryPanel = onToggleMemoryPanel
-                )
-
-                HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-
-                Row(modifier = Modifier.weight(1f).fillMaxWidth().animateContentSize()) {
-                    // ── Middle-Left Sidebar (Sessions) ──────────────────────────
-                    AnimatedVisibility(
-                        visible = sidebarVisible,
-                        enter = slideInHorizontally() + fadeIn(),
-                        exit = slideOutHorizontally() + fadeOut()
-                    ) {
-                        Row {
-                            Sidebar(
-                                sessions = sessions,
-                                activeFilters = activeFilters,
-                                currentSessionId = currentSessionId,
-                                searchText = historySearchText,
-                                onSearchChange = onHistorySearchChange,
-                                onSessionSelect = onSessionSelect,
-                                onSessionDelete = onSessionDelete,
-                                onSessionPrune = onSessionPrune,
-                                onToggleFilter = onToggleFilter,
-                                onCollapse = {
-                                    onUpdateUiSettings(uiSettings.copy(sidebarVisible = false))
-                                    activeTab = "Chat"
-                                },
-                                onNewSession = onNewSession,
-                                sessionFolders = sessionFolders,
-                                onMoveToFolder = onMoveToFolder,
-                                onSessionRename = onSessionRename,
-                                pinnedSessions = pinnedSessions,
-                                onSessionPin = onSessionPin,
-                                onSessionExport = onSessionExport,
-                                modifier = Modifier
-                                    .width(260.dp)
-                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
-                            )
-                            VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-                        }
-                    }
-
-                    // ── Main Content Area ─────────────────────────────────────
-                    Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                        ConnectionStatusBanner(
-                            statusState = statusState,
-                            isDisconnected = isDisconnected,
-                            onRestartAgent = onRestartAgent
-                        )
-
-                        val filteredMessages = remember(messages, messageSearchQuery, uiSettings.developerMode, uiSettings.devModeOptions) {
-                            val base = if (messageSearchQuery.isBlank()) messages
-                            else messages.filter { it.text.contains(messageSearchQuery, ignoreCase = true) }
-
-                            if (uiSettings.developerMode) {
-                                val opts = uiSettings.devModeOptions
-                                base.filter { msg ->
-                                    when {
-                                        msg.type == MessageType.ACTION -> opts.showToolCalls
-                                        msg.sender == "Thought"       -> opts.showThoughts
-                                        msg.agentId != null           -> opts.showSubAgentMessages
-                                        else                          -> true
-                                    }
-                                }
-                            } else {
-                                base.filter { it.type == MessageType.TEXT || it.type == MessageType.ERROR }
-                            }
-                        }
-
-                        // ── Chat Area ──────────────────────────────────────────────────
-                        ChatArea(
-                            messages = messages,
-                            filteredMessages = filteredMessages,
-                            statusState = statusState,
-                            cauldronState = cauldronState,
-                            cauldronGridSize = uiSettings.cauldronGridSize,
-                            listState = listState,
-                            showSearch = showSearch,
-                            messageSearchQuery = messageSearchQuery,
-                            onFork = { onIntent(ChatIntent.ForkSession(currentSessionId ?: "", it), scope, mode) },
-                            onSendMessage = { text, imgs ->
-                                onSendMessage(text, imgs)
-                                selectedImages.clear()
-                            },
-                            loadingModelName = loadingModelName,
-                            onIntent = onIntent,
-                            scope = scope,
-                            mode = mode,
-                            chatFontSize = uiSettings.chatFontSize,
-                            codeFontSize = uiSettings.codeFontSize,
-                            showScrollToBottom = showScrollButton,
-                            searchFocusRequester = searchFocusRequester,
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        // A10 IPC 1.7: live workflow progress bar (visible while workflow runs)
-                        AgentGroupWorkflowPanel(
-                            status = workflowGroupStatus,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
-                        )
-
-                        ToolOutputPanel(
-                            output = toolOutput,
-                            isVisible = showToolOutput,
-                            onToggle = onToggleToolOutput,
-                            onClear = onClearToolOutput
-                        )
-
-                        // ── Bottom Fixed Area: Input + IPC Log ────────────────
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            ChatInputArea(
-                                inputText = inputText,
-                                onInputTextChange = { onIntent(ChatIntent.UpdateInputText(it), scope, mode) },
-                                selectedImages = selectedImages,
-                                onRemoveImage = { selectedImages.remove(it) },
-                                onAttachImage = {
-                                    scope.launch(Dispatchers.IO) {
-                                        pickImageDialog()?.let { selectedImages.add(it) }
-                                    }
-                                },
-                                onSendMessage = { text, imgs ->
-                                    onSendMessage(text, imgs)
-                                    selectedImages.clear()
-                                },
-                                onRetryLast = onRetryMessage,
-                                onShowHistory = {
-                                    onIntent(ChatIntent.NavigateHistoryUp, scope, mode)
-                                },
-                                onNavigateHistoryUp = {
-                                    onIntent(ChatIntent.NavigateHistoryUp, scope, mode)
-                                },
-                                onNavigateHistoryDown = {
-                                    onIntent(ChatIntent.NavigateHistoryDown, scope, mode)
-                                },
-                                onCancel = onCancel,
-                                isThinking = statusState.uppercase() in listOf("THINKING", "BACKTRACKING", "EXECUTING", "GENERATING"),
-                                focusRequester = focusRequester
-                            )
-
-                            IpcLogPanel(logs = ipcLogs, expanded = ipcLogExpanded, onToggle = onToggleIpcLog)
-                        }
-                    }
-
-                    // ── Right Side Panel ──────────────────────────────────────
-                    RightSidePanel(
-                        uiSettings = uiSettings,
-                        sidePanelWidth = sidePanelWidth,
-                        workingDir = workingDir,
-                        selectedFilePath = selectedFilePath,
-                        onFileSelected = { selectedFilePath = it },
-                        availableTools = availableTools,
-                        availableSkills = availableSkills,
-                        onReloadTools = onReloadTools,
-                        onReloadSkills = onReloadSkills,
-                        onDeleteTool = onDeleteTool,
-                        onCreateTool = { onIntent(ChatIntent.ToggleCreateToolDialog, scope, mode) },
-                        sessionStats = sessionStats,
-                        logs = logs,
-                        scratchpadContent = scratchpadContent,
-                        onScratchpadUpdate = onScratchpadUpdate,
-                        terminalTraffic = terminalTraffic,
-                        plugins = plugins,
-                        workflows = workflows,
-                        canvasElements = canvasElements,
-                        agentGroup = agentGroup,
-                        onUpdateUiSettings = onUpdateUiSettings,
-                        onStatsRefresh = onStatsRefresh,
-                        onSetWorkingDir = onSetWorkingDir,
-                        scope = scope
-                    )
-                }
-
-                // ── Status Bar ───────────────────────────────────────────────
-                BottomStatusBar(tokenHistory, ipcLogs.lastOrNull() ?: "CONNECTED", currentModelName, sessionStats)
-            }
-        }
-
-        if (showDevOptionsDialog) {
-            ChatDisplaySettingsDialog(
-                options = uiSettings.devModeOptions,
-                onDismiss = { showDevOptionsDialog = false },
-                onApply = { opts -> onUpdateUiSettings(uiSettings.copy(devModeOptions = opts)) }
+            MainScreenContent(
+                uiSettings = uiSettings, onUpdateUiSettings = onUpdateUiSettings,
+                sessions = sessions, currentSessionId = currentSessionId,
+                activeFilters = activeFilters, historySearchText = historySearchText,
+                onHistorySearchChange = onHistorySearchChange, onSessionSelect = onSessionSelect,
+                onSessionDelete = onSessionDelete, onSessionPrune = onSessionPrune,
+                onToggleFilter = onToggleFilter, onNewSession = onNewSession,
+                sessionFolders = sessionFolders, onMoveToFolder = onMoveToFolder,
+                onSessionRename = onSessionRename, pinnedSessions = pinnedSessions,
+                onSessionPin = onSessionPin, onSessionExport = onSessionExport,
+                onSessionCheckpoint = onSessionCheckpoint,
+                messages = messages, statusState = statusState, cauldronState = cauldronState,
+                listState = listState, showSearch = showSearch, messageSearchQuery = messageSearchQuery,
+                loadingModelName = loadingModelName, onIntent = onIntent, scope = scope, mode = mode,
+                showScrollButton = showScrollButton, searchFocusRequester = searchFocusRequester,
+                chatFocusRequester = focusRequester,
+                workflowGroupStatus = workflowGroupStatus, toolOutput = toolOutput,
+                showToolOutput = showToolOutput, onToggleToolOutput = onToggleToolOutput,
+                onClearToolOutput = onClearToolOutput, inputText = inputText,
+                onSendMessage = onSendMessage, selectedImages = selectedImages,
+                onRetryMessage = onRetryMessage, onCancel = onCancel,
+                ipcLogs = ipcLogs, ipcLogExpanded = ipcLogExpanded, onToggleIpcLog = onToggleIpcLog,
+                isDisconnected = isDisconnected, onRestartAgent = onRestartAgent,
+                workingDir = workingDir, onSetWorkingDir = onSetWorkingDir,
+                selectedFilePath = selectedFilePath, onFileSelected = { selectedFilePath = it },
+                availableTools = availableTools, availableSkills = availableSkills,
+                onReloadTools = onReloadTools, onReloadSkills = onReloadSkills,
+                onDeleteTool = onDeleteTool, sessionStats = sessionStats,
+                logs = logs, scratchpadContent = scratchpadContent, onScratchpadUpdate = onScratchpadUpdate,
+                terminalTraffic = terminalTraffic, plugins = plugins, workflows = workflows,
+                canvasElements = canvasElements, agentGroup = agentGroup, onStatsRefresh = onStatsRefresh,
+                currentModelName = currentModelName, tokenHistory = tokenHistory,
+                showTokenAnalytics = showTokenAnalytics, onToggleTokenAnalytics = onToggleTokenAnalytics,
+                activeTab = activeTab, onSetActiveTab = { activeTab = it },
+                onToggleProviderDialog = onToggleProviderDialog, onDumpDebugLog = onDumpDebugLog,
+                onActivateProvider = onActivateProvider, onToggleMemoryPanel = onToggleMemoryPanel,
+                onOpenDevOptions = { showDevOptionsDialog = true },
+                onShowAutoAcceptDialog = { showAutoAcceptDialog = true },
+                backendHealth = backendHealth,
+                onLoadBackendHealth = onLoadBackendHealth,
+                currentSystemPrompt = currentSystemPrompt,
+                onSetSystemPrompt = { onIntent(ChatIntent.SetSystemPrompt(it), scope, mode) },
+                modifier = Modifier.weight(1f)
             )
         }
 
-        if (showAutoAcceptDialog) {
-            AutoAcceptDialog(
-                currentAutoAccept = uiSettings.autoAccept,
-                currentBypassAll = uiSettings.bypassAllPermissions,
-                onDismiss = { showAutoAcceptDialog = false },
-                onConfirm = { auto, bypass ->
-                    onUpdateUiSettings(uiSettings.copy(autoAccept = auto, bypassAllPermissions = bypass))
-                    showAutoAcceptDialog = false
-                }
-            )
-        }
-
-        if (showCreateToolDialog) {
-            AlertDialog(
-                onDismissRequest = { onIntent(ChatIntent.ToggleCreateToolDialog, scope, mode) },
-                title = { Text("Create New Tool") },
-                text = {
-                    Column {
-                        OutlinedTextField(
-                            value = newToolName,
-                            onValueChange = { newToolName = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("Tool Name") }
-                        )
-                    }
-                },
-                confirmButton = {
-                    Button(onClick = {
-                        onIntent(ChatIntent.CreateTool(newToolName, ""), scope, mode)
-                        onIntent(ChatIntent.ToggleCreateToolDialog, scope, mode)
-                        newToolName = ""
-                    }) {
-                        Text("Create")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { onIntent(ChatIntent.ToggleCreateToolDialog, scope, mode) }) {
-                        Text("Cancel")
-                    }
-                }
-            )
-        }
-
-        if (pendingApproval != null) {
-            ApprovalDialog(
-                request = pendingApproval,
-                onRespond = onResolveApproval
-            )
-        }
-
-        if (pendingPlan != null) {
-            PlanApprovalDialog(
-                plan = pendingPlan,
-                onResolve = onResolvePlan
-            )
-        }
-
-        if (showTokenAnalytics) {
-            TokenAnalyticsDialog(
-                history = tokenHistory,
-                onDismiss = onToggleTokenAnalytics
-            )
-        }
-
-        // A10 IPC 1.7: workflow builder dialog
-        if (showWorkflowDialog) {
-            WorkflowRunDialog(
-                onIntent = onIntent,
-                scope = scope,
-                mode = mode,
-                onDismiss = { onIntent(ChatIntent.ToggleWorkflowDialog, scope, mode) }
-            )
-        }
-
-        // A12: Memory panel overlay
-        if (showMemoryPanel) {
-            androidx.compose.ui.window.Dialog(onDismissRequest = onToggleMemoryPanel) {
-                MemoryPanel(
-                    sessionId = currentSessionId,
-                    facts = memoryFacts,
-                    onRefresh = {
-                        val sid = currentSessionId
-                        if (sid != null) onIntent(ChatIntent.LoadMemory(sid), scope, mode)
-                    },
-                    onDeleteKey = onDeleteMemoryKey,
-                    onClose = onToggleMemoryPanel,
-                    modifier = Modifier.fillMaxWidth(0.5f)
-                )
-            }
-        }
+        MainScreenDialogs(
+            showDevOptionsDialog = showDevOptionsDialog,
+            devModeOptions = uiSettings.devModeOptions,
+            onDismissDevOptions = { showDevOptionsDialog = false },
+            onApplyDevOptions = { opts -> onUpdateUiSettings(uiSettings.copy(devModeOptions = opts)) },
+            showAutoAcceptDialog = showAutoAcceptDialog,
+            autoAccept = uiSettings.autoAccept,
+            bypassAllPermissions = uiSettings.bypassAllPermissions,
+            onDismissAutoAccept = { showAutoAcceptDialog = false },
+            onConfirmAutoAccept = { auto, bypass ->
+                onUpdateUiSettings(uiSettings.copy(autoAccept = auto, bypassAllPermissions = bypass))
+                showAutoAcceptDialog = false
+            },
+            showCreateToolDialog = showCreateToolDialog,
+            newToolName = newToolName,
+            onNewToolNameChange = { newToolName = it },
+            onConfirmCreateTool = {
+                onIntent(ChatIntent.CreateTool(newToolName, ""), scope, mode)
+                onIntent(ChatIntent.ToggleCreateToolDialog, scope, mode)
+                newToolName = ""
+            },
+            onDismissCreateTool = { onIntent(ChatIntent.ToggleCreateToolDialog, scope, mode) },
+            pendingApproval = pendingApproval,
+            onResolveApproval = onResolveApproval,
+            pendingPlan = pendingPlan,
+            onResolvePlan = onResolvePlan,
+            showTokenAnalytics = showTokenAnalytics,
+            tokenHistory = tokenHistory,
+            onDismissTokenAnalytics = onToggleTokenAnalytics,
+            showWorkflowDialog = showWorkflowDialog,
+            onIntent = onIntent,
+            scope = scope,
+            mode = mode,
+            onDismissWorkflow = { onIntent(ChatIntent.ToggleWorkflowDialog, scope, mode) },
+            showMemoryPanel = showMemoryPanel,
+            currentSessionId = currentSessionId,
+            memoryFacts = memoryFacts,
+            onLoadMemory = { sid -> onIntent(ChatIntent.LoadMemory(sid), scope, mode) },
+            onDeleteMemoryKey = onDeleteMemoryKey,
+            onToggleMemoryPanel = onToggleMemoryPanel,
+            selectedToolDetail = selectedToolDetail,
+            onDismissToolDetail = { onIntent(ChatIntent.DismissToolDetail, scope, mode) },
+            showCheckpointDialog = showCheckpointDialog,
+            checkpoints = checkpoints,
+            checkpointSessionId = checkpointSessionId,
+            onRestoreCheckpoint = { n -> onIntent(ChatIntent.RestoreCheckpoint(checkpointSessionId, n), scope, mode) },
+            onDismissCheckpointDialog = { onIntent(ChatIntent.DismissCheckpointDialog, scope, mode) }
+        )
     }
 }
-
-
-

@@ -69,6 +69,15 @@ fun NarrowSidebar(
                 NavIcon(Icons.Default.AutoStories, "Biblioteka Skills", activeTab == "Library") { onTabSelect("Library") }
                 NavIcon(Icons.Default.FolderOpen, "Eksplorator plików", activeTab == "Files") { onTabSelect("Files") }
                 NavIcon(Icons.Default.Science, "Modele", activeTab == "Models") { onTabSelect("Models") }
+                NavIcon(Icons.Default.HealthAndSafety, "Backend Health", activeTab == "Health") { onTabSelect("Health") }
+                NavIcon(Icons.Default.Archive, "Archive sesji", activeTab == "Archive") { onTabSelect("Archive") }
+                NavIcon(Icons.Default.Extension, "Hook Scripts", activeTab == "Hooks") { onTabSelect("Hooks") }
+                NavIcon(Icons.Default.MenuBook, "Prompt Library", activeTab == "Prompts") { onTabSelect("Prompts") }
+                NavIcon(Icons.Default.Code, "Tool Editor", activeTab == "ToolEditor") { onTabSelect("ToolEditor") }
+                NavIcon(Icons.Default.Schedule, "Scheduler", activeTab == "Scheduler") { onTabSelect("Scheduler") }
+                NavIcon(Icons.Default.PushPin, "Pinned Context", activeTab == "Pinned") { onTabSelect("Pinned") }
+                NavIcon(Icons.Default.BarChart, "Metrics", activeTab == "Metrics") { onTabSelect("Metrics") }
+                NavIcon(Icons.Default.Psychology, "Personality Lab", activeTab == "Personas") { onTabSelect("Personas") }
             }
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {

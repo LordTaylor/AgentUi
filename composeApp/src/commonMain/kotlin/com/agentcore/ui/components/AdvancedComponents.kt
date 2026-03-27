@@ -1,5 +1,8 @@
+// SkillLibrary and SkillCard composables for browsing tools and builtin skills in RightSidePanel.
+// StatsDashboard moved to StatsDashboard.kt; ToolDetailDialog in ToolDetailDialog.kt.
 package com.agentcore.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,48 +24,13 @@ import kotlinx.serialization.json.*
 import com.agentcore.api.SkillInfo
 
 private val EXAMPLE_SKILLS = listOf(
-    SkillInfo("ex-1", "Code Review",      "Analizuje kod i sugeruje ulepszenia: wydajność, bezpieczeństwo, czytelność.",   "builtin"),
-    SkillInfo("ex-2", "Git Assistant",    "Pomaga z Git: commity, PR, rozwiązywanie konfliktów, cherry-pick.",              "builtin"),
-    SkillInfo("ex-3", "Test Writer",      "Generuje testy jednostkowe i integracyjne dla podanego kodu Kotlin/Rust.",       "builtin"),
-    SkillInfo("ex-4", "Dokumentacja",     "Tworzy dokumentację API, README i KDoc/rustdoc do modułów.",                    "builtin"),
-    SkillInfo("ex-5", "Debugger",         "Analizuje błędy i stack trace, proponuje poprawki krok po kroku.",               "builtin"),
-    SkillInfo("ex-6", "Refactoring",      "Restrukturyzuje kod wg DRY/SOLID: wydziela funkcje, upraszcza logikę.",         "builtin"),
+    SkillInfo("ex-1", "Code Review",   "Analizuje kod i sugeruje ulepszenia: wydajność, bezpieczeństwo, czytelność.", "builtin"),
+    SkillInfo("ex-2", "Git Assistant", "Pomaga z Git: commity, PR, rozwiązywanie konfliktów, cherry-pick.",           "builtin"),
+    SkillInfo("ex-3", "Test Writer",   "Generuje testy jednostkowe i integracyjne dla podanego kodu Kotlin/Rust.",    "builtin"),
+    SkillInfo("ex-4", "Dokumentacja",  "Tworzy dokumentację API, README i KDoc/rustdoc do modułów.",                 "builtin"),
+    SkillInfo("ex-5", "Debugger",      "Analizuje błędy i stack trace, proponuje poprawki krok po kroku.",            "builtin"),
+    SkillInfo("ex-6", "Refactoring",   "Restrukturyzuje kod wg DRY/SOLID: wydziela funkcje, upraszcza logikę.",      "builtin"),
 )
-
-@Composable
-fun StatsDashboard(stats: JsonObject) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("Session Metrics", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            StatRow("Tokens (In/Out)", "${stats["input_tokens"]?.jsonPrimitive?.content ?: "0"} / ${stats["output_tokens"]?.jsonPrimitive?.content ?: "0"}")
-            StatRow("Iterations", stats["agent_iterations"]?.jsonPrimitive?.content ?: "0")
-            StatRow("Tool Calls", stats["tool_calls_count"]?.jsonPrimitive?.content ?: "0")
-            
-            val duration = stats["total_duration_ms"]?.jsonPrimitive?.longOrNull ?: 0L
-            StatRow("Duration", "${duration / 1000}s")
-            
-            val cost = stats["cost_estimate_usd"]?.jsonPrimitive?.doubleOrNull ?: 0.0
-            StatRow("Est. Cost", if (cost > 0) "$${"%.4f".format(cost)}" else "FREE (Local)")
-        }
-    }
-}
-
-@Composable
-private fun StatRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(label, fontSize = 12.sp, color = Color.Gray)
-        Text(value, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-    }
-}
-
 
 
 @Composable
@@ -71,7 +39,8 @@ fun SkillLibrary(
     skills: List<SkillInfo>,
     onReload: () -> Unit,
     onCreateTool: () -> Unit = {},
-    onDeleteTool: (String) -> Unit = {}
+    onDeleteTool: (String) -> Unit = {},
+    onToolDetail: ((JsonObject) -> Unit)? = null
 ) {
     var toolToDelete by remember { mutableStateOf<String?>(null) }
     var selectedTab by remember { mutableStateOf(0) }
@@ -121,7 +90,8 @@ fun SkillLibrary(
                         description = desc,
                         isTool = true,
                         needsApproval = needsApproval,
-                        onDelete = { toolToDelete = name }
+                        onDelete = { toolToDelete = name },
+                        onClick = if (onToolDetail != null) {{ onToolDetail(tool) }} else null
                     )
                 }
             } else {
@@ -166,7 +136,7 @@ fun SkillLibrary(
             confirmButton = {
                 Button(
                     onClick = {
-                        onDeleteTool(toolToDelete!!)
+                        toolToDelete?.let { onDeleteTool(it) }
                         toolToDelete = null
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
@@ -190,13 +160,16 @@ private fun SkillCard(
     isTool: Boolean,
     needsApproval: Boolean = false,
     isExample: Boolean = false,
-    onDelete: (() -> Unit)? = null
+    onDelete: (() -> Unit)? = null,
+    onClick: (() -> Unit)? = null
 ) {
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 2.dp,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth().then(
+            if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+        )
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

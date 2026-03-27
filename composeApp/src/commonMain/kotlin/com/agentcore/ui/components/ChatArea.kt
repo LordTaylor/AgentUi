@@ -1,6 +1,8 @@
+// Main chat message list with auto-scroll, cauldron background, loading overlay, and search/scroll overlays.
+// Auto-scroll logic tracks bottom position and re-enables when user scrolls back down.
+// See: ChatBubble.kt for individual message rendering; ChatComponents.kt for overlay helpers.
 package com.agentcore.ui.components
 
-import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,11 +20,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -36,7 +40,6 @@ import com.agentcore.ui.components.cauldron.CauldronState
 import com.agentcore.ui.components.cauldron.WitchCauldron
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import androidx.compose.foundation.lazy.rememberLazyListState
 import com.agentcore.shared.ConnectionMode
 
 @Composable
@@ -75,12 +78,21 @@ fun ChatArea(
         }
     }
 
-    androidx.compose.runtime.LaunchedEffect(filteredMessages.size, statusState) {
-        if (autoScroll && isAtBottom) {
-            val lastIdx = (filteredMessages.size + if (statusState == "THINKING") 1 else 0) - 1
-            if (lastIdx >= 0) {
-                listState.animateScrollToItem(lastIdx)
+    // Auto-disable when user scrolls up; re-enable when they reach the bottom
+    LaunchedEffect(Unit) {
+        snapshotFlow { listState.isScrollInProgress to isAtBottom }
+            .collect { (scrolling, atBottom) ->
+                if (scrolling && !atBottom) autoScroll = false
+                if (atBottom) autoScroll = true
             }
+    }
+
+    // Re-trigger on every TextDelta (lastMsgLen changes) AND on new messages
+    val lastMsgLen = filteredMessages.lastOrNull()?.text?.length ?: 0
+    LaunchedEffect(filteredMessages.size, lastMsgLen, statusState) {
+        if (autoScroll) {
+            val lastIdx = filteredMessages.size + (if (statusState == "THINKING") 1 else 0) - 1
+            if (lastIdx >= 0) listState.animateScrollToItem(lastIdx)
         }
     }
 
@@ -222,33 +234,5 @@ fun ChatArea(
                 }
             )
         }
-    }
-}
-
-@Preview
-@Composable
-fun ChatAreaPreview() {
-    val scope = androidx.compose.runtime.rememberCoroutineScope()
-    val searchFocusRequester = androidx.compose.ui.focus.FocusRequester()
-    MaterialTheme {
-        ChatArea(
-            messages = emptyList(),
-            filteredMessages = emptyList(),
-            statusState = "IDLE",
-            cauldronState = CauldronState.IDLE,
-            cauldronGridSize = 32,
-            listState = rememberLazyListState(),
-            showSearch = false,
-            messageSearchQuery = "",
-            onFork = {},
-            onSendMessage = { _, _ -> },
-            onIntent = { _, _, _ -> },
-            scope = scope,
-            mode = ConnectionMode.STDIO,
-            chatFontSize = 14f,
-            codeFontSize = 13f,
-            showScrollToBottom = true,
-            searchFocusRequester = searchFocusRequester
-        )
     }
 }
